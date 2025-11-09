@@ -34,7 +34,7 @@
             <span>Cambiar Contraseña</span>
         </button>
 
-        <form action="{{ route('logout') }}" method="POST">
+        <form action="{{ route('logout') }}" method="POST" onclick="logout()">
             @csrf
             <button type="submit" class="user-menu-item">
                 <img class="user-menu-icon" src="{{ asset('assets/icons/cerrarSesion.svg') }}" alt="logout">

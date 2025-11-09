@@ -2,28 +2,28 @@
     <nav>
         <ul class="list-unstyled">
             <li>
-                <a id="home" href="{{ route('home.index') }}">
+                <a id="home" href="{{ route('home.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/home.svg') }}" alt="">
                     <span>Inicio</span>
                 </a>
             </li>
 
             <li>
-                <a id="goods" href="{{ route('goods.index') }}">
+                <a id="goods" href="{{ route('goods.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/bienes.svg') }}" alt="">
                     <span>Bienes</span>
                 </a>
             </li>
 
             <li>
-                <a id="inventory" href="{{ route('inventories.index') }}">
+                <a id="inventory" href="{{ route('inventories.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/inventario.svg') }}" alt="">
                     <span>Inventarios</span>
                 </a>
             </li>
 
             <li>
-                <a id="reports" href="{{ route('reports.index') }}">
+                <a id="reports" href="{{ route('reports.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/reportes.svg') }}" alt="">
                     <span>Reportes</span>
                 </a>
@@ -31,14 +31,14 @@
 
             @if(auth()->user()->role === 'admin')
                 <li>
-                    <a id="users" href="{{ route('users.index') }}">
+                    <a id="users" href="{{ route('users.index') }}" data-nav>
                         <img src="{{ asset('assets/icons/usuarios.svg') }}" alt="">
                         <span>Usuarios</span>
                     </a>
                 </li>
 
                 <li>
-                    <a id="record" href="{{ route('records.index') }}">
+                    <a id="record" href="{{ route('records.index') }}" data-nav>
                         <img src="{{ asset('assets/icons/historial.svg') }}" alt="">
                         <span>Historial</span>
                     </a>

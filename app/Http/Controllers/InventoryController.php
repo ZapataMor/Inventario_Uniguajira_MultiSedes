@@ -9,9 +9,15 @@ class InventoryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return view('inventories.index');
+            if ($request->ajax()) {
+                // si es una carga AJAX, solo renderiza el contenido interno
+                return view('inventories.index')->renderSections()['content'];
+            }
+
+            // si es carga normal (primera vez), usa el layout completo
+            return view('inventories.index');
     }
 
     /**

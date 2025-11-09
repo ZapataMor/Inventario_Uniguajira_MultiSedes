@@ -64,3 +64,13 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+
+#main-content {
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+}
+
+#main-content.loading {
+    opacity: 0.3;
+}

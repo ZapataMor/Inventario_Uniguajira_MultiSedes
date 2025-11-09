@@ -9,8 +9,14 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        // si es una carga AJAX, solo renderiza el contenido interno
+        if ($request->ajax()) {
+            return view('users.index')->renderSections()['content'];
+        }
+
+        // si es carga normal (primera vez), usa el layout completo
         return view('users.index');
     }
 

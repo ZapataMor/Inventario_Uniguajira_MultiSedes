@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="{{ asset('assets/css/components/.get.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/responsive/.get.css') }}">
     @stack('styles')
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
     @include('layouts.navbar')

@@ -9,9 +9,7 @@ function logout() {
     localStorage.removeItem('lastSelected');
     localStorage.removeItem('openGroup');
     localStorage.removeItem('openInventory');
-    window.location.href = '/api/logout'; // Redirigir al endpoint correcto del backend
 }
-
 
 // Cerrar el menú al hacer clic fuera de él
 document.addEventListener('click', function (event) {

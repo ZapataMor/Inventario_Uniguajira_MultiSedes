@@ -9,8 +9,14 @@ class GoodsController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        if ($request->ajax()) {
+            // si es una carga AJAX, solo renderiza el contenido interno
+            return view('goods.index')->renderSections()['content'];
+        }
+
+        // si es carga normal (primera vez), usa el layout completo
         return view('goods.index');
     }
 
