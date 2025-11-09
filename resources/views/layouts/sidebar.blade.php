@@ -16,7 +16,7 @@
             </li>
 
             <li>
-                <a id="inventory" href="{{ route('inventories.index') }}" data-nav>
+                <a id="inventories" href="{{ route('inventories.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/inventario.svg') }}" alt="">
                     <span>Inventarios</span>
                 </a>
@@ -38,7 +38,7 @@
                 </li>
 
                 <li>
-                    <a id="record" href="{{ route('records.index') }}" data-nav>
+                    <a id="records" href="{{ route('records.index') }}" data-nav>
                         <img src="{{ asset('assets/icons/historial.svg') }}" alt="">
                         <span>Historial</span>
                     </a>

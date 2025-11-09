@@ -46,79 +46,76 @@ sidebar.addEventListener('click', (e) => {
     e.stopPropagation();
 });
 
-function loadContent(path, scrollUpRequired = true) {
-    fetch(path)
-    .then(res => res.text())
-    .then(html => {
-        // Cargar el contenido en el main-content
-        document.getElementById('main-content').innerHTML = html;
+// function loadContent(path, scrollUpRequired = true) {
+//     fetch(path)
+//     .then(res => res.text())
+//     .then(html => {
+//         // Cargar el contenido en el main-content
+//         document.getElementById('main-content').innerHTML = html;
 
-        // Desactivar la selección por defecto en todas las páginas
-        if (typeof deactivateSelection === 'function') 
-            deactivateSelection();
-        
-        // si path es diferente de inventory, localStorage.removeItem 
-        if (path !== '/inventory') {
-            localStorage.removeItem('openGroup');
-            localStorage.removeItem('openInventory');
-        }
+//         // Desactivar la selección por defecto en todas las páginas
+//         if (typeof deactivateSelection === 'function')
+//             deactivateSelection();
 
-        switch (path) {
+//         // si path es diferente de inventory, localStorage.removeItem
+//         if (path !== '/inventory') {
+//             localStorage.removeItem('openGroup');
+//             localStorage.removeItem('openInventory');
+//         }
 
-            case '/home': 
-                break;
-                
-            case '/goods':
-                iniciarBusqueda('searchGood');
-                // TODO: hacer un init goods
-                break;
-                
-            case '/users':
-                activarBusquedaEnTabla();
-                break;
+//         switch (path) {
 
-            case '/record':
-                inicializarHistorial()
-                break;
-                
-            case '/inventory':
+//             case '/goods':
+//                 iniciarBusqueda('searchGood');
+//                 // TODO: hacer un init goods
+//                 break;
 
-                iniciarBusqueda('searchGroup');
+//             case '/users':
+//                 activarBusquedaEnTabla();
+//                 break;
 
-                initEstadoInventarioForm();
+//             case '/record':
+//                 inicializarHistorial()
+//                 break;
 
-                // comprobamos que existe al menos una funcion de gruops.js
-                // significa que se cargaron los archivos del rol administrador
-                if (typeof initGroupFunctions === 'function') {
-                    initializeSelection();
+//             case '/inventory':
 
-                    // si hay un grupo almacenado, abrir
-                    if (localStorage.getItem('openGroup')) {
-                        const idGroup = localStorage.getItem('openGroup');
-                        abrirGrupo(idGroup);  // si hay un inventario almacenado se abrira en esta funcion
-                    }
-                }
+//                 iniciarBusqueda('searchGroup');
 
-                break;
+//                 initEstadoInventarioForm();
 
-            case '/reports':
-                iniciarBusqueda('searchFolder');
-                if (typeof initFoldersFunctions === 'function') {
-                    initializeSelection();
-                    cargarGrupos();
+//                 // comprobamos que existe al menos una funcion de gruops.js
+//                 // significa que se cargaron los archivos del rol administrador
+//                 if (typeof initGroupFunctions === 'function') {
+//                     initializeSelection();
 
-                    if (currentFolderId) {
-                        abrirCarpeta(currentFolderId, false);
-                    }
-                }
+//                     // si hay un grupo almacenado, abrir
+//                     if (localStorage.getItem('openGroup')) {
+//                         const idGroup = localStorage.getItem('openGroup');
+//                         abrirGrupo(idGroup);  // si hay un inventario almacenado se abrira en esta funcion
+//                     }
+//                 }
 
-                break;
-        }
-        
-        // Hacer scroll hacia arriba
-        if (scrollUpRequired) window.scrollTo(0, 0);
-    });
-}
+//                 break;
+
+//             case '/reports':
+//                 iniciarBusqueda('searchFolder');
+//                 if (typeof initFoldersFunctions === 'function') {
+//                     initializeSelection();
+//                     cargarGrupos();
+
+//                     if (currentFolderId) {
+//                         abrirCarpeta(currentFolderId, false);
+//                     }
+//                 }
+
+//                 break;
+//         }
+
+//         // Hacer scroll hacia arriba
+//         if (scrollUpRequired) window.scrollTo(0, 0);
+//     });
+// }
 
 
 // asignar evento click a las etiquetas <a> del sidebar
@@ -129,36 +126,15 @@ links.forEach(link => {
     link.addEventListener('click', () => {
         links.forEach(l => l.classList.remove('selected'));
         link.classList.add('selected');
-
-        // guardar el id del elemento seleccionado en localStorage
-        const path = link.getAttribute('id');
-        console.log(path)
-        if (path) {
-            localStorage.setItem('lastSelected', path);
-        }
-        // si se hace click sobre inventory
-        if (path === 'inventory') {
-            // eliminar los datos almacenados, esto garantiza que esta accion
-            // suceda al hacer click en el sidebar y no al cargar la pagina
-            localStorage.removeItem('openGroup');
-            localStorage.removeItem('openInventory');
-        }
     });
 });
 
-// cuando se carga la pagina, cargar la última opción seleccionada
-// o hacer click en el elemento con id home si no hay nada guardado
-function cargarUltimaSeleccion() {
-    const lastSelected = localStorage.getItem('lastSelected');
-    const validPaths = ['home', 'goods', 'profile', 'inventory', 'users', 'record', 'reports']; // Lista de rutas válidas
+// Obtener la parte principal del path actual (por ejemplo, "goods" de "/goods/openmodal")
+const path = window.location.pathname.split('/')[1];
 
-    if (lastSelected && validPaths.includes(lastSelected)) {
-        console.log(`Cargando el elemento guardado: ${lastSelected}`);
-        document.getElementById(lastSelected).classList.add('selected');
-        loadContent(`/${lastSelected}`);
-    } else {
-        console.log('No hay elemento guardado o no es válido, cargando la opcion "home".');
-        document.getElementById('home').classList.add('selected');
-        loadContent('/home');
-    }
-};
+// Quitar selección previa
+document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('selected'));
+
+// Marcar la opción actual
+const current = document.getElementById(path);
+current.classList.add('selected');
