@@ -41,7 +41,7 @@
     <script src="{{ asset('assets/js/helpers/toast.js') }}"></script>
     <script src="{{ asset('assets/js/tasks.js') }}"></script>
 
-    @if(Auth::user()->role === 'admin')
+    @if(Auth::user()->role === 'administrador')
         <script src="{{ asset('assets/js/goods.js') }}"></script>
         <script src="{{ asset('assets/js/goods-excel-upload.js') }}"></script>
         <script src="{{ asset('assets/js/helpers/modal.js') }}"></script>

@@ -21,6 +21,7 @@ function initFormsTask() {
 
     // Editar tarea
     inicializarFormularioAjax('#editTaskForm', {
+        forceMethod: 'PUT', // ← Forzamos PUT aunque el form diga POST
         contentType: 'application/json',
         customBody: (form) => ({
             id: form.querySelector('#editTaskId').value,
@@ -58,8 +59,8 @@ async function refreshTasks() {
 // Abrir modal de edición con datos precargados
 function btnEditTask(id, name, description, date) {
     document.getElementById('editTaskId').value = id;
-    document.getElementById('editTaskName').value = decodeURIComponent(name);
-    document.getElementById('editTaskDesc').value = decodeURIComponent(description);
+    document.getElementById('editTaskName').value = name;
+    document.getElementById('editTaskDesc').value = description;
     document.getElementById('editTaskDate').value = new Date(date).toISOString().split('T')[0];
     mostrarModal('#editTaskModal');
 }

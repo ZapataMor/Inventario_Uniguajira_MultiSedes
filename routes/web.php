@@ -41,8 +41,8 @@ Route::middleware('auth')->group(function () {
 Route::prefix('api/tasks')->middleware('auth')->group(function () {
     Route::patch('toggle', [TaskController::class, 'toggle']);
     Route::delete('delete/{id}', [TaskController::class, 'destroy']);
-    Route::post('store', [TaskController::class, 'store']);
-    Route::put('update', [TaskController::class, 'update']);
+    Route::post('store', [TaskController::class, 'store'])->name('tasks.store');
+    Route::put('update', [TaskController::class, 'update'])->name('tasks.update');
 });
 
 // Route::middleware(['auth'])->group(function () {

@@ -19,7 +19,7 @@
                 <div class="task-card">
                     <button class="task-checkbox" onclick="toggleTask({{ $task->id }}, this)">✓</button>
                     <div class="task-content"
-                        onclick="btnEditTask({{ $task->id }}, '{{ urlencode($task->name) }}', '{{ urlencode($task->description ?? '') }}', '{{ $task->date }}')">
+                        onclick="btnEditTask('{{ $task->id }}', '{{ $task->name }}', '{{ $task->description }}', '{{ $task->date }}')">
                         <h3 class="task-title">{{ $task->name }}</h3>
                         @if(!empty($task->description))
                             <p class="task-description">{{ $task->description }}</p>
@@ -50,7 +50,7 @@
                 <div class="task-card completed">
                     <button class="task-checkbox completed" onclick="toggleTask({{ $task->id }}, this)">✓</button>
                     <div class="task-content"
-                        onclick="btnEditTask({{ $task->id }}, '{{ urlencode($task->name) }}', '{{ urlencode($task->description ?? '') }}', '{{ $task->date }}')">
+                        onclick="btnEditTask('{{ $task->id }}', '{{ $task->name }}', '{{ $task->description }}', '{{ $task->date }}')">
                         <h3 class="task-title">{{ $task->name }}</h3>
                         @if(!empty($task->description))
                             <p class="task-description">{{ $task->description }}</p>
@@ -72,4 +72,8 @@
         </div>
     @endif
 </div>
+
+<x-modal.task mode="create" />
+<x-modal.task mode="edit" />
+
 @endsection
