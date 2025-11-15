@@ -36,6 +36,11 @@ Route::middleware('auth')->group(function () {
     Route::get('records', [RecordController::class, 'index'])->name('records.index');
 });
 
+// routes for goods
+Route::post('/api/goods/create', [GoodsController::class, 'store'])->name('goods.store');
+Route::post('/api/goods/update', [GoodsController::class, 'update'])->name('goods.update');
+Route::delete('/api/goods/delete/{id}', [GoodsController::class, 'destroy'])->name('goods.destroy');
+
 
 // API para las tareas
 Route::prefix('api/tasks')->middleware('auth')->group(function () {

@@ -1,26 +1,23 @@
+let formsBienInicializado = false;
+
 function initFormsBien() {
-    // inicializar formulario de crear bien
+    if (formsBienInicializado) return;
+    formsBienInicializado = true;
+
     inicializarFormularioAjax('#formCrearBien', {
         resetOnSuccess: true,
         closeModalOnSuccess: true,
         onSuccess: (response) => {
-
-            window.globalAutocomplete.recargarDatos(); // Usar window.globalAutocomplete
-
             showToast(response);
-            loadContent('/goods', false);
+            refrescarVistaBienes();
         }
     });
 
-    // inicializar formulario de actualizar bien
     inicializarFormularioAjax('#formActualizarBien', {
         closeModalOnSuccess: true,
         onSuccess: (response) => {
-
-            window.globalAutocomplete.recargarDatos(); // Usar window.globalAutocomplete
-
             showToast(response);
-            loadContent('/goods', false);
+            refrescarVistaBienes();
         }
     });
 }
@@ -29,8 +26,8 @@ function eliminarBien(id) {
     eliminarRegistro({
         url: `/api/goods/delete/${id}`,
         onSuccess: (response) => {
-            window.globalAutocomplete.recargarDatos(); // Usar window.globalAutocomplete
-            loadContent('/goods', false);
+            // window.globalAutocomplete.recargarDatos(); // Usar window.globalAutocomplete
+            refrescarVistaBienes();
             showToast(response);
         }
     });
@@ -44,4 +41,30 @@ function ActualizarBien(id, nombre) {
 
     // Mostrar el modal
     mostrarModal('#modalActualizarBien')
+}
+
+// ---------------------------------------------------------------------
+// REFRESCAR LA VISTA DE BIENES SIN RECARGAR TODA LA PÁGINA
+// ---------------------------------------------------------------------
+async function refrescarVistaBienes() {
+    const response = await fetch('/goods', {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    const nuevoContenido = doc.querySelector('.content');
+
+    if (nuevoContenido) {
+        document.querySelector('.content').replaceWith(nuevoContenido);
+
+        // 🔥 REINICIALIZAR EVENTOS Y FORMULARIOS
+        initFormsBien();
+
+        // 🔥 Si tienes otros scripts, agrégalos:
+        // inicializarModales();
+        // window.globalAutocomplete?.recargarDatos();
+    }
 }
