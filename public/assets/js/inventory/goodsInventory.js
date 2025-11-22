@@ -11,7 +11,7 @@ function initGoodsInventoryFunctions() {
             loadContent('/inventory', false);
         }
     });
-    
+
     initAutocompleteForBien();
 
     // Inicializa el formulario para editar un bien serial
@@ -61,34 +61,32 @@ function cerrarInventarioSerial() {
     toggleInventoryControls(true);
 }
 
-function verDetalleBienSerialInventario(inventarioId, bienId) {
-    console.log(inventarioId, bienId)
-    const divGoodsInventory = document.getElementById('goods-inventory');
-    const divSerialsGoodsInventory = document.getElementById('serials-goods-inventory');
-    const divContent = document.getElementById('serials-goods-inventory-content');
+async function abrirSeriales(assetId, inventoryId) {
+    try {
+        const url = `/inventory/${inventoryId}/goods/${assetId}/serials`;
 
-    // Mostrar loader
-    divContent.innerHTML = '<p>Cargando detalles del bien serial...</p>';
-    divGoodsInventory.classList.add('hidden');
-    divSerialsGoodsInventory.classList.remove('hidden');
+        const response = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
 
-    fetch(`/api/get/serialGoodsInventory/${inventarioId}/${bienId}`)
-    .then(res => res.text())
-    .then(data => {
-        if (data) {
-            divContent.innerHTML = data;
-        } else {
-            divContent.innerHTML = '<p>No se encontraron detalles para este bien serial.</p>';
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        divContent.innerHTML = '<p>Error al cargar los detalles del bien serial.</p>';
-    });
+        if (!response.ok) throw new Error("Error al cargar los bienes seriales");
 
-    // Ocultar controles del inventario
-    toggleInventoryControls(false);
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+
+        const nuevoContenido = parsed.querySelector(".content");
+        if (!nuevoContenido) throw new Error("No se encontró .content en la respuesta");
+
+        document.querySelector(".content").replaceWith(nuevoContenido);
+
+        history.pushState({}, "", url);
+
+    } catch (err) {
+        console.error(err);
+        showToast({ message: "Error al abrir los bienes seriales", success: false });
+    }
 }
+
 
 function btnEliminarBienCantidad() {
     const idInventario = localStorage.getItem('openInventory');

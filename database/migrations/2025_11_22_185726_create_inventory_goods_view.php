@@ -11,22 +11,23 @@ return new class extends Migration
     public function up(): void
     {
         DB::statement("
-            CREATE VIEW assets_summary_view AS
+            CREATE VIEW inventory_goods_view AS
             SELECT
-                a.id AS id,
-                a.name AS name,
-                a.type AS type,
+                i.id AS inventory_id,
+                a.id AS asset_id,
+                i.name AS inventory,
+                a.name AS asset,
                 a.image AS image,
-                (
-                    COALESCE(SUM(aq.quantity), 0) +
-                    COALESCE(COUNT(ae.id), 0)
-                ) AS total_quantity
+                a.type AS type,
+                COALESCE(SUM(aq.quantity), COUNT(ae.id)) AS quantity
             FROM assets a
-            LEFT JOIN asset_inventory ai ON a.id = ai.asset_id
+            JOIN asset_inventory ai ON a.id = ai.asset_id
+            JOIN inventories i ON ai.inventory_id = i.id
             LEFT JOIN asset_quantities aq ON ai.id = aq.asset_inventory_id
             LEFT JOIN asset_equipments ae ON ai.id = ae.asset_inventory_id
             GROUP BY
-                a.id, a.name, a.type, a.image
+                i.id, a.id, i.name, a.name, a.image, a.type
+            HAVING quantity > 0;
         ");
     }
 
@@ -35,6 +36,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("DROP VIEW IF EXISTS assets_summary_view");
+        DB::statement("DROP VIEW IF EXISTS inventory_goods_view;");
     }
 };

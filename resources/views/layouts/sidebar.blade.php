@@ -16,7 +16,7 @@
             </li>
 
             <li>
-                <a id="inventories" href="{{ route('inventories.index') }}" data-nav>
+                <a id="inventories" href="{{ route('inventory.groups') }}" data-nav>
                     <img src="{{ asset('assets/icons/inventario.svg') }}" alt="">
                     <span>Inventarios</span>
                 </a>

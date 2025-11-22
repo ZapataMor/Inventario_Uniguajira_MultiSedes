@@ -25,4 +25,9 @@ class Inventory extends Model
     {
         return $this->hasMany(AssetInventory::class);
     }
+
+    public function items()
+    {
+        return $this->hasMany(Asset::class);
+    }
 }

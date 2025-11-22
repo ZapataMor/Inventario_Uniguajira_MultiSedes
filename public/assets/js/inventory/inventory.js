@@ -35,56 +35,71 @@ function initInventoryFunctions() {
 
 }
 
-function abrirInventario(idInventory, scrollUpRequired = true) {
-    const divGoodsInventory = document.getElementById('goods-inventory');
-    const divInventories = document.getElementById('inventories');
-    
-    // Mostrar sección de bienes y ocultar inventarios
-    divGoodsInventory.classList.remove('hidden');
-    divInventories.classList.add('hidden');
+/**
+ * Cargar los bienes de un inventario
+ */
+async function abrirInventario(inventoryId) {
+    try {
+        const url = `/inventory/${inventoryId}/goods`;
 
-    // Cargar bienes usando la nueva función
-    cargarBienesInventario(idInventory);
+        const response = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
 
-    // Mostrar controles del inventario
-    actualizarInfoInventario(idInventory);
-    toggleInventoryControls(true);
+        if (!response.ok) throw new Error("Error al cargar bienes");
 
-    // Inicializar búsqueda
-    iniciarBusqueda('searchGoodInventory');
-    
-    // Guardar estado en localStorage
-    localStorage.setItem('openInventory', idInventory);
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, "text/html");
 
-    // Scroll a la parte superior si es necesario
-    if (scrollUpRequired) {
-        window.scrollTo(0, 0);
+        const nuevoContenido = parsed.querySelector(".content");
+        if (!nuevoContenido) throw new Error("No se encontró .content en la respuesta");
+
+        document.querySelector(".content").replaceWith(nuevoContenido);
+
+        // Actualizar URL sin recargar
+        history.pushState({}, "", url);
+
+        console.log("Bienes cargados correctamente");
+
+    } catch (err) {
+        console.error(err);
+        showToast({ message: "Error al abrir el inventario", success: false });
     }
 }
 
-// cerrar inventario
-function cerrarInventario() {
-    document.getElementById('goods-inventory').classList.add('hidden');
-    document.getElementById('inventories').classList.remove('hidden');
 
-    const input = document.getElementById('searchInventory');
-    input.value = ''; // Borra el valor
-    input.dispatchEvent(new Event('input')); // Notifica que el valor cambió
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', code: 'Backspace' }));
-    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Backspace', code: 'Backspace' }));
+/**
+ * Volver al listado de grupos
+ */
+async function volverAGroupIndex() {
+    try {
+        const url = `/inventory/groups`;
 
-    localStorage.removeItem('openInventory');
+        const response = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
 
-    // Ocultar controles del inventario
-    toggleInventoryControls(false);
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+
+        const nuevoContenido = parsed.querySelector(".content");
+        document.querySelector(".content").replaceWith(nuevoContenido);
+
+        history.pushState({}, "", url);
+
+    } catch (error) {
+        console.error(error);
+        showToast("No se pudo volver a grupos", "error");
+    }
 }
+
 
 // Función para abrir el modal de renombrar inventario
 function btnRenombrarInventario() {
     console.log(selectedItem); // mensaje de depuración
     const id = selectedItem.id;
     const nombreActual = selectedItem.name;
-    
+
     document.getElementById("renombrarInventarioId").value = id;
     document.getElementById("renombrarInventarioNombre").value = nombreActual;
 
@@ -154,11 +169,11 @@ function actualizarInfoInventario(idInventory) {
 
     // Cambiar el estado visual del inventario
     cambiarEstadoInventario(inventoryCard.dataset.estado);
-    
+
 }
 
 // Función para inicializar el formulario de actualizar estado
-// Esta funcion es llamada en sidebar.js 
+// Esta funcion es llamada en sidebar.js
 function initEstadoInventarioForm() {
     // Inicializar formulario para cambiar estado del inventario
     inicializarFormularioAjax('#estadoInventarioForm', {

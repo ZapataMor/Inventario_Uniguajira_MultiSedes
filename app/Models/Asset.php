@@ -15,4 +15,15 @@ class Asset extends Model
     {
         return $this->hasMany(AssetInventory::class);
     }
+
+    public function quantities()
+    {
+        return $this->hasMany(AssetQuantity::class, 'asset_inventory_id');
+    }
+
+    public function equipments()
+    {
+        return $this->hasMany(AssetEquipment::class, 'asset_inventory_id');
+    }
+
 }

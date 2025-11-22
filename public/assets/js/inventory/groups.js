@@ -25,12 +25,12 @@ function initGroupFunctions() {
 function mostrarModalCrearInventario() {
     // Obtener el ID del grupo actual del localStorage
     const currentGroupId = localStorage.getItem('openGroup');
-    
+
     // Establecer el valor en el campo oculto
     if (currentGroupId) {
         document.getElementById('grupo_id_crear_inventario').value = currentGroupId;
     }
-    
+
     // Mostrar el modal
     mostrarModal('#modalCrearInventario');
 }
@@ -60,58 +60,34 @@ function btnEliminarGrupo() {
     });
 }
 
-// Función para abrir grupo y cargar inventarios
-function abrirGrupo(idGroup, scrollUpRequired = true) {
-    const divGroups = document.getElementById('groups');
-    const divInventories = document.getElementById('inventories');
-    const divContent = document.getElementById('inventories-content');
+/**
+ * Cargar los inventarios de un grupo y actualizar la vista sin recargar la página
+ */
+async function abrirGrupo(groupId) {
+    try {
+        const url = `/inventory/${groupId}/inventories`;
 
-    // Actualizar el campo oculto en el modal de crear inventario
-    const grupoIdInput = document.getElementById('grupo_id_crear_inventario');
-    if (grupoIdInput) {
-        grupoIdInput.value = idGroup;
+        const response = await fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+
+        if (!response.ok) throw new Error("Error al cargar inventarios");
+
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+
+        const nuevoContenido = parsed.querySelector(".content");
+        if (!nuevoContenido) throw new Error("No se encontró .content en la respuesta");
+
+        document.querySelector(".content").replaceWith(nuevoContenido);
+
+        // Cambiar la URL sin recargar
+        history.pushState({}, "", url);
+
+        console.log("Inventarios cargados correctamente");
+
+    } catch (err) {
+        console.error(err);
+        showToast({message: "Error al abrir el grupo", success: false});
     }
-
-    // Mostrar loader
-    divContent.innerHTML = '<p>Cargando inventarios...</p>';
-    divGroups.classList.add('hidden');
-    divInventories.classList.remove('hidden');
-
-    fetch(`/api/get/inventories/${idGroup}`)
-    .then(res => res.text())
-    .then(html => {
-        divContent.innerHTML = html;
-        const grupoName = document.getElementById(`group-name${idGroup}`).textContent;
-        document.getElementById('group-name').innerText = grupoName;
-
-        iniciarBusqueda('searchInventory');
-
-        // si hay un inventario almacenado, abrir
-        if (localStorage.getItem('openInventory')) {
-            const idInventory = localStorage.getItem('openInventory');
-            abrirInventario(idInventory);
-        } else {
-            localStorage.setItem('openGroup', idGroup);
-        }
-            
-        if (scrollUpRequired)
-            window.scrollTo(0, 0);  
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        divContent.innerHTML = '<p>Error al cargar los inventarios</p>';
-    });
-}
-
-// Función para cerrar grupo (mejorada)
-function cerrarGrupo() {
-    document.getElementById('groups').classList.remove('hidden');
-    document.getElementById('inventories').classList.add('hidden');
-
-    const input = document.getElementById('searchGroup');
-    input.value = ''; // Borra el valor
-    input.dispatchEvent(new Event('input')); // Notifica que el valor cambió
-    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Backspace', code: 'Backspace' }));
-
-    localStorage.removeItem('openGroup');
 }

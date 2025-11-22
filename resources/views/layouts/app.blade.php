@@ -54,7 +54,6 @@
     <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/goods-inventory-loader.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}"></script>
     <script src="{{ asset('assets/js/reports/folders.js') }}"></script>
     <script src="{{ asset('assets/js/reports/reports.js') }}"></script>

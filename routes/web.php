@@ -30,7 +30,7 @@ Route::get('profile', function () {
 // routes.index
 Route::middleware('auth')->group(function () {
     Route::get('goods', [GoodsController::class, 'index'])->name('goods.index');
-    Route::get('inventories', [InventoryController::class, 'index'])->name('inventories.index');
+    // Route::get('inventories', [InventoryController::class, 'index'])->name('inventories.index');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::get('records', [RecordController::class, 'index'])->name('records.index');
@@ -48,6 +48,23 @@ Route::prefix('api/tasks')->middleware('auth')->group(function () {
     Route::delete('delete/{id}', [TaskController::class, 'destroy']);
     Route::post('store', [TaskController::class, 'store'])->name('tasks.store');
     Route::put('update', [TaskController::class, 'update'])->name('tasks.update');
+});
+
+// INVENTARIO (USANDO UN SOLO CONTROLADOR)
+Route::controller(InventoryController::class)->group(function () {
+
+    // 1. Grupos
+    Route::get('/inventory/groups', 'groupIndex')->name('inventory.groups');
+
+    // 2. Inventarios por grupo
+    Route::get('/inventory/{group}/inventories', 'inventoryIndex')->name('inventory.inventories');
+
+    // 3. Bienes por inventario
+    Route::get('/inventory/{inventory}/goods', 'goodsIndex')->name('inventory.goods');
+
+    // 4. Bienes seriales por bien en inventario
+    Route::get('/inventory/{inventoryId}/goods/{assetId}/serials', 'serialsIndex')->name('inventory.serials');
+
 });
 
 // Route::middleware(['auth'])->group(function () {
