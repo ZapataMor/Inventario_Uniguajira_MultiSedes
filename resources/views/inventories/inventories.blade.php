@@ -117,4 +117,12 @@
 {{-- // TODO: eliminar --}}
 {{-- <x-modal.inventory mode="responsable" /> --}}
 
+@once
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            iniciarBusqueda('searchInventory');
+        });
+    </script>
+@endonce
+
 @endsection

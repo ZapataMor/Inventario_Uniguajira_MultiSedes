@@ -113,4 +113,12 @@
 <x-modal.group mode="create" />
 <x-modal.group mode="rename" />
 
+@once
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            iniciarBusqueda('searchGroup');
+        });
+    </script>
+@endonce
+
 @endsection

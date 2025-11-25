@@ -137,12 +137,11 @@
 @once
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            if (typeof initEstadoInventarioForm === 'function') {
-                console.log('Initializing estadoInventarioForm');
-                initEstadoInventarioForm();
-            }
+            iniciarBusqueda('searchGoodInventory');
         });
     </script>
 @endonce
+
+
 
 @endsection

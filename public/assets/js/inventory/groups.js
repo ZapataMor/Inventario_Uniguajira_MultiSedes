@@ -116,12 +116,6 @@ async function abrirGrupo(groupId) {
         // Cambiar la URL sin recargar
         history.pushState({}, "", url);
 
-        // Guardar el grupo abierto en localStorage para que otros módulos (inventarios)
-        // puedan recargar la vista correcta.
-        try { localStorage.setItem('openGroup', String(groupId)); } catch (e) { /* noop */ }
-
-        console.log("Inventarios cargados correctamente");
-
     } catch (err) {
         console.error(err);
         showToast({message: "Error al abrir el grupo", success: false});

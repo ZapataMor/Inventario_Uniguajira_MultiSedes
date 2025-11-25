@@ -144,4 +144,12 @@
 <x-modal.good mode="create" />
 <x-modal.good mode="edit" />
 
+@once
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            iniciarBusqueda('searchGood');
+        });
+    </script>
+@endonce
+
 @endsection
