@@ -18,12 +18,22 @@ class HomeController extends Controller
             'completadas' => Task::where('status', 'completed')->get(),
         ];
 
+        // si el usuario es consultor, muestra la vista de consultor
+        $user = $request->user();
+        if ($user && isset($user->role) && $user->role === 'consultor') {
+            if ($request->ajax()) {
+                $view = view('home.consultor', compact('dataTasks'))->renderSections();
+                return $view['content'] ?? $view;
+            }
+            return view('home.consultor', compact('dataTasks'));
+        }
+
         // si es una carga AJAX, solo renderiza el contenido interno
         if ($request->ajax()) {
             $view = view('home.index', compact('dataTasks'))->renderSections();
             return $view['content'] ?? $view;
         }
-
+        
         // si es carga normal (primera vez), usa el layout completo
         return view('home.index', compact('dataTasks'));
     }
