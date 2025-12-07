@@ -66,31 +66,18 @@ class InventoryController extends Controller
         return view('inventories.inventories', compact('group', 'inventories'));
     }
 
-    // ------------------------------
-    // 3. Bienes dentro de un inventario
-    // ------------------------------
-    public function goodsIndex(Request $request, $inventoryId)
-    {
-        $inventory = Inventory::findOrFail($inventoryId);
-
-        $assets = DB::table('inventory_goods_view')
-            ->where('inventory_id', $inventoryId)
-            ->get();
-
-        if ($request->ajax()) {
-            return view('inventories.goods-inventory', compact('inventory', 'assets'))
-                ->renderSections()['content'];
-        }
-
-        return view('inventories.goods-inventory', compact('inventory', 'assets'));
-    }
 
     // -----------------------------------
     // 4. Bienes tipo serial (detalles)
     // -----------------------------------
-    public function serialsIndex(Request $request, $inventoryId, $assetId)
+    public function serialsIndex(Request $request, $groupId, $inventoryId, $assetId)
     {
         $inventory = Inventory::findOrFail($inventoryId);
+
+        // Si inventory->group_id no coincide con $groupId, lanzar 404
+        if ($inventory->group_id != $groupId) {
+            abort(404);
+        }
 
         $serials = DB::table('serial_goods_view')
             ->where('inventory_id', $inventoryId)
@@ -115,7 +102,7 @@ class InventoryController extends Controller
             'id_inventario' => 'required|integer|exists:inventories,id',
             'estado' => 'required|integer|in:1,2,3'
         ]);
-
+        // dd($request->all());
         $inventory = Inventory::findOrFail($request->id_inventario);
 
         $inventory->conservation_status = $request->estado; // bueno=1, regular=2, malo=3

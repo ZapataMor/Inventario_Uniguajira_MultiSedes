@@ -29,11 +29,15 @@ class GoodsController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * GET /api/goods/get/json
+     * Devuelve todos los bienes con id, nombre y tipo (igual que la versión PHP)
      */
-    public function create()
+    public function getJson()
     {
-        //
+        // Obtener todos los bienes desde la tabla `assets`
+        $goods = Asset::select('id', 'name as bien', 'type as tipo')->get();
+
+        return response()->json($goods);
     }
 
     /**
@@ -64,22 +68,6 @@ class GoodsController extends Controller
             'message' => 'Bien creado exitosamente.',
             'assetId' => $asset->id
         ]);
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
     }
 
     /**

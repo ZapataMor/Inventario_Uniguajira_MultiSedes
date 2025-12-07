@@ -12,7 +12,7 @@
         <div class="inventory-controls">
             <div class="status-control">
                 <form id="estadoInventarioForm" method="post" action="/api/inventories/updateEstado" class="status-indicator">
-                    <input type="hidden" id="estado_id_inventario" name="id_inventario" value="1">
+                    <input type="hidden" id="estado_id_inventario" name="id_inventario" value="{{ $inventory->id }}">
                     <input type="hidden" id="estado_value" name="estado">
 
                     <span class="status-label">Estado:</span>
@@ -55,13 +55,13 @@
 
     <div class="back-and-title">
         <div>
-            <span class="location">{{ $inventory->name }}</span>
+            <span id="inventory-name" class="location" data-id="{{ $inventory->id }}" data-group-id="{{ $inventory->group_id }}" >{{ $inventory->name }}</span>
             @if ($inventory->responsible)
                 <span class="sub-info">Responsable: {{ $inventory->responsible }}</span>
             @endif
         </div>
 
-        <button class="btn-back" onclick="abrirGrupo({{ $inventory->group_id }})">
+        <button class="btn-back" onclick="loadContent('{{ route('inventory.inventories', $inventory->group_id) }}')">
             <i class="fas fa-arrow-left me-2"></i>
             <span>Volver</span>
         </button>
@@ -77,7 +77,7 @@
         </div>
 
         @if(auth()->user()->role === 'administrador')
-            <button class="create-btn" onclick="abrirModalCrearBien()">
+            <button class="create-btn" onclick="btnAbrirModalCrearBien()">
                 Crear
             </button>
         @endif
@@ -147,7 +147,7 @@
                             {{ $asset->asset }}
 
                             <img
-                                src="{{ asset('assets/icons/' . ($asset->type === 'quantity' ? 'bienCantidad.svg' : 'bienSerial.svg')) }}"
+                                src="{{ asset('assets/icons/' . ($asset->type === 'Cantidad' ? 'bienCantidad.svg' : 'bienSerial.svg')) }}"
                                 class="bien-icon"
                             />
                         </h3>
@@ -159,7 +159,8 @@
                     @if($asset->type === 'serial')
                         <div class="actions">
                             <button class="btn-detalle"
-                                    onclick="abrirSeriales({{ $asset->asset_id }}, {{ $inventory->id }})">
+                                    onclick="loadContent('{{ route('inventory.serials', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id, 'assetId' => $asset->asset_id]) }}')"
+                            >
                                 <i class="fas fa-info-circle"></i>
                             </button>
                         </div>
@@ -170,21 +171,18 @@
         </div>
     @endif
 
+    {{-- MODALES: responsable (separate component) --}}
+    <x-modal.good-inventory-create />
+    <x-modal.good-inventory-edit-quantity />
+    <x-modal.inventory-responsible />
+
+    @once
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                initGoodsInventoryFunctions();
+            });
+        </script>
+    @endonce
+
 </div>
-
-@once
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            iniciarBusqueda('searchGoodInventory');
-        });
-    </script>
-@endonce
-
-{{-- MODALES: responsable (separate component) --}}
-<x-modal.good-inventory-create />
-<x-modal.good-inventory-edit-serial />
-<x-modal.good-inventory-edit-quantity />
-<x-modal.inventory-responsible />
-
-
 @endsection

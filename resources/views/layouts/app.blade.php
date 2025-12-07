@@ -46,7 +46,7 @@
         <script src="{{ asset('assets/js/goods-excel-upload.js') }}"></script>
         <script src="{{ asset('assets/js/helpers/modal.js') }}"></script>
         <script src="{{ asset('assets/js/helpers/selection.js') }}"></script>
-        <!-- <script src="{{ asset('assets/js/helpers/autocomplete.js') }}"></script> -->
+        <script src="{{ asset('assets/js/helpers/autocomplete.js') }}"></script>
     @endif
 
     <script src="{{ asset('assets/js/user.js') }}"></script>
@@ -54,6 +54,7 @@
     <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}"></script>
+    <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}"></script>
     <script src="{{ asset('assets/js/reports/folders.js') }}"></script>
     <script src="{{ asset('assets/js/reports/reports.js') }}"></script>

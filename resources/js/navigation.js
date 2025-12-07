@@ -1,40 +1,52 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const main = document.getElementById("main-content");
-    const links = document.querySelectorAll("a[data-nav]");
+window.loadContent = async (url, options = {}) => {
 
-    const initializeScripts = () => {
-        // Aquí puedes agregar la lógica para inicializar eventos o scripts necesarios
-        console.log("Scripts inicializados");
-    };
+    // hacer que http://127.0.0.1:8000/group/1 sea /group/1
+    url = url.replace(window.location.origin, '');
+    console.log(`Cargando contenido desde: ${url}`);
 
-    const loadContent = async (url) => {
-        try {
-            // Agrega una clase de carga
-            main.classList.add("loading");
+    const {
+        containerSelector = "#main-content",
+        updateHistory = true,
+        onSuccess = null
+    } = options;
 
-            // Realiza la solicitud AJAX
-            const response = await fetch(url, {
-                headers: {
-                    "X-Requested-With": "XMLHttpRequest"
-                }
-            });
+    try {
+        const container = document.querySelector(containerSelector);
+        if (!container) throw new Error(`No se encontró el contenedor: ${containerSelector}`);
 
-            if (!response.ok) throw new Error("Error al cargar la vista");
-            const html = await response.text();
+        container.classList.add("loading");
 
-            // Reemplaza el contenido del main
-            main.innerHTML = html;
+        const response = await fetch(url, {
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
 
-            // Inicializa los scripts después de reemplazar el contenido
-            initializeScripts();
+        if (!response.ok) throw new Error("Error al cargar la vista");
+        const html = await response.text();
 
-            // Quita la clase de carga
-            main.classList.remove("loading");
-        } catch (error) {
-            console.error(error);
-            alert("No se pudo cargar la página");
+        container.innerHTML = html;
+        // initializeScripts();
+
+        if (onSuccess) onSuccess();
+        container.classList.remove("loading");
+
+        if (updateHistory) {
+            window.history.pushState({ url }, "", url);
         }
-    };
+    } catch (error) {
+        console.error(error);
+        alert("No se pudo cargar la página");
+    }
+};
+
+window.initializeScripts = () => {
+    // Aquí puedes agregar la lógica para inicializar eventos o scripts necesarios
+    console.log("Scripts inicializados");
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    const links = document.querySelectorAll("a[data-nav]");
 
     links.forEach(link => {
         link.addEventListener("click", (e) => {
@@ -68,5 +80,5 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Inicializa los scripts al cargar la página
-    initializeScripts();
+    // initializeScripts();
 });

@@ -1,7 +1,7 @@
 // Inicializa el autocompletado para el campo de búsqueda de bienes
 function initAutocompleteForBien() {
     // No necesitamos cambiar clases ya que usamos la original
-    
+    console.log("Inicializando autocomplete para bienes");
     const autocomplete = initAutocompleteSearch('#search-container', {
         dataUrl: '/api/goods/get/json',
         inputSelector: '#nombreBienEnInventario',
@@ -10,7 +10,7 @@ function initAutocompleteForBien() {
         onSelect: function(item) {
             // Convertir a minúsculas para hacer la comparación insensible a mayúsculas/minúsculas
             item.tipo = item.tipo.toLowerCase();
-            
+
             // Llamar a la función que gestiona los campos
             gestionarCamposBien(item);
         },
@@ -27,20 +27,20 @@ function initAutocompleteForBien() {
     if (modalBtn) {
         modalBtn.addEventListener('click', () => autocomplete.ocultarSugerencias());
     }
-    
+
     document.querySelector('#modalCrearBienInventario .close').addEventListener('click', () => {
         autocomplete.ocultarSugerencias();
         // Reiniciar formulario al cerrar el modal
         resetearFormulario();
     });
-    
+
     // Añadir manejo para el caso en que se presione Enter con sugerencia única
     const nombreBienInput = document.getElementById('nombreBienEnInventario');
     nombreBienInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const suggestions = document.querySelector('.suggestions');
             const items = suggestions.querySelectorAll('li:not(.text-danger)');
-            
+
             // Si hay exactamente una sugerencia no de error
             if (items.length === 1) {
                 e.preventDefault(); // Evitar envío del formulario
@@ -48,7 +48,7 @@ function initAutocompleteForBien() {
             }
         }
     });
-    
+
     // Añadir clases a los inputs para estilizarlos
     const nombreBienEnInventario = document.getElementById('nombreBienEnInventario');
     if (nombreBienEnInventario) {
@@ -66,7 +66,7 @@ function precargarDatosAutocomplete(inputElement, autocomplete) {
         // Primero, simular que se escribe un carácter (esto activará la carga de datos)
         inputElement.value = ".";
         inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-        
+
         // Después de un breve momento, borrar el carácter y ocultar las sugerencias
         setTimeout(() => {
             inputElement.value = "";
@@ -89,25 +89,25 @@ function gestionarCamposBien(item) {
     setTimeout(() => {
         dynamicFields.style.opacity = '1';
     }, 50);
-    
+
     // Ocultar ambos tipos de campos inicialmente
     camposCantidad.style.display = 'none';
     camposCantidad.classList.remove('active');
     camposSerial.style.display = 'none';
     camposSerial.classList.remove('active');
-    
+
     // Determinar qué campos mostrar según el tipo de bien
     if (item.tipo.toLowerCase() === 'cantidad') {
         // Mostrar y habilitar campo de cantidad
         camposCantidad.style.display = 'block';
-        
+
         // Pequeño retraso para la animación
         setTimeout(() => {
             camposCantidad.classList.add('active');
             // Desplazar automáticamente hacia la sección visible
             camposCantidad.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 50);
-        
+
         tipo.value = 1;  // tipo cantidad
         cantidadInput.disabled = false;
         cantidadInput.value = 1;
@@ -116,27 +116,27 @@ function gestionarCamposBien(item) {
         // Mostrar campos de serial
         camposSerial.style.display = 'block';
         tipo.value = 2;  // tipo serial
-        
+
         // Pequeño retraso para la animación
         setTimeout(() => {
             camposSerial.classList.add('active');
             // Desplazar automáticamente hacia la sección visible
             camposSerial.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 50);
-        
+
         limpiarCamposSerial();
-        
+
         // Habilitar todos los campos de serial
         const camposSerialInputs = camposSerial.querySelectorAll('input, textarea, select');
         camposSerialInputs.forEach(campo => {
             campo.disabled = false;
             campo.classList.add('form-input');
         });
-        
+
         // Enfocar el primer campo (descripción)
         document.getElementById('descripcionBien').focus();
     }
-    
+
     // Ocultar sugerencias explícitamente
     document.querySelector('.suggestions').style.display = 'none';
 }
@@ -147,7 +147,7 @@ function limpiarCamposSerial() {
         'descripcionBien', 'marcaBien', 'modeloBien', 'serialBien',
         'estadoBien', 'colorBien', 'condicionBien', 'fechaIngresoBien'
     ];
-    
+
     fieldsToClear.forEach(id => {
         const field = document.getElementById(id);
         if (field) {
@@ -175,13 +175,13 @@ function resetearFormulario() {
     if (nombreBienInput) {
         nombreBienInput.value = '';
     }
-    
+
     // Ocultar secciones dinámicas
     const dynamicFields = document.getElementById('dynamicFields');
     if (dynamicFields) {
         dynamicFields.style.display = 'none';
     }
-    
+
     // Limpiar y ocultar sección de cantidad
     const camposCantidad = document.getElementById('camposCantidad');
     if (camposCantidad) {
@@ -192,7 +192,7 @@ function resetearFormulario() {
             cantidadInput.value = '1';
         }
     }
-    
+
     // Limpiar y ocultar sección de serial
     const camposSerial = document.getElementById('camposSerial');
     if (camposSerial) {
@@ -200,7 +200,7 @@ function resetearFormulario() {
         camposSerial.classList.remove('active');
         limpiarCamposSerial();
     }
-    
+
     // Limpiar campo oculto de ID
     const bienIdInput = document.getElementById('bien_id');
     if (bienIdInput) {

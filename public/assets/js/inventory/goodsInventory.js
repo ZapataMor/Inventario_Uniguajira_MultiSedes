@@ -1,55 +1,63 @@
 // Inicializa las funciones relacionadas con bienes del inventario
 function initGoodsInventoryFunctions() {
+
+    const groupId = document.getElementById('inventory-name').getAttribute('data-group-id');
+    const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
+
     // Inicializa el formulario para crear un bien en el inventario
+    // ruta: /api/goods-inventory/create
     inicializarFormularioAjax('#formCrearBienInventario', {
         closeModalOnSuccess: true,
         resetOnSuccess: true,
         onSuccess: (response) => {
             showToast(response);
-            const inventarioId = localStorage.getItem('openInventory');
-            if (inventarioId && typeof abrirInventario === 'function') {
-                abrirInventario(inventarioId);
-            }
-        }
-    });
 
-    initAutocompleteForBien();
-
-    // Inicializa el formulario para editar un bien serial
-    inicializarFormularioAjax('#formEditarBienSerial', {
-        closeModalOnSuccess: true,
-        resetOnSuccess: true,
-        onSuccess: (response) => {
-            showToast(response);
-            const inventarioId = localStorage.getItem('openInventory');
-            if (inventarioId && typeof abrirInventario === 'function') {
-                abrirInventario(inventarioId);
-            }
+            const url = `/group/${groupId}/inventory/${inventoryId}`;;
+            loadContent(url,
+                { onSuccess: () => initGoodsInventoryFunctions() }
+            )
         }
     });
 
     // Inicializa el formulario para editar un bien cantidad
+    // ruta: /api/goods-inventory/update-quantity
     inicializarFormularioAjax('#formEditarBienCantidad', {
         closeModalOnSuccess: true,
         resetOnSuccess: true,
         onSuccess: (response) => {
             showToast(response);
-            const inventarioId = localStorage.getItem('openInventory');
-            if (inventarioId && typeof abrirInventario === 'function') {
-                abrirInventario(inventarioId);
-            }
+
+            const url = `/group/${groupId}/inventory/${inventoryId}`;;
+            loadContent(url,
+                { onSuccess: () => initGoodsInventoryFunctions() }
+            )
         }
     });
+
+    // Inicializar formulario para cambiar estado del inventario
+    // ruta: /api/inventories/updateEstado
+    inicializarFormularioAjax('#estadoInventarioForm', {
+        onSuccess: (response, form) => {
+            const estados = ['bueno', 'regular', 'malo'];
+            const idx = form.querySelector('[name="estado"]').value;
+
+            cambiarEstadoInventario(estados[idx - 1]);
+        }
+    });
+
+    initAutocompleteForBien();
+
+    // Inicializa la búsqueda de bienes en el inventario
+    iniciarBusqueda('searchGoodInventory');
+
+    console.log("Funciones de bienes del inventario inicializadas");
 }
 
-function abrirModalCrearBien() {
-    const inventarioId = localStorage.getItem('openInventory');
-    if (!inventarioId) {
-        showToast({ success: false, message: 'No se ha seleccionado un inventario abierto' });
-        return;
-    }
 
-    document.getElementById('inventarioId').value = inventarioId;
+function btnAbrirModalCrearBien() {
+    const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
+
+    document.getElementById('inventarioId').value = inventoryId;
     document.getElementById('nombreBienEnInventario').value = '';
     document.getElementById('bien_id').value = '';
     document.getElementById('dynamicFields').style.display = 'none';
@@ -57,109 +65,37 @@ function abrirModalCrearBien() {
     mostrarModal('#modalCrearBienInventario');
 }
 
-function cerrarInventarioSerial() {
-    const divGoodsInventory = document.getElementById('goods-inventory');
-    const divSerialsGoodsInventory = document.getElementById('serials-goods-inventory');
-
-    // Ocultar la vista de bienes seriales y mostrar la vista principal de bienes
-    divSerialsGoodsInventory.classList.add('hidden');
-    divGoodsInventory.classList.remove('hidden');
-
-    toggleInventoryControls(true);
-}
-
-async function abrirSeriales(assetId, inventoryId) {
-    try {
-        const url = `/inventory/${inventoryId}/goods/${assetId}/serials`;
-
-        const response = await fetch(url, {
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-        });
-
-        if (!response.ok) throw new Error("Error al cargar los bienes seriales");
-
-        const html = await response.text();
-        const parsed = new DOMParser().parseFromString(html, "text/html");
-
-        const nuevoContenido = parsed.querySelector(".content");
-        if (!nuevoContenido) throw new Error("No se encontró .content en la respuesta");
-
-        document.querySelector(".content").replaceWith(nuevoContenido);
-
-        history.pushState({}, "", url);
-
-    } catch (err) {
-        console.error(err);
-        showToast({ message: "Error al abrir los bienes seriales", success: false });
-    }
-}
-
 
 function btnEliminarBienCantidad() {
-    const idInventario = localStorage.getItem('openInventory');
+    const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
     const idBien = selectedItem.id;
 
     eliminarRegistro({
         url: `/api/goods-inventory/delete-quantity/${idInventario}/${idBien}`,
         onSuccess: (response) => {
             showToast(response);
-            const idInventario = localStorage.getItem('openInventory');
-            if (idInventario && typeof abrirInventario === 'function') {
-                abrirInventario(idInventario);
-            }
+            const groupId = document.getElementById('inventory-name').getAttribute('data-group-id');
+            const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
+
+            const url = `/group/${groupId}/inventory/${inventoryId}`;;
+            loadContent(url,
+                { onSuccess: () => initGoodsInventoryFunctions() }
+            )
         }
     });
 }
 
-function btnEliminarBienSerial() {  //TODO: por serial
-    const idBienSerial = selectedItem.id;
-
-    eliminarRegistro({
-        url: `/api/goods-inventory/delete-serial/${idBienSerial}`,
-        onSuccess: (response) => {
-            showToast(response);
-            const idInventario = localStorage.getItem('openInventory');
-            if (idInventario && typeof abrirInventario === 'function') {
-                abrirInventario(idInventario);
-            }
-        }
-    });
-}
-
-function btnEditarBienSerial() {
-    if (!selectedItem || selectedItem.type !== 'serial-good') {
-        showToast({ success: false, message: 'No se ha seleccionado un bien serial' });
-        return;
-    }
-
-    // Obtener el elemento seleccionado
-    const card = selectedItem.element;    // Establecer los valores en el formulario
-    document.getElementById('editBienEquipoId').value = card.dataset.id;
-    document.getElementById('editNombreBien').value = card.dataset.name;
-    document.getElementById('editDescripcionBien').value = card.dataset.description || '';
-    document.getElementById('editMarcaBien').value = card.dataset.brand || '';
-    document.getElementById('editModeloBien').value = card.dataset.model || '';
-    document.getElementById('editSerialBien').value = card.dataset.serial || '';
-    document.getElementById('editEstadoBien').value = card.dataset.status || 'activo';
-    document.getElementById('editColorBien').value = card.dataset.color || '';
-    document.getElementById('editCondicionBien').value = card.dataset.condition || '';
-    document.getElementById('editFechaIngresoBien').value = card.dataset.entryDate || '';
-
-    // Mostrar el modal de edición
-    mostrarModal('#modalEditarBienSerial');
-}
 
 function btnEditarBienCantidad() {
     const card = selectedItem.element;
+    const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
 
     // Establecer los valores en el formulario
     document.getElementById('editBienId').value = card.dataset.id;
-    document.getElementById('editInventarioId').value = card.dataset.inventarioId;
+    document.getElementById('editInventarioId').value = idInventario;
     document.getElementById('editNombreBienCantidad').value = card.dataset.name;
     document.getElementById('editCantidadBien').value = card.dataset.cantidad;
 
     // Mostrar el modal de edición
     mostrarModal('#modalEditarBienCantidad');
 }
-
-

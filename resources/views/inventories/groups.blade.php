@@ -19,7 +19,7 @@
                     id="searchGroup"
                     class="search-bar searchInput"
                     type="text"
-                    placeholder="Buscar o agregar grupos..."
+                    placeholder="Buscar grupos..."
                 />
                 <i class="search-icon fas fa-search"></i>
             </div>
@@ -78,8 +78,7 @@
 
                         {{-- Nombre y estadísticas --}}
                         <div class="card-center">
-                            <div id="group-name{{ $group->id }}"
-                                 class="title name-item">
+                            <div class="title name-item">
                                 {{ $group->name }}
                             </div>
 
@@ -96,7 +95,7 @@
                         <div class="card-right">
                             <button
                                 class="btn-open"
-                                onclick="abrirGrupo({{ $group->id }}); event.stopPropagation();"
+                                onclick="loadContent( '{{ route('inventory.inventories', $group->id) }}', { onSuccess: () => initInventoryFunctions() } )"
                             >
                                 <i class="fas fa-external-link-alt"></i> Abrir
                             </button>
@@ -107,22 +106,18 @@
         </div>
 
     </div>
-</div>
 
-{{-- MODALES --}}
-<x-modal.group mode="create" />
-<x-modal.group mode="rename" />
+    {{-- MODALES --}}
+    <x-modal.group mode="create" />
+    <x-modal.group mode="rename" />
 
-@once
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            iniciarBusqueda('searchGroup');
-
-            if (typeof initGroupFunctions === 'function') {
+    @once
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
                 initGroupFunctions();
-            }
-        });
-    </script>
-@endonce
+            });
+        </script>
+    @endonce
 
+</div>
 @endsection

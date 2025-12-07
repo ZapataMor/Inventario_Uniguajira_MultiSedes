@@ -54,8 +54,7 @@
                     />
 
                     <div class="bien-info">
-                        <h3 class="name-item">
-                            {{ $bien->name }}
+                        <h3 class="name-item">{{ $bien->name }}
                             <img
                                 src="{{ asset('assets/icons/' . ($bien->type == 'Cantidad' ? 'bienCantidad.svg' : 'bienSerial.svg')) }}"
                                 alt="Icono tipo bien"

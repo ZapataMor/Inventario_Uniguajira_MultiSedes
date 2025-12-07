@@ -14,7 +14,7 @@
     <div class="back-and-title">
         <span id="group-name" class="location" data-id="{{ $group->id }}">{{ $group->name }}</span>
 
-        <button class="btn-back" onclick="volverAGroupIndex()">
+        <button class="btn-back" onclick="loadContent( '{{ route('inventory.groups') }}', { onSuccess: () => initGroupFunctions() } )">
             <i class="fas fa-arrow-left me-2"></i>
             <span>Volver</span>
         </button>
@@ -27,7 +27,7 @@
                 id="searchInventory"
                 class="search-bar searchInput"
                 type="text"
-                placeholder="Buscar o agregar inventarios"
+                placeholder="Buscar inventarios..."
             />
             <i class="search-icon fas fa-search"></i>
         </div>
@@ -97,7 +97,9 @@
                     {{-- Botón Abrir AJAX --}}
                     <div class="card-right">
                         <button class="btn-open"
-                                onclick="abrirInventario({{ $inventory->id }}); event.stopPropagation();">
+                                onclick="loadContent( '{{ route('inventory.goods', ['groupId' => $group->id, 'inventoryId' => $inventory->id]) }}',
+                                                        { onSuccess: () => initGoodsInventoryFunctions() } )"
+                        >
                             <i class="fas fa-external-link-alt"></i> Abrir
                         </button>
                     </div>
@@ -108,24 +110,18 @@
         @endif
     </div>
 
-</div>
+    {{-- MODALES --}}
+    <x-modal.inventory mode="create" group_id="{{ $group->id }}" />
+    <x-modal.inventory mode="rename" />
 
 
-{{-- MODALES --}}
-<x-modal.inventory mode="create" group_id="{{ $group->id }}" />
-<x-modal.inventory mode="rename" />
-
-
-@once
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            iniciarBusqueda('searchInventory');
-
-            if (typeof initInventoryFunctions === 'function') {
+    @once
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
                 initInventoryFunctions();
-            }
-        });
-    </script>
-@endonce
+            });
+        </script>
+    @endonce
 
+</div>
 @endsection

@@ -65,5 +65,5 @@ const path = window.location.pathname.split('/')[1];
 document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('selected'));
 
 // Marcar la opción actual
-const current = document.getElementById(path==="inventory" ? "inventories": path);
+const current = document.getElementById(path==="groups" || path==="group" ? "inventories": path);
 current.classList.add('selected');

@@ -84,11 +84,3 @@
         </form>
     </div>
 </div>
-
-@once
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof initGoodsInventoryFunctions === 'function') initGoodsInventoryFunctions();
-        });
-    </script>
-@endonce

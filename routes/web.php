@@ -7,92 +7,94 @@ use App\Http\Controllers\{
     GoodsController,
     GroupController,
     InventoryController,
+    GoodsInventoryController,
     ReportController,
     UserController,
     RecordController
 };
 
-// redirect to home
+// Redirect to home
 Route::get('/', function () {
     return redirect()->route('home.index');
 });
 
+// Home routes
 Route::get('home', [HomeController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('home.index');
 
-// profile
+// Profile routes
 Route::get('profile', function () {
     return 'Profile route';
 })->name('profile');
 
-// routes.index
+// Rutas de navegacion
 Route::middleware('auth')->group(function () {
+    // General routes
     Route::get('goods', [GoodsController::class, 'index'])->name('goods.index');
-    // Route::get('inventories', [InventoryController::class, 'index'])->name('inventories.index');
     Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::get('records', [RecordController::class, 'index'])->name('records.index');
-});
 
-// routes for goods
-Route::prefix('api/goods')->middleware('auth')->group(function () {
-    Route::post('create', [GoodsController::class, 'store'])->name('goods.store');
-    Route::post('update', [GoodsController::class, 'update'])->name('goods.update');
-    Route::delete('delete/{id}', [GoodsController::class, 'destroy'])->name('goods.destroy');
-});
+    // Group routes
+    Route::get('/groups', [GroupController::class, 'index'])->name('inventory.groups');
 
+    // Inventory routes
+    Route::controller(InventoryController::class)->group(function () {
+        Route::get('/group/{groupId}', 'index')->name('inventory.inventories');
+        Route::get('/group/{groupId}/inventory/{inventoryId}/goods/{assetId}/serials', 'serialsIndex')->name('inventory.serials');
+    });
 
-// API para las tareas
-Route::prefix('api/tasks')->middleware('auth')->group(function () {
-    Route::patch('toggle', [TaskController::class, 'toggle']);
-    Route::delete('delete/{id}', [TaskController::class, 'destroy']);
-    Route::post('store', [TaskController::class, 'store'])->name('tasks.store');
-    Route::put('update', [TaskController::class, 'update'])->name('tasks.update');
-});
-
-// 1. Grupos
-Route::get('/inventory/groups', [GroupController::class, 'index'])
-    ->middleware('auth')
-    ->name('inventory.groups');
-
-// INVENTARIO (USANDO UN SOLO CONTROLADOR)
-Route::controller(InventoryController::class)->group(function () {
-
-    // 2. Inventarios por grupo
-    Route::get('/inventory/{group}/inventories', 'index')
-        ->middleware('auth')
-        ->name('inventory.inventories');
-
-    // 3. Bienes por inventario
-    Route::get('/inventory/{inventory}/goods', 'goodsIndex')
-        ->middleware('auth')
-        ->name('inventory.goods');
-
-    // 4. Bienes seriales por bien en inventario
-    Route::get('/inventory/{inventoryId}/goods/{assetId}/serials', 'serialsIndex')
-        ->middleware('auth')
-        ->name('inventory.serials');
+    Route::get('/group/{groupId}/inventory/{inventoryId}', [GoodsInventoryController::class, 'goodsIndex'])->name('inventory.goods');
 
 });
 
-Route::post('/api/inventories/updateEstado', [InventoryController::class, 'updateEstado'])
-    ->name('inventories.updateEstado');
+// API routes
+Route::prefix('api')->middleware('auth')->group(function () {
+    // Tasks API
+    Route::prefix('tasks')->group(function () {
+        Route::patch('toggle', [TaskController::class, 'toggle']);
+        Route::delete('delete/{id}', [TaskController::class, 'destroy']);
+        Route::post('store', [TaskController::class, 'store'])->name('tasks.store');
+        Route::put('update', [TaskController::class, 'update'])->name('tasks.update');
+    });
 
+    // Goods API
+    Route::prefix('goods')->group(function () {
+        Route::post('create', [GoodsController::class, 'store'])->name('goods.store');
+        Route::post('update', [GoodsController::class, 'update'])->name('goods.update');
+        Route::delete('delete/{id}', [GoodsController::class, 'destroy'])->name('goods.destroy');
+        Route::get('get/json', [GoodsController::class, 'getJson']);
+    });
 
-// API para inventarios (crear, renombrar, actualizar responsable, eliminar)
-Route::prefix('api/inventories')->middleware('auth')->group(function () {
-    Route::post('create', [InventoryController::class, 'create'])->name('inventories.create');
-    Route::post('rename', [InventoryController::class, 'rename'])->name('inventories.rename');
-    Route::post('updateResponsable', [InventoryController::class, 'updateResponsable'])->name('inventories.updateResponsable');
-    Route::delete('delete/{id}', [InventoryController::class, 'delete'])->name('inventories.delete');
-});
+    // Groups API
+    Route::prefix('groups')->group(function () {
+        Route::post('create', [GroupController::class, 'store'])->name('groups.create');
+        Route::post('rename', [GroupController::class, 'update'])->name('groups.rename');
+        Route::delete('delete/{id}', [GroupController::class, 'destroy'])->name('groups.delete');
+    });
 
+    // Inventories API
+    Route::prefix('inventories')->group(function () {
+        Route::post('create', [InventoryController::class, 'create'])->name('inventories.create');
+        Route::post('rename', [InventoryController::class, 'rename'])->name('inventories.rename');
+        Route::post('updateResponsable', [InventoryController::class, 'updateResponsable'])->name('inventories.updateResponsable');
+        Route::post('updateEstado', [InventoryController::class, 'updateEstado'])->name('inventories.updateEstado');
+        Route::delete('delete/{id}', [InventoryController::class, 'delete'])->name('inventories.delete');
+    });
 
-// API para grupos (crear, renombrar, eliminar)
-Route::prefix('api/groups')->middleware('auth')->group(function () {
-    Route::post('create', [GroupController::class, 'store'])->name('groups.create');
-    Route::post('rename', [GroupController::class, 'update'])->name('groups.rename');
-    Route::delete('delete/{id}', [GroupController::class, 'destroy'])->name('groups.delete');
+    // TODO: crear goods-inventory controller
+    Route::prefix('goods-inventory')->group(function () {
+
+        // Crear bien en inventario
+        Route::post('/create', [GoodsInventoryController::class, 'store']);
+
+        // Actualizar cantidad
+        Route::post('/update-quantity', [GoodsInventoryController::class, 'updateQuantity']);
+
+        // Eliminar bien de tipo cantidad
+        Route::delete('/delete-quantity/{inventoryId}/{goodId}',
+            [GoodsInventoryController::class, 'deleteQuantity']);
+    });
 });
 

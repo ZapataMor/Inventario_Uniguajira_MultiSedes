@@ -7,10 +7,10 @@
 
     <div class="back-and-title">
         <div>
-            <span class="location">Bienes Seriales – {{ $inventory->name }}</span>
+            <span class="location">Bienes Seriales - {{ $inventory->name }}</span>
         </div>
 
-        <button class="btn-back" onclick="abrirInventario({{ $inventory->id }})">
+        <button class="btn-back" onclick="loadContent('{{ route('inventory.goods', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id]) }}')">
             <i class="fas fa-arrow-left me-2"></i>
             <span>Volver</span>
         </button>
@@ -80,6 +80,17 @@
             @endforeach
         </div>
     @endif
+
+    {{-- MODALES --}}
+    <x-modal.good-inventory-edit-serial />
+
+    @once
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                //
+            });
+        </script>
+    @endonce
 
 </div>
 @endsection

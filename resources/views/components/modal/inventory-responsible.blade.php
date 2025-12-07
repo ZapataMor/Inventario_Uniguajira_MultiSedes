@@ -31,13 +31,3 @@
 
     </div>
 </div>
-
-@once
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof initInventoryFunctions === 'function') {
-                initInventoryFunctions();
-            }
-        });
-    </script>
-@endonce

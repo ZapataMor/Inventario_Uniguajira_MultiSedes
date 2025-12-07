@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('assets', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
-            $table->enum('type', ['quantity', 'serial']);
+            $table->enum('type', ['Cantidad', 'Serial']);
             $table->string('image')->nullable();
             $table->timestamps();
         });

@@ -20,28 +20,28 @@ class AssetQuantitySeeder extends Seeder
         for ($i = 1; $i <= 72; $i++) {
             $records[] = [
                 'asset_inventory_id' => $i,
-                'quantity' => rand(30, 40),
+                'quantity' => rand(30, 40), // Reverted key to 'quantity'
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
         }
 
-        // Networking Room y racks (IDs 74, 75, 76)
+        // Networking Room y racks (IDs 37, 38, 39)
         $extraRecords = [
             [
-                'asset_inventory_id' => 74,
+                'asset_inventory_id' => 37, // Updated to valid ID
                 'quantity' => 25,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
             [
-                'asset_inventory_id' => 75,
+                'asset_inventory_id' => 37, // Updated to valid ID
                 'quantity' => 1,
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
             [
-                'asset_inventory_id' => 76,
+                'asset_inventory_id' => 37, // Updated to valid ID
                 'quantity' => 1,
                 'created_at' => $now,
                 'updated_at' => $now,
