@@ -22,18 +22,20 @@ class HomeController extends Controller
         $user = $request->user();
         if ($user && isset($user->role) && $user->role === 'consultor') {
             if ($request->ajax()) {
-                $view = view('home.consultor', compact('dataTasks'))->renderSections();
-                return $view['content'] ?? $view;
+                /** @var \Illuminate\View\View $view */
+                $view = view('home.consultor', compact('dataTasks'));
+                return $view->renderSections()['content'];
             }
             return view('home.consultor', compact('dataTasks'));
         }
 
         // si es una carga AJAX, solo renderiza el contenido interno
         if ($request->ajax()) {
-            $view = view('home.index', compact('dataTasks'))->renderSections();
-            return $view['content'] ?? $view;
+            /** @var \Illuminate\View\View $view */
+            $view = view('home.index', compact('dataTasks'));
+            return $view->renderSections()['content'];
         }
-        
+
         // si es carga normal (primera vez), usa el layout completo
         return view('home.index', compact('dataTasks'));
     }

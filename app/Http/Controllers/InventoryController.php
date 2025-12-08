@@ -59,8 +59,9 @@ class InventoryController extends Controller
             ->get();
 
         if ($request->ajax()) {
-            return view('inventories.inventories', compact('group', 'inventories'))
-                ->renderSections()['content'];
+            /** @var \Illuminate\View\View $view */
+            $view = view('inventories.inventories', compact('group', 'inventories'));
+            return $view->renderSections()['content'];
         }
 
         return view('inventories.inventories', compact('group', 'inventories'));
@@ -85,9 +86,10 @@ class InventoryController extends Controller
             ->get();
 
         if ($request->ajax()) {
-            return view('inventories.serials-goods-inventory',
-                compact('inventory', 'serials')
-            )->renderSections()['content'];
+            /** @var \Illuminate\View\View $view */
+            $view = view( 'inventories.serials-goods-inventory',
+                        compact('inventory', 'serials') );
+            return $view->renderSections()['content'];
         }
 
         return view('inventories.serials-goods-inventory',

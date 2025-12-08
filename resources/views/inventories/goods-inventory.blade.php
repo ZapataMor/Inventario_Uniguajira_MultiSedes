@@ -131,7 +131,9 @@
                         data-name="{{ $asset->asset }}"
                         data-cantidad="{{ $asset->quantity }}"
                         data-type="good"
-                        onclick="toggleSelectItem(this)"
+                        @if ($asset->type === 'Cantidad')
+                            onclick="toggleSelectItem(this)"
+                        @endif
                     @endif
                 >
 
@@ -156,7 +158,7 @@
                     </div>
 
                     {{-- Detalle seriales --}}
-                    @if($asset->type === 'serial')
+                    @if($asset->type === 'Serial')
                         <div class="actions">
                             <button class="btn-detalle"
                                     onclick="loadContent('{{ route('inventory.serials', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id, 'assetId' => $asset->asset_id]) }}')"

@@ -83,7 +83,6 @@ Route::prefix('api')->middleware('auth')->group(function () {
         Route::delete('delete/{id}', [InventoryController::class, 'delete'])->name('inventories.delete');
     });
 
-    // TODO: crear goods-inventory controller
     Route::prefix('goods-inventory')->group(function () {
 
         // Crear bien en inventario

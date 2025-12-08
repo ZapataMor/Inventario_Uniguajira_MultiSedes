@@ -23,7 +23,7 @@ class AssetEquipmentSeeder extends Seeder
                 'brand' => 'HP',
                 'model' => 'ProDesk 400 G6',
                 'serial' => 'SN' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                'status' => 'active',
+                'status' => 'activo',
                 'color' => 'Black',
                 'technical_conditions' => 'Good condition',
                 'entry_date' => now()->subDays(rand(10, 100)),

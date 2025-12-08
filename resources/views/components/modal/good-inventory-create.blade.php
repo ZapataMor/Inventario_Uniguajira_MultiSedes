@@ -1,5 +1,5 @@
 <div id="modalCrearBienInventario" class="modal">
-    <div class="modal-content modal-content-large">
+    <div class="modal-content modal-content-large scrollable-content">
         <span class="close" onclick="ocultarModal('#modalCrearBienInventario')">&times;</span>
         <h2>Nuevo Bien</h2>
         <form id="formCrearBienInventario" class="form-container" autocomplete="off" action="/api/goods-inventory/create" method="POST" enctype="multipart/form-data">
@@ -24,7 +24,10 @@
                     <div class="section-header">Detalles de Cantidad</div>
                     <div class="form-fields-grid">
                         <div>
-                            <label for="cantidadBien" class="form-label">Cantidad:</label>
+                            <label for="cantidadBien" class="form-label">
+                                <span class="text-red-600 font-semibold">*</span>
+                                Cantidad:
+                            </label>
                             <input type="number" name="cantidad" id="cantidadBien" min="1" value="1" class="form-input" />
                         </div>
                     </div>
@@ -58,7 +61,10 @@
                     <!-- Tercera fila: Serial y Estado -->
                     <div class="form-fields-grid form-row">
                         <div>
-                            <label for="serialBien" class="form-label">Serial:</label>
+                            <label for="serialBien" class="form-label">
+                                <span class="text-red-600 font-semibold">*</span>
+                                Serial:
+                            </label>
                             <input type="text" name="serial" id="serialBien" class="form-input" />
                         </div>
 
@@ -92,7 +98,7 @@
                 </div>
             </div>
 
-            <div class="form-actions" style="margin-top: 20px;">
+            <div class="form-actions">
                 <button type="submit" class="btn submit-btn">Guardar Bien</button>
             </div>
         </form>

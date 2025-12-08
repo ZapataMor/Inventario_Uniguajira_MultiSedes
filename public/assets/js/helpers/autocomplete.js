@@ -1,11 +1,11 @@
 /**
  * autocompleteSearch.js - Funcionalidad configurable de autocompletado para búsquedas
- * 
+ *
  * Este script proporciona un sistema de autocompletado configurable y reutilizable que
  * puede implementarse en cualquier campo de búsqueda. Obtiene datos de una API configurable
  * y ofrece sugerencias mientras el usuario escribe, con navegación mediante teclado y ratón.
- * 
- * 
+ *
+ *
  * Reglas de comportamiento:
  * - Muestra sugerencias filtradas mientras el usuario escribe en el campo
  * - Indica cuando no hay coincidencias o cuando no hay datos disponibles
@@ -26,7 +26,7 @@
 
 /**
  * initAutocompleteSearch - Inicializa el autocompletado para campos de búsqueda
- * 
+ *
  * @param {string} containerSelector - Selector CSS del contenedor que incluirá input y lista ul
  * @param {Object} options - Opciones de configuración
  * @param {string} options.dataUrl - URL para obtener los datos JSON
@@ -45,27 +45,27 @@ function initAutocompleteSearch(containerSelector, options) {
     const input = container.querySelector(options.inputSelector);
     const list = container.querySelector(options.listSelector);
     const hiddenInput = container.querySelector(options.hiddenInputSelector);
-    
+
     let activeIndex = -1;
     let items = [];
     let filteredItems = [];
-    
+
     // Función para ocultar sugerencias
     function ocultarSugerencias() {
         list.innerHTML = '';
         list.style.display = 'none';
         activeIndex = -1;
     }
-    
+
     // Función para hacer scroll al elemento activo
     function scrollToActiveItem() {
         const activeItem = list.querySelector('li.active');
         if (!activeItem) return;
-        
+
         // Obtener posiciones y dimensiones
         const listRect = list.getBoundingClientRect();
         const itemRect = activeItem.getBoundingClientRect();
-        
+
         // Verificar si el elemento está fuera de la vista
         if (itemRect.top < listRect.top) {
             // Si está por encima del área visible
@@ -75,14 +75,14 @@ function initAutocompleteSearch(containerSelector, options) {
             list.scrollTop += (itemRect.bottom - listRect.bottom);
         }
     }
-    
+
     // Función para mostrar sugerencias
     function mostrarSugerencias(sugerencias) {
         list.innerHTML = '';
         list.style.display = 'block';
         // Resetear el scroll de la lista al inicio
         list.scrollTop = 0;
-        
+
         if (sugerencias.length === 0) {
             const li = document.createElement('li');
             li.classList.add('text-danger');
@@ -90,98 +90,98 @@ function initAutocompleteSearch(containerSelector, options) {
             list.appendChild(li);
             return;
         }
-        
+
         filteredItems = sugerencias;
-        
+
         sugerencias.forEach((item, index) => {
             const li = document.createElement('li');
             const valor = input.value.trim().toLowerCase();
             const texto = item.bien;
-            
+
             // Resaltar la parte coincidente del texto
             const textoLower = texto.toLowerCase();
             const inicio = textoLower.indexOf(valor);
-            
+
             if (inicio >= 0) {
                 const fin = inicio + valor.length;
                 const parteAntes = texto.substring(0, inicio);
                 const parteCoincidente = texto.substring(inicio, fin);
                 const parteDespues = texto.substring(fin);
-                
+
                 // Usar innerHTML para permitir la etiqueta <strong>
                 li.innerHTML = parteAntes + '<strong>' + parteCoincidente + '</strong>' + parteDespues;
             } else {
                 li.textContent = texto;
             }
-            
+
             li.dataset.index = index;
-            
+
             li.addEventListener('click', () => {
                 seleccionarItem(item);
                 ocultarSugerencias();
             });
-            
+
             li.addEventListener('mouseover', () => {
                 activeIndex = index;
                 marcarItemActivo();
             });
-            
+
             list.appendChild(li);
         });
-        
+
         // Si solo hay una sugerencia, marcarla como activa
         if (sugerencias.length === 1) {
             activeIndex = 0;
             marcarItemActivo();
         }
     }
-    
+
     // Función para marcar item activo
     function marcarItemActivo() {
         const items = list.querySelectorAll('li');
         items.forEach(item => item.classList.remove('active'));
-        
+
         if (activeIndex >= 0 && activeIndex < items.length) {
             items[activeIndex].classList.add('active');
             // Asegurar que el elemento activo esté visible en la lista
             scrollToActiveItem();
         }
     }
-    
+
     // Función para seleccionar un item
     function seleccionarItem(item) {
         input.value = item.bien;
         hiddenInput.value = item.id;
-        
+
         // Ocultar las sugerencias inmediatamente al seleccionar
         ocultarSugerencias();
-        
+
         // Ejecutar la función de callback si existe
         if (typeof options.onSelect === 'function') {
             options.onSelect(item);
         }
     }
-    
+
     // Manejar eventos de teclado
     input.addEventListener('keydown', (e) => {
         // Si las sugerencias están ocultas y no es la tecla Enter, no hacer nada
         if (list.style.display === 'none' && e.key !== 'Enter') {
             return;
         }
-        
+
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
                 activeIndex = Math.min(activeIndex + 1, filteredItems.length - 1);
                 marcarItemActivo();
                 break;
-            
+
             case 'ArrowUp':
                 e.preventDefault();
                 activeIndex = Math.max(activeIndex - 1, 0);
                 marcarItemActivo();
                 break;
-            
+
             case 'Enter':
                 e.preventDefault();
                 if (activeIndex >= 0 && filteredItems[activeIndex]) {
@@ -191,30 +191,30 @@ function initAutocompleteSearch(containerSelector, options) {
                     seleccionarItem(filteredItems[0]);
                 }
                 break;
-            
+
             case 'Escape':
                 e.preventDefault();
                 ocultarSugerencias();
                 break;
         }
     });
-    
+
     // Buscar al escribir (sin debounce, respuesta inmediata)
     input.addEventListener('input', () => {
         const valor = input.value.trim().toLowerCase();
-        
+
         // Resetear el índice activo al cambiar la búsqueda
         activeIndex = -1;
-        
+
         if (valor === '') {
             ocultarSugerencias();
             hiddenInput.value = '';
             return;
         }
-        
+
         if (items.length > 0) {
             // Filtrar los items ya cargados
-            const sugerencias = items.filter(item => 
+            const sugerencias = items.filter(item =>
                 item.bien.toLowerCase().includes(valor)
             );
             mostrarSugerencias(sugerencias);
@@ -234,9 +234,9 @@ function initAutocompleteSearch(containerSelector, options) {
                         list.style.display = 'block';
                         return;
                     }
-                    
+
                     items = data;
-                    const sugerencias = items.filter(item => 
+                    const sugerencias = items.filter(item =>
                         item.bien.toLowerCase().includes(valor)
                     );
                     mostrarSugerencias(sugerencias);
@@ -252,14 +252,14 @@ function initAutocompleteSearch(containerSelector, options) {
                 });
         }
     });
-    
+
     // Ocultar sugerencias al hacer clic fuera
     document.addEventListener('click', (e) => {
         if (!container.contains(e.target)) {
             ocultarSugerencias();
         }
     });
-    
+
     // Función para cargar datos desde la API
     function cargarDatos() {
         return fetch(options.dataUrl)
@@ -279,9 +279,9 @@ function initAutocompleteSearch(containerSelector, options) {
     }
 
     // Cargar datos al inicializar
-    cargarDatos().then(() => {
-        console.log('Datos cargados al inicializar:', items);
-    });
+    // cargarDatos().then(() => {
+    //     console.log('Datos cargados al inicializar:', items);
+    // });
 
     // Retornar funciones públicas
     return {
@@ -304,7 +304,7 @@ function initAutocompleteSearch(containerSelector, options) {
 }
 
 // Ejemplos de uso:
-/* 
+/*
 // Ejemplo básico
 const autocomplete = initAutocompleteSearch('#search-container', {
     dataUrl: '/api/items/list'
@@ -313,7 +313,7 @@ const autocomplete = initAutocompleteSearch('#search-container', {
 // Ejemplo con opciones personalizadas
 const autocompleteCustom = initAutocompleteSearch('#product-search', {
     dataUrl: '/api/products',
-    dataKey: 'nombre', 
+    dataKey: 'nombre',
     idKey: 'producto_id',
     hiddenInputSelector: '#product_id',
     onSelect: function(item) {

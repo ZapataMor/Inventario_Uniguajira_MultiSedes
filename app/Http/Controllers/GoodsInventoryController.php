@@ -4,13 +4,18 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\AssetInventory;
-use App\Models\AssetQuantity;
 use App\Models\Inventory;
-use App\Models\Asset;
+use App\Services\GoodsInventoryService;
 
 class GoodsInventoryController extends Controller
 {
+    protected $service;
+
+    public function __construct(GoodsInventoryService $service)
+    {
+        $this->service = $service;
+        // middleware('auth') si lo necesitas
+    }
 
     // ------------------------------
     // 3. Bienes dentro de un inventario
@@ -29,8 +34,9 @@ class GoodsInventoryController extends Controller
             ->get();
 
         if ($request->ajax()) {
-            return view('inventories.goods-inventory', compact('inventory', 'assets'))
-                ->renderSections()['content'];
+            /** @var \Illuminate\View\View $view */
+            $view = view('inventories.goods-inventory', compact('inventory', 'assets'));
+            return $view->renderSections()['content'];
         }
 
         return view('inventories.goods-inventory', compact('inventory', 'assets'));
@@ -49,15 +55,12 @@ class GoodsInventoryController extends Controller
             'bien_tipo'    => 'required|in:1,2', // 1=cantidad, 2=serial
         ]);
 
-        $inventoryId = $data['inventarioId'];
-        $assetId     = $data['bien_id'];
-        $tipo        = (int) $data['bien_tipo'];
+        $tipo = $data['bien_tipo'];
 
-        if ($tipo === 1) {
-            $id = $this->handleCantidadType($inventoryId, $assetId);
-
-        } elseif ($tipo === 2) {
-            $id = $this->handleSerialType($inventoryId, $assetId);
+        if ($tipo == 1) {
+            $id = $this->handleCantidadType($request);
+        } elseif ($tipo == 2) {
+            $id = $this->handleSerialType($request);
         }
 
         if (!$id) {
@@ -74,6 +77,57 @@ class GoodsInventoryController extends Controller
         ]);
     }
 
+
+    /**
+     * Manejar bienes tipo cantidad
+     */
+    private function handleCantidadType(Request $request)
+    {
+        $validated = $request->validate([
+            'cantidad' => 'required|integer|min:1'
+        ]);
+
+        return $this->service->addQuantity(
+            $request->inventarioId,
+            $request->bien_id,
+            $validated['cantidad']
+        );
+    }
+
+
+    /**
+     * Manejar bienes tipo serial
+     */
+    private function handleSerialType(Request $request)
+    {
+        $validated = $request->validate([
+            'serial' => 'required|string|max:255',
+            'descripcion' => 'nullable|string|max:255',
+            'marca' => 'nullable|string|max:255',
+            'modelo' => 'nullable|string|max:255',
+            'estado' => 'nullable|string|max:100',
+            'color' => 'nullable|string|max:100',
+            'condiciones_tecnicas' => 'nullable|string|max:500',
+            'fecha_ingreso' => 'nullable|date',
+        ]);
+
+        $details = [
+            'description' => $validated['descripcion'] ?? '',
+            'brand' => $validated['marca'] ?? '',
+            'model' => $validated['modelo'] ?? '',
+            'serial' => $validated['serial'],
+            'state' => $validated['estado'] ?? 'activo',
+            'color' => $validated['color'] ?? '',
+            'technical_conditions' => $validated['condiciones_tecnicas'] ?? '',
+            'entry_date' => $validated['fecha_ingreso'] ?? now()->toDateString()
+        ];
+
+        return $this->service->addSerial(
+            $request->inventarioId,
+            $request->bien_id,
+            $details
+        );
+    }
 
 
     /**
@@ -163,47 +217,4 @@ class GoodsInventoryController extends Controller
         ]);
     }
 
-
-
-
-
-
-    // =====================================================
-    //  INTERNAL ORIGINAL LOGIC PORTED TO LARAVEL
-    // =====================================================
-
-    private function handleCantidadType($inventoryId, $assetId)
-    {
-        // Buscar relación asset_inventory
-        $existing = DB::table('asset_inventory')
-            ->where('asset_id', $assetId)
-            ->where('inventory_id', $inventoryId)
-            ->first();
-
-        if (!$existing) {
-            $id = DB::table('asset_inventory')->insertGetId([
-                'asset_id'     => $assetId,
-                'inventory_id' => $inventoryId
-            ]);
-        } else {
-            $id = $existing->id;
-        }
-
-        // Insertar o sumar cantidad
-        DB::table('asset_quantities')->updateOrInsert(
-            ['asset_inventory_id' => $id],
-            ['quantity' => DB::raw('quantity + 1')]
-        );
-
-        return $id;
-    }
-
-
-    private function handleSerialType($inventoryId, $assetId)
-    {
-        return DB::table('asset_inventory')->insertGetId([
-            'asset_id'     => $assetId,
-            'inventory_id' => $inventoryId
-        ]);
-    }
 }
