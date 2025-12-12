@@ -6,14 +6,18 @@ function initGoodsSerialsInventoryFunctions() {
         resetOnSuccess: true,
         onSuccess: (response) => {
             showToast(response);
-            const inventoryId = localStorage.getItem('openInventory');
 
-            const url = `/group/${groupId}/inventory/${inventoryId}`;;
-            loadContent(url)
+            const url = document.getElementById('good-serial-inventory-name').getAttribute('data-url');
+            loadContent(url,
+                { onSuccess: () => initGoodsSerialsInventoryFunctions() }
+            );
         }
     });
 
+    // Inicializar la búsqueda de inventarios
+    iniciarBusqueda('searchGoodsSerialsInventory');
 
+    console.log('Funciones de bienes seriales del inventario inicializadas');
 }
 
 
@@ -41,17 +45,18 @@ function btnEditarBienSerial() {
 }
 
 
-function btnEliminarBienSerial() {  //TODO: por serial
+function btnEliminarBienSerial() {
     const idBienSerial = selectedItem.id;
 
     eliminarRegistro({
         url: `/api/goods-inventory/delete-serial/${idBienSerial}`,
         onSuccess: (response) => {
             showToast(response);
-            const inventoryId = localStorage.getItem('openInventory');
 
-            const url = `/group/${groupId}/inventory/${inventoryId}`;;
-            loadContent(url)
+            const url = document.getElementById('good-serial-inventory-name').getAttribute('data-url');
+            loadContent(url,
+                { onSuccess: () => initGoodsSerialsInventoryFunctions() }
+            );
         }
     });
 }

@@ -161,7 +161,8 @@
                     @if($asset->type === 'Serial')
                         <div class="actions">
                             <button class="btn-detalle"
-                                    onclick="loadContent('{{ route('inventory.serials', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id, 'assetId' => $asset->asset_id]) }}')"
+                                    onclick="loadContent( '{{ route('inventory.serials', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id, 'assetId' => $asset->asset_id]) }}',
+                                                            { onSuccess: () => initGoodsSerialsInventoryFunctions() } )"
                             >
                                 <i class="fas fa-info-circle"></i>
                             </button>

@@ -19,14 +19,15 @@ return new class extends Migration
                 a.name AS name,
                 a.type AS type,
                 a.image AS image,
-                (
-                    COALESCE(SUM(aq.quantity), 0) +
-                    COALESCE(COUNT(ae.id), 0)
-                ) AS total_quantity
+                CASE 
+                    WHEN a.type = 'Cantidad' THEN COALESCE(SUM(aq.quantity), 0)
+                    WHEN a.type = 'Serial' THEN COUNT(ae.id)
+                    ELSE 0
+                END AS total_quantity
             FROM assets a
             LEFT JOIN asset_inventory ai ON a.id = ai.asset_id
-            LEFT JOIN asset_quantities aq ON ai.id = aq.asset_inventory_id
-            LEFT JOIN asset_equipments ae ON ai.id = ae.asset_inventory_id
+            LEFT JOIN asset_quantities aq ON ai.id = aq.asset_inventory_id AND a.type = 'Cantidad'
+            LEFT JOIN asset_equipments ae ON ai.id = ae.asset_inventory_id AND a.type = 'Serial'
             GROUP BY
                 a.id, a.name, a.type, a.image
         ");

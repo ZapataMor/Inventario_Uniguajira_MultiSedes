@@ -68,4 +68,68 @@ class GoodsInventoryService
 
         return $equipment->id;
     }
+
+    public function deleteSerialGood(int $equipmentId): bool
+    {
+        // 1. Buscar equipo
+        $equipment = AssetEquipment::find($equipmentId);
+
+        if (!$equipment) {
+            return false;
+        }
+
+        $relationId = $equipment->asset_inventory_id;
+
+        // 2. Contar cuántos equipos están asociados a esa relación
+        $totalEquipments = AssetEquipment::where('asset_inventory_id', $relationId)->count();
+
+        // 3. Eliminar equipo
+        if (!$equipment->delete()) {
+            return false;
+        }
+
+        // 4. Si solo había uno, eliminar la relación asset_inventory
+        if ($totalEquipments <= 1) {
+            AssetInventory::where('id', $relationId)->delete();
+        }
+
+        return true;
+    }
+
+
+    public function updateSerial(int $id, array $details): bool
+    {
+        $equipment = AssetEquipment::find($id);
+
+        if (!$equipment) {
+            return false;
+        }
+
+        // Validar serial duplicado en otro equipo
+        if (isset($details['serial'])) {
+
+            $exists = AssetEquipment::where('serial', $details['serial'])
+                ->where('id', '!=', $id)
+                ->exists();
+
+            if ($exists) {
+                throw new \Exception('Ya existe un bien con este número de serial.');
+            }
+        }
+
+        // Actualizar campos
+        $equipment->update([
+            'description'          => $details['description'],
+            'brand'                => $details['brand'],
+            'model'                => $details['model'],
+            'serial'               => $details['serial'],
+            'status'               => $details['status'],
+            'color'                => $details['color'],
+            'technical_conditions' => $details['technical_conditions'],
+            'entry_date'           => $details['entry_date'],
+        ]);
+
+        return true;
+    }
+
 }

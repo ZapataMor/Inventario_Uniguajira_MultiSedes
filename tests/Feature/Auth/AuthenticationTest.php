@@ -3,13 +3,13 @@
 use App\Models\User;
 use Laravel\Fortify\Features;
 
-test('login screen can be rendered', function () {
+test('la pantalla de login puede ser renderizada', function () {
     $response = $this->get(route('login'));
 
     $response->assertStatus(200);
 });
 
-test('users can authenticate using the login screen', function () {
+test('los usuarios pueden autenticarse usando la pantalla de login', function () {
     $user = User::factory()->withoutTwoFactor()->create();
 
     $response = $this->post(route('login.store'), [
@@ -19,12 +19,12 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('home', absolute: false));
+        ->assertRedirect(route('home.index', absolute: false));
 
     $this->assertAuthenticated();
 });
 
-test('users can not authenticate with invalid password', function () {
+test('los usuarios no pueden autenticarse con contraseña inválida', function () {
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
@@ -37,7 +37,7 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
-test('users with two factor enabled are redirected to two factor challenge', function () {
+test('los usuarios con autenticación de dos factores habilitada son redirigidos al desafío de dos factores', function () {
     if (! Features::canManageTwoFactorAuthentication()) {
         $this->markTestSkipped('Two-factor authentication is not enabled.');
     }
@@ -58,12 +58,12 @@ test('users with two factor enabled are redirected to two factor challenge', fun
     $this->assertGuest();
 });
 
-test('users can logout', function () {
+test('los usuarios pueden cerrar sesión', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('logout'));
 
-    $response->assertRedirect(route('home'));
+    $response->assertRedirect('/');
 
     $this->assertGuest();
 });

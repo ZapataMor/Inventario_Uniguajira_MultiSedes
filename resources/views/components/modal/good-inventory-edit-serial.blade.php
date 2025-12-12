@@ -54,7 +54,7 @@
                         <select name="estado" id="editEstadoBien" class="form-input">
                             <option value="activo">Activo</option>
                             <option value="inactivo">Inactivo</option>
-                            <option value="en mantenimiento">En mantenimiento</option>
+                            <option value="en_mantenimiento">En mantenimiento</option>
                         </select>
                     </div>
                 </div>

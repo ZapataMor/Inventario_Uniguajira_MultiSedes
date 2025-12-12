@@ -56,7 +56,9 @@
 
     {{-- GRID DE INVENTARIOS --}}
     <div class="card-grid">
-
+@php
+    // dd($inventories)
+@endphp
         @if($inventories->isEmpty())
             <div class="empty-state">
                 <i class="fas fa-folder-open fa-3x"></i>

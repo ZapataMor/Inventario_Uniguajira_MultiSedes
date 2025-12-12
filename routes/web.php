@@ -92,8 +92,15 @@ Route::prefix('api')->middleware('auth')->group(function () {
         Route::post('/update-quantity', [GoodsInventoryController::class, 'updateQuantity']);
 
         // Eliminar bien de tipo cantidad
-        Route::delete('/delete-quantity/{inventoryId}/{goodId}',
-            [GoodsInventoryController::class, 'deleteQuantity']);
+        Route::delete('/delete-quantity/{inventoryId}/{goodId}', [GoodsInventoryController::class, 'deleteQuantity']);
+
+        // Eliminar bien de tipo serial
+        Route::delete('/delete-serial/{equipment}', [GoodsInventoryController::class, 'deleteSerial']);
+
+        // Actualizar bien de tipo serial
+        Route::post('/update-serial', [GoodsInventoryController::class, 'updateSerial'])
+            ->name('goods-inventory.update-serial');
+
     });
 });
 

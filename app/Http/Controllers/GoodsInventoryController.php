@@ -176,7 +176,6 @@ class GoodsInventoryController extends Controller
     }
 
 
-
     /**
      * Eliminar bien tipo cantidad
      * DELETE /api/goods-inventory/delete-quantity/{inventoryId}/{goodId}
@@ -214,6 +213,86 @@ class GoodsInventoryController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Bien eliminado del inventario exitosamente.'
+        ]);
+    }
+
+
+    /**
+     * Actualizar bien tipo serial
+     * POST /api/goods-inventory/update-serial
+     */
+    public function updateSerial(Request $request)
+    {
+        $validated = $request->validate([
+            'bienEquipoId' => 'required|integer|exists:asset_equipments,id',
+            'serial'       => 'required|string|max:255',
+            'descripcion'  => 'nullable|string|max:255',
+            'marca'        => 'nullable|string|max:255',
+            'modelo'       => 'nullable|string|max:255',
+            'estado'       => 'nullable|string|max:100',
+            'color'        => 'nullable|string|max:100',
+            'condiciones_tecnicas' => 'nullable|string|max:500',
+            'fecha_ingreso' => 'nullable|date',
+        ]);
+
+        $details = [
+            'description'           => $validated['descripcion'] ?? '',
+            'brand'                 => $validated['marca'] ?? '',
+            'model'                 => $validated['modelo'] ?? '',
+            'serial'                => $validated['serial'],
+            'status'                => $validated['estado'] ?? 'active',
+            'color'                 => $validated['color'] ?? '',
+            'technical_conditions'  => $validated['condiciones_tecnicas'] ?? '',
+            'entry_date'            => $validated['fecha_ingreso'] ?? now()->toDateString(),
+        ];
+
+        try {
+
+            $ok = $this->service->updateSerial(
+                $validated['bienEquipoId'],
+                $details
+            );
+
+            if (!$ok) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se pudo actualizar el bien serial.'
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bien serial actualizado exitosamente.'
+            ]);
+
+        } catch (\Exception $e) {
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+
+    /**
+     * Eliminar bien tipo serial
+     * DELETE /api/goods-inventory/delete-serial/{equipment}
+     */
+    public function deleteSerial(int $equipmentId)
+    {
+        $deleted = $this->service->deleteSerialGood($equipmentId);
+
+        if (!$deleted) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo eliminar el bien serial del inventario.'
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bien serial eliminado del inventario exitosamente.'
         ]);
     }
 

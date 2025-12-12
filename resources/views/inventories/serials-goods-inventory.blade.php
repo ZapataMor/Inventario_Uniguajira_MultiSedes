@@ -5,9 +5,18 @@
 @section('content')
 <div id="serials-goods-inventory" class="content">
 
+    <div class="inventory-header">
+        <h1>Inventario</h1>
+    </div>
+
     <div class="back-and-title">
-        <div>
-            <span class="location">Bienes Seriales - {{ $inventory->name }}</span>
+        <div class="flex flex-col">
+            <span id="good-serial-inventory-name"
+                  data-url="{{ route('inventory.serials', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id, 'assetId' => $serials[0]->asset_id]) }}"
+                  class="location">
+                Detalles - {{ $serials[0]->asset }}
+            </span>
+            <span class="location">Inventario - {{ $inventory->name }}</span>
         </div>
 
         <button class="btn-back" onclick="loadContent('{{ route('inventory.goods', ['groupId' => $inventory->group_id, 'inventoryId' => $inventory->id]) }}')">
@@ -17,22 +26,26 @@
     </div>
 
     {{-- buscador --}}
-
+    <div class="top-bar">
+        <div class="search-container">
+            <input id="searchGoodsSerialsInventory" class="search-bar searchInput" type="text" placeholder="Buscar serial..." />
+            <i class="search-icon fas fa-search"></i>
+        </div>
+    </div>
 
 
     {{-- barra de control --}}
-
-            <div id="control-bar-serial-good" class="control-bar">
-                <div class="selected-name">1 seleccionado</div>
-                <div class="control-actions">
-                    <button class="control-btn" title="Editar" onclick="btnEditarBienSerial()">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="control-btn" title="Eliminar" onclick="btnEliminarBienSerial()">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
+    <div id="control-bar-serial-good" class="control-bar">
+        <div class="selected-name">1 seleccionado</div>
+        <div class="control-actions">
+            <button class="control-btn" title="Editar" onclick="btnEditarBienSerial()">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button class="control-btn" title="Eliminar" onclick="btnEliminarBienSerial()">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
 
     @if($serials->isEmpty())
         <div class="empty-state">
@@ -55,7 +68,7 @@
                     data-color="{{ $serial->color }}"
                     data-condition="{{ $serial->technical_conditions }}"
                     data-entry-date="{{ $serial->entry_date }}"
-                    data-type="serial"
+                    data-type="serial-good"
                     onclick="toggleSelectItem(this)"
                 >
                     <img
@@ -65,6 +78,7 @@
 
                     <div class="bien-info">
                         <h3 class="name-item">
+                            <span class="hidden">{{$serial->serial}}</span>
                             {{ $serial->asset }}
                             <img
                                 src="{{ asset('assets/icons/bienSerial.svg') }}"
@@ -87,7 +101,7 @@
     @once
         <script>
             document.addEventListener('DOMContentLoaded', () => {
-                //
+                initGoodsSerialsInventoryFunctions();
             });
         </script>
     @endonce
