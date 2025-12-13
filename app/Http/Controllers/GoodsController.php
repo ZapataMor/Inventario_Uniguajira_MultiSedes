@@ -148,4 +148,187 @@ class GoodsController extends Controller
             'message' => 'Bien eliminado correctamente.'
         ]);
     }
+
+    /**
+     * Batch create goods from Excel upload
+     * POST /api/goods/batchCreate
+     * 
+     * Recibe un array de bienes con sus datos e imágenes opcionales
+     * Formato esperado:
+     * - goods[0][nombre]: nombre del bien
+     * - goods[0][tipo]: tipo (1 = Cantidad, 2 = Serial)
+     * - goods_0_imagen: archivo de imagen (opcional)
+     */
+    public function batchCreate(Request $request)
+    {
+        try {
+            // Obtener todos los datos del request
+            $allData = $request->all();
+            
+            // Obtener los bienes del request (puede venir como array anidado)
+            $goods = $request->input('goods', []);
+            
+            // Si goods está vacío, intentar obtenerlo de otra forma
+            if (empty($goods) && isset($allData['goods'])) {
+                $goods = $allData['goods'];
+            }
+            
+            if (empty($goods) || !is_array($goods)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se recibieron datos válidos para procesar.'
+                ], 400);
+            }
+
+            $created = 0;
+            $errors = [];
+            $createdAssets = [];
+
+            // Procesar cada bien
+            foreach ($goods as $index => $good) {
+                try {
+                    // Validar que good sea un array
+                    if (!is_array($good)) {
+                        $errors[] = "Fila {$index}: Formato de datos inválido";
+                        continue;
+                    }
+
+                    // Validar datos básicos
+                    $nombre = isset($good['nombre']) ? trim($good['nombre']) : '';
+                    $tipo = isset($good['tipo']) ? $good['tipo'] : null;
+                    
+                    if (empty($nombre) || $tipo === null) {
+                        $errors[] = "Fila {$index}: Faltan datos requeridos (nombre o tipo)";
+                        continue;
+                    }
+
+                    // Validar tipo
+                    $tipo = (int) $tipo;
+                    if (!in_array($tipo, [1, 2])) {
+                        $errors[] = "Fila {$index}: Tipo inválido. Debe ser 1 (Cantidad) o 2 (Serial)";
+                        continue;
+                    }
+
+                    // Verificar si el bien ya existe
+                    $existingAsset = Asset::where('name', $nombre)->first();
+                    if ($existingAsset) {
+                        $errors[] = "Fila {$index}: El bien '{$nombre}' ya existe";
+                        continue;
+                    }
+
+                    // Procesar imagen si existe
+                    $imagePath = null;
+                    $imageKey = "goods_{$index}_imagen";
+                    
+                    if ($request->hasFile($imageKey)) {
+                        $image = $request->file($imageKey);
+                        
+                        // Validar que sea una imagen
+                        if ($image->isValid()) {
+                            // Validar tamaño (2 MB)
+                            if ($image->getSize() <= 2048 * 1024) {
+                                // Validar que sea realmente una imagen
+                                $allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+                                if (in_array($image->getMimeType(), $allowedMimes)) {
+                                    $imagePath = $image->store('assets/goods', 'public');
+                                } else {
+                                    $errors[] = "Fila {$index}: El archivo debe ser una imagen válida (JPEG, PNG, GIF, WEBP)";
+                                }
+                            } else {
+                                $errors[] = "Fila {$index}: La imagen excede el tamaño máximo (2MB)";
+                            }
+                        } else {
+                            $errors[] = "Fila {$index}: La imagen es inválida";
+                        }
+                    }
+
+                    // Crear el bien
+                    $asset = Asset::create([
+                        'name'  => $nombre,
+                        'type'  => $tipo,
+                        'image' => $imagePath
+                    ]);
+
+                    $created++;
+                    $createdAssets[] = [
+                        'id' => $asset->id,
+                        'name' => $asset->name,
+                        'type' => $asset->type
+                    ];
+
+                } catch (\Exception $e) {
+                    $errors[] = "Fila {$index}: Error al crear bien - " . $e->getMessage();
+                }
+            }
+
+            // Preparar respuesta
+            $message = "Se crearon {$created} bien(es) exitosamente.";
+            if (!empty($errors)) {
+                $message .= " " . count($errors) . " error(es) encontrado(s).";
+            }
+
+            return response()->json([
+                'success' => $created > 0,
+                'message' => $message,
+                'created' => $created,
+                'errors' => $errors,
+                'assets' => $createdAssets
+            ], $created > 0 ? 200 : 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la solicitud: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Download Excel template for goods import
+     * GET /api/goods/download-template
+     * 
+     * Genera una plantilla Excel con las columnas: Bien y Tipo
+     * El tipo puede ser "Cantidad" o "Serial"
+     */
+    public function downloadTemplate()
+    {
+        // Crear contenido Excel en formato SpreadsheetML (compatible con Excel)
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Header">
+   <Font ss:Bold="1"/>
+   <Interior ss:Color="#CCCCCC" ss:Pattern="Solid"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Bienes">
+  <Table>
+   <Row>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Bien</Data></Cell>
+    <Cell ss:StyleID="Header"><Data ss:Type="String">Tipo</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Ejemplo 1</Data></Cell>
+    <Cell><Data ss:Type="String">Cantidad</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">Ejemplo 2</Data></Cell>
+    <Cell><Data ss:Type="String">Serial</Data></Cell>
+   </Row>
+  </Table>
+ </Worksheet>
+</Workbook>';
+
+        $filename = 'plantilla_bienes.xls';
+        
+        return response($xml, 200)
+            ->header('Content-Type', 'application/vnd.ms-excel')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Cache-Control', 'max-age=0');
+    }
 }

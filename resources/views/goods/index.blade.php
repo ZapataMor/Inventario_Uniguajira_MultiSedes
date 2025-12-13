@@ -91,6 +91,14 @@
 
         <h3>Cargar datos de bienes desde Excel</h3>
 
+        <div style="margin-bottom: 20px;">
+            <a href="{{ route('goods.download-template') }}" 
+               class="btn" 
+               style="display: inline-block; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 4px; margin-bottom: 10px;">
+                <i class="fas fa-download"></i> Descargar plantilla Excel
+            </a>
+        </div>
+
         <div id="excel-upload-area"
             class="excel-upload-area"
             style="border: 2px dashed #ccc; padding: 20px; text-align: center;"
@@ -137,18 +145,17 @@
 
     </div>
 
+    {{-- MODALES --}}
+    <x-modal.good mode="create" />
+    <x-modal.good mode="edit" />
+    
+    @once
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                iniciarBusqueda('searchGood');
+            });
+        </script>
+    @endonce
+
 </div>
-
-{{-- MODALES --}}
-<x-modal.good mode="create" />
-<x-modal.good mode="edit" />
-
-@once
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            iniciarBusqueda('searchGood');
-        });
-    </script>
-@endonce
-
 @endsection

@@ -62,9 +62,11 @@ Route::prefix('api')->middleware('auth')->group(function () {
     // Goods API
     Route::prefix('goods')->group(function () {
         Route::post('create', [GoodsController::class, 'store'])->name('goods.store');
+        Route::post('batchCreate', [GoodsController::class, 'batchCreate'])->name('goods.batchCreate');
         Route::post('update', [GoodsController::class, 'update'])->name('goods.update');
         Route::delete('delete/{id}', [GoodsController::class, 'destroy'])->name('goods.destroy');
         Route::get('get/json', [GoodsController::class, 'getJson']);
+        Route::get('download-template', [GoodsController::class, 'downloadTemplate'])->name('goods.download-template');
     });
 
     // Groups API
