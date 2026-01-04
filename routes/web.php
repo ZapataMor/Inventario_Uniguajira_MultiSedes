@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     GoodsInventoryController,
     ReportController,
     UserController,
-    RecordController
+    RecordController,
+    ReportFolderController
 };
 
 // Redirect to home
@@ -32,7 +33,7 @@ Route::get('profile', function () {
 Route::middleware('auth')->group(function () {
     // General routes
     Route::get('goods', [GoodsController::class, 'index'])->name('goods.index');
-    Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('reports', [ReportFolderController::class, 'index'])->name('reports.index');
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::get('records', [RecordController::class, 'index'])->name('records.index');
 
@@ -49,6 +50,10 @@ Route::middleware('auth')->group(function () {
 
     // Ruta para la vista de subida de Excel
     Route::get('/goods/excel-upload', [GoodsController::class, 'excelUploadView'])->name('goods.excel-upload');
+
+    // Reports routes
+    Route::get('reports/folder/{folderId}', [ReportFolderController::class, 'show'])
+    ->name('reports.folder');
 });
 
 // API routes
