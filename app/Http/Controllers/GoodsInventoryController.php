@@ -296,4 +296,129 @@ class GoodsInventoryController extends Controller
         ]);
     }
 
+
+
+    
+    /**
+ * Dar de baja un bien (registrar en assets_removed y reducir cantidad)
+ * POST /api/goods-inventory/remove-good
+ */
+public function removeGood(Request $request)
+{
+    // 1. Validar datos de entrada
+    $validated = $request->validate([
+        'bienId'       => 'required|integer|exists:assets,id',
+        'inventarioId' => 'required|integer|exists:inventories,id',
+        'cantidad'     => 'required|integer|min:1',
+        'motivo'       => 'nullable|string|max:500',
+    ]);
+
+    $assetId     = $validated['bienId'];
+    $inventoryId = $validated['inventarioId'];
+    $cantidad    = $validated['cantidad'];
+    $motivo      = $validated['motivo'] ?? 'Sin motivo especificado';
+
+    try {
+        DB::beginTransaction();
+
+        // 2. Obtener información del bien
+        $asset = DB::table('assets')->where('id', $assetId)->first();
+        
+        if (!$asset) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El bien no existe.'
+            ], 404);
+        }
+
+        // 3. Verificar que sea tipo "Cantidad"
+        if ($asset->type !== 'Cantidad') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo se pueden dar de baja bienes de tipo Cantidad.'
+            ], 400);
+        }
+
+        // 4. Buscar la relación asset_inventory
+        $assetInventory = DB::table('asset_inventory')
+            ->where('asset_id', $assetId)
+            ->where('inventory_id', $inventoryId)
+            ->first();
+
+        if (!$assetInventory) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El bien no existe en este inventario.'
+            ], 404);
+        }
+
+        // 5. Obtener la cantidad actual
+        $currentQuantity = DB::table('asset_quantities')
+            ->where('asset_inventory_id', $assetInventory->id)
+            ->value('quantity');
+
+        if ($currentQuantity === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró el registro de cantidad.'
+            ], 404);
+        }
+
+        // 6. Validar que haya suficiente cantidad
+        if ($cantidad > $currentQuantity) {
+            return response()->json([
+                'success' => false,
+                'message' => "No hay suficiente cantidad. Disponible: {$currentQuantity}, Solicitado: {$cantidad}"
+            ], 400);
+        }
+
+        // 7. Registrar en la tabla assets_removed
+        DB::table('assets_removed')->insert([
+            'name'         => $asset->name,
+            'type'         => $asset->type,
+            'image'        => $asset->image,
+            'quantity'     => $cantidad,
+            'reason'       => $motivo,
+            'asset_id'     => $assetId,
+            'inventory_id' => $inventoryId,
+            'user_id'      => auth()->id(),
+            'created_at'   => now(),
+            'updated_at'   => now(),
+        ]);
+
+        // 8. Reducir la cantidad en asset_quantities
+        $newQuantity = $currentQuantity - $cantidad;
+        
+        if ($newQuantity > 0) {
+            // Si aún queda cantidad, actualizar
+            DB::table('asset_quantities')
+                ->where('asset_inventory_id', $assetInventory->id)
+                ->update(['quantity' => $newQuantity]);
+        } else {
+            // Si la cantidad llega a 0, eliminar completamente la relación
+            DB::table('asset_quantities')
+                ->where('asset_inventory_id', $assetInventory->id)
+                ->delete();
+            
+            DB::table('asset_inventory')
+                ->where('id', $assetInventory->id)
+                ->delete();
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Se dieron de baja {$cantidad} unidad(es) de {$asset->name} exitosamente."
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Error al dar de baja el bien: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

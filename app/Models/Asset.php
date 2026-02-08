@@ -26,4 +26,9 @@ class Asset extends Model
         return $this->hasMany(AssetEquipment::class, 'asset_inventory_id');
     }
 
+    public function removedRecords()
+    {
+        return $this->hasMany(AssetRemoved::class);
+    }
+
 }

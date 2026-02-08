@@ -59,6 +59,7 @@
     <script src="{{ asset('assets/js/reports/folders.js') }}"></script>
     <script src="{{ asset('assets/js/reports/reports.js') }}"></script>
     <script src="{{ asset('assets/js/historial.js') }}"></script>
+    <script src="{{ asset('assets/js/inventory/removedGoods.js') }}"></script>  {{-- ✅ AGREGADO --}}
     {{-- <script src="{{ asset('assets/js/onLoaded.js') }}"></script> --}}
     @stack('scripts')
 </body>

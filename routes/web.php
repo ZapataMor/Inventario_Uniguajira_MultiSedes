@@ -11,7 +11,8 @@ use App\Http\Controllers\{
     ReportController,
     UserController,
     RecordController,
-    ReportFolderController
+    ReportFolderController,
+    RemovedController  // ✅ AGREGADO
 };
 
 // Redirect to home
@@ -36,6 +37,10 @@ Route::middleware('auth')->group(function () {
     Route::get('reports', [ReportFolderController::class, 'index'])->name('reports.index');
     Route::get('users', [UserController::class, 'index'])->name('users.index');
     Route::get('records', [RecordController::class, 'index'])->name('records.index');
+    
+    // ✅ NUEVA RUTA - Bienes dados de baja
+    Route::get('removed', [RemovedController::class, 'index'])->name('removed.index');
+    Route::get('removed/{id}', [RemovedController::class, 'show'])->name('removed.show');
 
     // Group routes
     Route::get('/groups', [GroupController::class, 'index'])->name('inventory.groups');
@@ -110,6 +115,16 @@ Route::prefix('api')->middleware('auth')->group(function () {
         Route::post('/update-serial', [GoodsInventoryController::class, 'updateSerial'])
             ->name('goods-inventory.update-serial');
 
+        // Dar de baja bien
+        Route::post('/remove-good', [GoodsInventoryController::class, 'removeGood']);
+
+    });
+
+    // ✅ NUEVAS RUTAS API - Bienes dados de baja
+    Route::prefix('removed')->group(function () {
+        Route::get('/filter', [RemovedController::class, 'filter'])->name('removed.filter');
+        Route::get('/export', [RemovedController::class, 'export'])->name('removed.export');
+        Route::get('/stats', [RemovedController::class, 'stats'])->name('removed.stats');
+        Route::delete('/{id}', [RemovedController::class, 'destroy'])->name('removed.destroy');
     });
 });
-

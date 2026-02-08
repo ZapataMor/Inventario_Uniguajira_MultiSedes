@@ -30,4 +30,10 @@ class Inventory extends Model
     {
         return $this->hasMany(Asset::class);
     }
+
+    public function removedAssets()
+    {
+        return $this->hasMany(AssetRemoved::class);
+    }
+
 }

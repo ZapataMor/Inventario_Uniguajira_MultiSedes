@@ -80,6 +80,13 @@
 
         <div class="control-actions">
 
+            {{-- Dar de baja --}}
+            <button class="control-btn"
+                    title="Dar de baja"
+                    onclick="btnDarDeBajaBienCantidad()">
+                <i class="fas fa-trash"></i>
+            </button>
+
             {{-- Cambiar cantidad --}}
             <button class="control-btn"
                     title="Cambiar cantidad"
@@ -167,6 +174,7 @@
     {{-- MODALES: responsable (separate component) --}}
     <x-modal.good-inventory-create />
     <x-modal.good-inventory-edit-quantity />
+    <x-modal.good-inventory-remove />
     <x-modal.inventory-responsible />
 
     @once

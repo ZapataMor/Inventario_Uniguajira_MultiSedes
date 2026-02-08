@@ -75,6 +75,8 @@ class GoodsController extends Controller
      */
     public function update(Request $request)
     {
+        $asset = Asset::findOrFail($request->id);
+
         $request->validate([
             'id'     => 'required|integer|exists:assets,id',
             'nombre' => 'required|string|max:255|unique:assets,name,' . $asset->id,

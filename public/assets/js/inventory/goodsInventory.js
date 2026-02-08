@@ -34,6 +34,29 @@ function initGoodsInventoryFunctions() {
         }
     });
 
+
+    // ------------------------------------------------------------
+
+
+    // Inicializa el formulario para dar de baja un bien cantidad
+    // ruta: /api/goods-inventory/delete-quantity
+    inicializarFormularioAjax('#formDarDeBajaBienCantidad', {
+        closeModalOnSuccess: true,
+        resetOnSuccess: true,
+        onSuccess: (response) => {
+            showToast(response);
+
+            const url = `/group/${groupId}/inventory/${inventoryId}`;;
+            loadContent(url,
+                { onSuccess: () => initGoodsInventoryFunctions() }
+            )
+        }
+    });
+
+
+    // ------------------------------------------------------------
+
+
     // Inicializar formulario para cambiar estado del inventario
     // ruta: /api/inventories/updateEstado
     inicializarFormularioAjax('#estadoInventarioForm', {
@@ -99,3 +122,24 @@ function btnEditarBienCantidad() {
     // Mostrar el modal de edición
     mostrarModal('#modalEditarBienCantidad');
 }
+
+// ------------------------------------------------------------
+
+function btnDarDeBajaBienCantidad() {
+    const idBien = selectedItem.id;
+    const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
+
+    // Establecer los valores en el formulario
+    document.getElementById('darDeBajaBienId').value = idBien;
+    document.getElementById('darDeBajaInventarioId').value = idInventario;
+    document.getElementById('darDeBajaNombreBienCantidad').value = selectedItem.name;
+    document.getElementById('darDeBajaCantidadDisponible').value = selectedItem.cantidad;
+    
+    // Establecer el máximo permitido
+    document.getElementById('darDeBajaCantidadBien').setAttribute('max', selectedItem.cantidad);
+    document.getElementById('darDeBajaCantidadBien').value = 1; // Valor por defecto
+
+    mostrarModal('#modalDarDeBajaBienCantidad');
+}
+
+// ------------------------------------------------------------

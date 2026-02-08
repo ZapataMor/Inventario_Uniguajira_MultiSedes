@@ -23,6 +23,13 @@
             </li>
 
             <li>
+                <a id="removed" href="{{ route('removed.index') }}" data-nav>
+                    <img src="{{ asset('assets/icons/basura.svg') }}" alt="">
+                    <span>Bienes Dados de Baja</span>
+                </a>
+            </li>
+
+            <li>
                 <a id="reports" href="{{ route('reports.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/reportes.svg') }}" alt="">
                     <span>Reportes</span>
