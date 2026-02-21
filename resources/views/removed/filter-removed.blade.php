@@ -61,11 +61,11 @@
 
 {{-- 4) ACCIONES --}}
 <div class="form-actions">
-    <button type="button" class="submit-btn" onclick="applyFilters()">
-        <i class="fas fa-check"></i> Aplicar Filtros
-    </button>
-
     <button type="button" class="cancel-btn" onclick="ocultarModal('#modalFilterRemoved')">
         <i class="fas fa-times"></i> Cancelar
+    </button>
+
+    <button type="button" class="submit-btn" onclick="applyFilters()">
+        <i class="fas fa-check"></i> Aplicar Filtros
     </button>
 </div>

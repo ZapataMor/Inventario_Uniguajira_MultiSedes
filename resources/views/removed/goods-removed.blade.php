@@ -108,29 +108,9 @@
     </div>
 </div>
 
-{{-- Estilos personalizados --}}
+{{-- Estilos del flyout (solo comportamiento, no botones) --}}
 @once
 <style>
-    /* Botón de limpiar filtros - estilo gris proporcional */
-    .btn-clear-filter {
-        background: #6c757d !important;
-        padding: 0 15px !important;
-        min-width: auto !important;
-    }
-
-    .btn-clear-filter:hover {
-        background: #5a6268 !important;
-    }
-
-    /* Indicador visual de filtro activo */
-    .create-btn.filter-active {
-        background: #FF9800 !important;
-    }
-
-    .create-btn.filter-active:hover {
-        background: #F57C00 !important;
-    }
-
     /* Overlay modal */
     #modalRemovedDetails,
     #modalFilterRemoved {
