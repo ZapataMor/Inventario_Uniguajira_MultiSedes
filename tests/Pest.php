@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\User;
+use App\Models\Task;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -32,16 +35,60 @@ expect()->extend('toBeOne', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Functions
+| Helpers globales de usuarios
 |--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
 */
 
-function something()
+/**
+ * Crea y retorna un usuario con rol 'administrador'.
+ */
+function adminUser(): User
 {
-    // ..
+    return User::factory()->administrador()->create();
+}
+
+/**
+ * Crea y retorna un usuario con rol 'consultor'.
+ */
+function consultorUser(): User
+{
+    return User::factory()->consultor()->create();
+}
+
+/*
+|--------------------------------------------------------------------------
+| Helpers globales de tareas
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Crea una tarea pendiente asociada al usuario dado.
+ *
+ * @param  array<string, mixed>  $overrides  Atributos opcionales para sobreescribir.
+ */
+function crearTareaPendiente(User $user, array $overrides = []): Task
+{
+    return Task::create(array_merge([
+        'name'        => 'Tarea de prueba',
+        'description' => 'Descripción de prueba',
+        'date'        => now()->addDays(5)->toDateString(),
+        'status'      => 'pending',
+        'user_id'     => $user->id,
+    ], $overrides));
+}
+
+/**
+ * Crea una tarea completada asociada al usuario dado.
+ *
+ * @param  array<string, mixed>  $overrides  Atributos opcionales para sobreescribir.
+ */
+function crearTareaCompletada(User $user, array $overrides = []): Task
+{
+    return Task::create(array_merge([
+        'name'        => 'Tarea completada',
+        'description' => 'Descripción completada',
+        'date'        => now()->addDays(5)->toDateString(),
+        'status'      => 'completed',
+        'user_id'     => $user->id,
+    ], $overrides));
 }

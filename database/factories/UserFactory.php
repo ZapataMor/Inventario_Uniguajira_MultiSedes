@@ -56,4 +56,24 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user has the 'administrador' role.
+     */
+    public function administrador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'administrador',
+        ]);
+    }
+
+    /**
+     * Indicate that the user has the 'consultor' role.
+     */
+    public function consultor(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'consultor',
+        ]);
+    }
 }
