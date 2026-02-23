@@ -63,23 +63,32 @@ function initUserFunctions() {
 }
 
 // ==========================
-// ✅ FUNCIÓN DE REFRESH (NUEVA)
+// ✅ FUNCIÓN DE REFRESH
 // ==========================
 async function refreshUsers() {
     try {
         const response = await fetch(window.location.pathname, {
             headers: { "X-Requested-With": "XMLHttpRequest" }
         });
-        
+
         if (!response.ok) throw new Error('Error al refrescar usuarios');
-        
+
         const html = await response.text();
-        const container = document.getElementById('users-content');
-        container.innerHTML = html;
-        
-        // Reinicializar funciones después del refresh
-        initUserFunctions();
-        
+
+        // El controlador devuelve el @section('content') completo via AJAX.
+        // Parseamos ese HTML parcial y extraemos el <div class="content">
+        // para reemplazar el que está en el DOM sin recargar la página.
+        const parser = new DOMParser();
+        const doc    = parser.parseFromString(html, 'text/html');
+        const nuevo  = doc.querySelector('.content');
+        const actual = document.querySelector('.content');
+
+        if (nuevo && actual) {
+            actual.replaceWith(nuevo);
+            // Reinicializar eventos sobre los nuevos elementos del DOM
+            initUserFunctions();
+        }
+
     } catch (error) {
         console.error(error);
         showToast({
