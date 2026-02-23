@@ -1,39 +1,267 @@
-.record-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Centra horizontalmente */
-    justify-content: center; /* Centra verticalmente si hay altura */
-    text-align: center;
-}
+/* ------------------------------------------------------------- */
+/* Estilos para las cards con las estadisticas */
+/* ------------------------------------------------------------- */
 
-.record-table {
-    width: auto;
-    min-width: 70%;
-    margin: 0 auto;
-}
-
-.record-th,
-.record-td {
-  text-align: center;
+.contenedor_statistics {
+  margin-bottom: 30px;
 }
 
 .statistics_history {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 70px;
-  border: 1px solid black;
-  justify-content: space-evenly;
+  gap: 0px;
+  justify-content: space-around;
 }
 
 .statistics_card {
   display: block;
-  border: 1px solid green;
-  border-radius: 5px;
-  padding: 50px;
+  width: 15%;
+  border: 1px solid gray;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 .statistics_text {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: normal;
+  color: gray;
+}
+
+.statistics_number {
+  font-weight: bold;
+  font-size: 50px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Estilos para los filtros */
+/* ------------------------------------------------------------------ */
+
+.filtro_padre{
+  margin-bottom: 30px;
+}
+
+.filtro {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid rgb(206, 206, 206);
+  padding-top: 20px;
+}
+
+.filtro_container {
   display: grid;
-  border: 1px solid red;
+  border: 1px solid rgb(177, 177, 177);
+  border-radius: 8px;
+  padding: 10px;
+  background-color: rgb(241, 241, 241);
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.filtro_text {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+
+.filtro_select {
+  border: 1px solid rgb(187, 187, 187);
+  border-radius: 5px;
+  padding: 3px;
+  background-color: white;
+}
+
+/* ------------------------------------------------------------------ */
+/* Estilos para el botón filtrar */
+/* ------------------------------------------------------------------ */
+
+.btn_contendor {
+  justify-content: center;
+}
+
+.btn_filtrar {
+  background-color: #A3333D;
+  border-radius: 15px;
+  padding-inline: 25px;
+  padding-block: 15px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btn_text {
+  color: white;
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ */
+/* Estilos para la tabla */
+/* ------------------------------------------------------------------ */
+
+.contenedor_tabla {
+  display: flex;
+  justify-content: center;
+}
+
+.tabla{
+  border: 1px solid rgb(219, 219, 219);
+  border-radius: 8px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* ================================================================== */
+/* RESPONSIVE */
+/* ================================================================== */
+
+/* ------------------------------------------------------------------ */
+/* Nivel 1 — max-width: 1100px */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 1100px) {
+
+  /* Estadísticas: 2 columnas × 2 filas */
+  .statistics_history {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    width: 100%;
+    justify-items: center;
+  }
+
+  .statistics_card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Filtros (se mantienen como en el primer archivo) */
+  .filtro {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .filtro_container {
+    flex: 0 0 calc(50% - 10px);
+    width: calc(50% - 10px);
+    box-sizing: border-box;
+  }
+
+  .btn_contendor {
+    flex: 0 0 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Tabla: ocupa todo el ancho */
+  .contenedor_tabla {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .tabla {
+    width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Nivel 2 — max-width: 950px */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 950px) {
+
+  /* Estadísticas: 1 columna */
+  .statistics_history {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 10px;
+  }
+
+  .statistics_card {
+    width: 100%;
+    padding: 20px;
+  }
+
+  .statistics_number {
+    font-size: 35px;
+  }
+
+  /* Filtros (como el primer archivo) */
+  .filtro {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .filtro_container {
+    flex: 0 0 calc(50% - 10px);
+    width: calc(50% - 10px);
+    box-sizing: border-box;
+  }
+
+  .btn_contendor {
+    flex: 0 0 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* TABLA (manteniendo cambios del segundo archivo) */
+  .contenedor_tabla {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+  }
+
+  .tabla {
+    min-width: 600px;
+    margin: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Nivel 3 — max-width: 610px */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 610px) {
+
+  .statistics_card {
+    padding: 14px 16px;
+  }
+
+  .statistics_number {
+    font-size: 28px;
+  }
+
+  .statistics_text {
+    font-size: 13px;
+  }
+
+  /* Filtros (como el primer archivo) */
+  .filtro_container {
+    flex: 0 0 100%;
+    width: 100%;
+  }
+
+  .filtro_select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .btn_filtrar {
+    width: 100%;
+  }
+
+  /* TABLA (manteniendo cambios del segundo archivo) */
+  .contenedor_tabla {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+  }
+
+  .tabla {
+    min-width: 600px;
+    margin: 0;
+  }
 }
