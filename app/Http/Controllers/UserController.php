@@ -7,15 +7,26 @@ use App\Models\User;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Helpers\ActivityLogger;
 
 class UserController extends Controller
 {
     /**
+     * Solo el rol administrador puede gestionar usuarios.
+     */
+    private function autorizarAdministrador(): void
+    {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+    }
+
+    /**
      * Vista principal (listado).
      */
     public function index(Request $request)
     {
+        $this->autorizarAdministrador();
+
         $users = User::orderBy('id', 'desc')->get();
 
         // Si es AJAX, solo renderiza la sección content (para loadContent)
@@ -33,6 +44,8 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $this->autorizarAdministrador();
+
         try {
 
             $validated = $request->validate([
@@ -85,6 +98,8 @@ class UserController extends Controller
      */
     public function update(Request $request)
     {
+        $this->autorizarAdministrador();
+
         try {
 
             $validated = $request->validate([
@@ -178,6 +193,8 @@ class UserController extends Controller
      */
     public function destroy($id)
     {
+        $this->autorizarAdministrador();
+
         try {
 
             // No permitir eliminar el usuario autenticado
@@ -186,6 +203,15 @@ class UserController extends Controller
                     'success' => false,
                     'type' => 'error',
                     'message' => 'No puedes eliminar tu propio usuario.',
+                ], 422);
+            }
+
+            // El administrador principal (id=1) no puede eliminarse nunca
+            if ((int) $id === 1) {
+                return response()->json([
+                    'success' => false,
+                    'type' => 'error',
+                    'message' => 'El administrador principal no puede ser eliminado.',
                 ], 422);
             }
 
@@ -202,6 +228,14 @@ class UserController extends Controller
                 'type' => 'success',
                 'message' => 'Usuario eliminado correctamente.',
             ]);
+
+        } catch (ModelNotFoundException $e) {
+
+            return response()->json([
+                'success' => false,
+                'type' => 'error',
+                'message' => 'Usuario no encontrado.',
+            ], 404);
 
         } catch (\Throwable $e) {
 
