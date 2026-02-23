@@ -67,3 +67,14 @@ test('los usuarios pueden cerrar sesión', function () {
 
     $this->assertGuest();
 });
+
+// since registration is disabled for this private system verify public routes are gone
+test('la ruta de registro pública no está disponible', function () {
+    $this->get('/register')->assertStatus(404);
+    $this->post('/register', [
+        'name' => 'foo',
+        'email' => 'foo@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ])->assertStatus(404);
+});

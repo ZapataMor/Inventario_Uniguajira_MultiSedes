@@ -11,7 +11,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // bloquea rutas de registro si accidentalmente quedan expuestas
+        $middleware->prepend(\App\Http\Middleware\BlockRegistration::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

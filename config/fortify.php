@@ -131,7 +131,8 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // registration is disabled for this private system
+        // Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         // Features::updateProfileInformation(),

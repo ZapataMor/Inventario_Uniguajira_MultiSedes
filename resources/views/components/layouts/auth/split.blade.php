@@ -3,36 +3,72 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
-        <div class="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
+    <body class="min-h-screen bg-white antialiased dark">
+        <div class="relative grid h-dvh flex-col items-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
+            
+            <div class="absolute inset-0 z-[-20] bg-cover" style="background-image: url('{{ asset('images/fondo-uniguajira.jpeg') }}');"></div>
+            
+            <!-- Left side -->
             <div class="bg-muted relative hidden h-full flex-col p-10 text-white lg:flex dark:border-e dark:border-neutral-800">
-                <div class="absolute inset-0 bg-neutral-900"></div>
-                <a href="{{ route('home') }}" class="relative z-20 flex items-center text-lg font-medium" wire:navigate>
-                    <span class="flex h-10 w-10 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="me-2 h-7 fill-current text-white" />
-                    </span>
-                    {{ config('app.name', 'Laravel') }}
-                </a>
+                <div class="absolute inset-0 z-[-20] bg-neutral-900/45"></div>
 
+                <!-- Bienvenida y Features -->
+                <div class="relative z-20 my-auto p-3 space-y-4">
+                    <div class="space-y-2">
+                        <h1 class="flex items-center text-4xl font-bold leading-tight">
+                                <x-app-logo-icon />
+                                <span>Bienvenido a 
+                                    <span class="text-[#ad3728] drop-shadow-lg">
+                                        {{ config('app.name', 'Laravel') }}
+                                    </span>
+                                </span>
+                        </h1>
+                        <p class="text-sm text-gray-300 leading-relaxed">
+                            Gestiona el inventario de la Universidad y mantén el control de tus activos.
+                        </p>
+                    </div>
+
+                    <!-- Feature highlights -->
+                    <div class="space-y-4">
+                        <x-feature-box 
+                            title="Registrar Bienes" 
+                            description="Añade nuevos activos al sistema con facilidad" 
+                            icon-type="plus-circle"
+                        />
+                        <x-feature-box 
+                            title="Administrar Inventarios" 
+                            description="Organiza bienes por ubicación y estado" 
+                            icon-type="clipboard-document-check"
+                        />
+                        <x-feature-box 
+                            title="Generar Reportes" 
+                            description="Obtén informes detallados y estadísticas" 
+                            icon-type="chart-bar"
+                        />
+                    </div>
+
+                </div>
+
+                <!-- Cita -->
                 @php
                     [$message, $author] = str(Illuminate\Foundation\Inspiring::quotes()->random())->explode('-');
                 @endphp
-
-                <div class="relative z-20 mt-auto">
-                    <blockquote class="space-y-2">
-                        <flux:heading size="lg">&ldquo;{{ trim($message) }}&rdquo;</flux:heading>
-                        <footer><flux:heading>{{ trim($author) }}</flux:heading></footer>
+                <div class="absolute bottom-6 z-20 mt-auto">
+                    <blockquote class="space-y-1">
+                        <flux:heading size="base">&ldquo;{{ trim($message) }}&rdquo;</flux:heading>
+                        <footer><flux:heading size="sm">{{ trim($author) }}</flux:heading></footer>
                     </blockquote>
                 </div>
             </div>
-            <div class="w-full lg:p-8">
-                <div class="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-                    <a href="{{ route('home') }}" class="z-20 flex flex-col items-center gap-2 font-medium lg:hidden" wire:navigate>
-                        <span class="flex h-9 w-9 items-center justify-center rounded-md">
-                            <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
-                        </span>
 
-                        <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
+            <!-- Right side (Login) -->
+            <div class="h-full flex items-center">
+                <div class="absolute inset-0 z-[-20] bg-neutral-900/35"></div>
+                <div class="bg-neutral-900/70 mx-auto p-3 flex w-full flex-col justify-center space-y-6 sm:w-[400px] rounded-lg">
+                    <a class="z-20 flex flex-col items-center gap-2 font-medium lg:hidden">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-md">
+                            <x-app-logo-icon />
+                        </span>
                     </a>
                     {{ $slot }}
                 </div>

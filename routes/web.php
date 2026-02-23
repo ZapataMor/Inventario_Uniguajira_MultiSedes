@@ -1,5 +1,10 @@
 <?php
 
+// bloquea cualquier acceso público a /register sin depender solo de Fortify
+Route::match(['get','post'], 'register', function () {
+    abort(404);
+})->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     HomeController,
