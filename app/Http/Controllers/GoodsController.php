@@ -46,6 +46,8 @@ class GoodsController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+
         $request->validate([
             'nombre' => 'required|string|max:255|unique:assets,name',
             'tipo'   => 'required|integer|in:1,2',
@@ -60,7 +62,7 @@ class GoodsController extends Controller
 
         $asset = Asset::create([
             'name'  => $request->nombre,
-            'type'  => $request->tipo,
+            'type'  => $request->tipo == 1 ? 'Cantidad' : 'Serial',
             'image' => $path
         ]);
 
@@ -79,6 +81,8 @@ class GoodsController extends Controller
      */
     public function update(Request $request)
     {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+
         $asset = Asset::findOrFail($request->id);
 
         $request->validate([
@@ -132,6 +136,8 @@ class GoodsController extends Controller
      */
     public function destroy(string $id)
     {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+
         $asset = Asset::find($id);
 
         if (!$asset) {
@@ -188,6 +194,8 @@ class GoodsController extends Controller
      */
     public function batchCreate(Request $request)
     {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+
         try {
             $goods = $request->input('goods', []);
 
