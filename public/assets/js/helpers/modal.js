@@ -26,11 +26,20 @@ const modales = new Map();
  * @param {string} selectorModal - Selector CSS del modal a mostrar
  */
 function mostrarModal(selectorModal) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f957b755-7501-40b7-8431-7950194dd570',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e8cd93'},body:JSON.stringify({sessionId:'e8cd93',runId:'pre-fix',hypothesisId:'H1_H2_H3',location:'public/assets/js/helpers/modal.js:mostrarModal:entry',message:'mostrarModal() llamado',data:{selectorModal},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
     const modal = document.querySelector(selectorModal);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f957b755-7501-40b7-8431-7950194dd570',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e8cd93'},body:JSON.stringify({sessionId:'e8cd93',runId:'pre-fix',hypothesisId:'H1',location:'public/assets/js/helpers/modal.js:mostrarModal:lookup',message:'Resultado querySelector del modal',data:{selectorModal,found:!!modal,foundId:modal?.id,foundClass:modal?.className},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
     if (!modal) return;
 
     // Mostramos el modal
     modal.classList.add("active");
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/f957b755-7501-40b7-8431-7950194dd570',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e8cd93'},body:JSON.stringify({sessionId:'e8cd93',runId:'pre-fix',hypothesisId:'H3',location:'public/assets/js/helpers/modal.js:mostrarModal:active',message:'Clase active agregada al modal',data:{selectorModal,hasActive:modal.classList.contains('active')},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
 
     // Deshabilitar la deselección mientras el modal está abierto
     // Esto maneja la funcionalidad en selection.js

@@ -14,7 +14,7 @@
     
     
     {{-- Filtros para el historial --}}
-    {{-- @include('records.filters') --}}
+    @include('records.filters')
 
     {{-- Tabla de registros --}}
 
