@@ -109,4 +109,15 @@ class ActivityLog extends Model
             default         => 'badge-secondary',
         };
     }
+
+    public function getModelLabelAttribute()
+    {
+        return match ($this->model) {
+            'AssetInventory' => 'Inventario',
+            'AssetRemoved'   => 'Activos dados de baja',
+            'User'           => 'Usuarios',
+            'Role'           => 'Roles',
+            default          => $this->model,
+        };
+    }
 }

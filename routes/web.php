@@ -72,7 +72,7 @@ Route::prefix('api')->middleware('auth')->group(function () {
     Route::prefix('users')->group(function () {
         Route::post('store', [UserController::class, 'store'])->name('users.store');
         Route::post('update', [UserController::class, 'update'])->name('users.update');
-        Route::delete('delete/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::delete('delete/{id}', [UserController::class, 'destroy']);
     });
 
     // Rutas API para historial

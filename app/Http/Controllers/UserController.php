@@ -193,57 +193,37 @@ class UserController extends Controller
      */
     public function destroy($id)
     {
-        $this->autorizarAdministrador();
+        abort_if(auth()->user()->role !== 'administrador', 403);
 
-        try {
+        $user = User::find($id);
 
-            // No permitir eliminar el usuario autenticado
-            if ((int) auth()->id() === (int) $id) {
-                return response()->json([
-                    'success' => false,
-                    'type' => 'error',
-                    'message' => 'No puedes eliminar tu propio usuario.',
-                ], 422);
-            }
-
-            // El administrador principal (id=1) no puede eliminarse nunca
-            if ((int) $id === 1) {
-                return response()->json([
-                    'success' => false,
-                    'type' => 'error',
-                    'message' => 'El administrador principal no puede ser eliminado.',
-                ], 422);
-            }
-
-            $user = User::findOrFail($id);
-            $userName = $user->name; // Guardar antes de eliminar
-
-            $user->delete();
-
-            // ✅ Registrar actividad
-            ActivityLogger::deleted(User::class, $id, $userName);
-
-            return response()->json([
-                'success' => true,
-                'type' => 'success',
-                'message' => 'Usuario eliminado correctamente.',
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'type' => 'error',
-                'message' => 'Usuario no encontrado.',
+                'message' => 'Usuario no encontrado.'
             ], 404);
+        }
 
-        } catch (\Throwable $e) {
-
+        if ($user->name === 'Administrador') {
             return response()->json([
                 'success' => false,
-                'type' => 'error',
-                'message' => 'Ocurrió un error al eliminar el usuario.',
-            ], 500);
+                'message' => 'El usuario administrador no puede ser eliminado.'
+            ], 403);
         }
+
+        if ($user->id === auth()->id()) {
+            return response()->json([
+                'success'=> false,
+                'message'=> 'No puedes eliminar tu propio usuario'
+            ], 403);
+        }
+
+
+        $user->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Usuario eliminado correctamente.'
+        ]);
     }
 }

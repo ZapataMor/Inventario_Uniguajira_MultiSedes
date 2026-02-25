@@ -14,7 +14,7 @@
     
     
     {{-- Filtros para el historial --}}
-    {{-- @include('records.filters') --}}
+    @include('records.filters')
 
     {{-- Tabla de registros --}}
 
@@ -58,7 +58,7 @@
                         <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide min-w-0 w-full">
                             Descripción
                         </th>
-                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-32">
+                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-35">
                             Módulo
                         </th>
                         <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-36">
@@ -123,8 +123,8 @@
                             {{-- Módulo --}}
                             <td class="px-4 py-3">
                                 @if($log->model)
-                                    <span class="inline-block px-2.5 py-0.5 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                                        {{ $log->model }}
+                                    <span class="inline-block px-2.5 py-0.5 whitespace-nowrap rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                        {{ $log->model_label }}
                                     </span>
                                 @else
                                     <span class="text-gray-300">—</span>

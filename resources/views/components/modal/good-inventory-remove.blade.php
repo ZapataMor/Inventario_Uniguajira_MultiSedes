@@ -43,38 +43,6 @@
     @media (max-width: 768px) {
         .modal.flyout-modal > .flyout-panel { width: 92% !important; min-width: 0 !important; }
     }
-
-    /* ── Inputs, selects y textareas ──────────────────────────────── */
-    .flyout-panel input,
-    .flyout-panel select,
-    .flyout-panel textarea {
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        background-color: #FDFDFD;
-        font-size: 1rem;
-        color: #333;
-        box-sizing: border-box;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .flyout-panel input:focus,
-    .flyout-panel select:focus,
-    .flyout-panel textarea:focus {
-        border-color: #d7d7d7;
-        box-shadow: 0 0 0 2px rgba(47, 44, 45, 0.1);
-        outline: none;
-    }
-    .flyout-panel input:disabled,
-    .flyout-panel textarea:disabled {
-        background-color: #f5f5f5;
-        color: #666;
-        cursor: not-allowed;
-    }
-
-    /* ── Espaciado entre grids consecutivos dentro de una sección ─── */
-    .flyout-panel .form-fields-grid + .form-fields-grid {
-        margin-top: 15px;
-    }
 </style>
 @endonce
 

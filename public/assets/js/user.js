@@ -137,29 +137,16 @@ function mostrarConfirmacion(userId) {
 // ==========================
 // ELIMINAR USUARIO
 // ==========================
-function eliminarUser(element) {
-
-    const id = element.getAttribute('data-id');
-
+function eliminarUsuario(id) {
     eliminarRegistro({
-        url: `/api/users/delete/${id}`,
-        showConfirm: false,
+        url: `api/users/delete/${id}`,
+        confirmTitle: 'Eliminar usuario',
+        confirmText: '¿Deseas eliminar este usuario definitivamente?',
         onSuccess: (response) => {
-
-            // ✅ Cerrar modal SIEMPRE
-            ocultarModal('#modalConfirmarEliminar');
-
-            // 🔥 Por si queda pegado el backdrop
-            setTimeout(() => {
-                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                document.body.classList.remove('modal-open');
-                document.body.style.removeProperty('padding-right');
-            }, 150);
-
+            loadContent('/users', {
+                onSuccess: () => initUserFunctions()
+            });
             showToast(response);
-
-            // ✅ Actualizar vista sin recargar
-            refreshUsers();
         }
     });
 }
