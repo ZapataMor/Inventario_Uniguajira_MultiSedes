@@ -15,7 +15,9 @@ class ReportFolderController extends Controller
         $folders = ReportFolder::withCount('reports')->get();
 
         if ($request->ajax()) {
-            return view('reports.folders.index', compact('folders'))->render();
+            /** @var \Illuminate\View\View $view */
+            $view = view('reports.folders.index', compact('folders'));
+            return $view->renderSections()['content'];
         }
 
         return view('reports.folders.index', compact('folders'));
