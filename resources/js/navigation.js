@@ -15,6 +15,9 @@ window.loadContent = async (url, options = {}) => {
         if (!container) throw new Error(`No se encontró el contenedor: ${containerSelector}`);
 
         container.classList.add("loading");
+        // show spinner
+        const loader = document.getElementById('loader');
+        if (loader) loader.style.display = 'block';
 
         const response = await fetch(url, {
             headers: {
@@ -30,6 +33,7 @@ window.loadContent = async (url, options = {}) => {
 
         if (onSuccess) onSuccess();
         container.classList.remove("loading");
+        if (loader) loader.style.display = 'none';
 
         if (updateHistory) {
             window.history.pushState({ url }, "", url);
@@ -37,6 +41,7 @@ window.loadContent = async (url, options = {}) => {
     } catch (error) {
         console.error(error);
         alert("No se pudo cargar la página");
+        if (loader) loader.style.display = 'none';
     }
 };
 

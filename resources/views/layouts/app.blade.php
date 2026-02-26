@@ -22,6 +22,8 @@
 
     <main id="main">
         <div id="toastContainer" class="toast-container"></div>
+        {{-- loader shown while AJAX content loads --}}
+        <div id="loader" class="loader"></div>
         <div id="main-content">
             @yield('content')
         </div>

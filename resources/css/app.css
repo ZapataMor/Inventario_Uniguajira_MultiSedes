@@ -74,3 +74,32 @@ select:focus[data-flux-control] {
 #main-content.loading {
     opacity: 0.3;
 }
+
+/* loader spinner centered in the page */
+/* fixed so it stays in viewport center even when scrolling */
+.loader {
+  width: 35px;
+  aspect-ratio: 1;
+  --_g: no-repeat radial-gradient(farthest-side,#5a5959 94%,#38373700);
+  background:
+    var(--_g) 0    0,
+    var(--_g) 100% 0,
+    var(--_g) 100% 100%,
+    var(--_g) 0    100%;
+  background-size: 40% 40%;
+  animation: l38 .5s infinite;
+
+  /* positioning */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+
+  display: none;
+}
+
+@keyframes l38 {
+  100% {background-position: 100% 0,100% 100%,0 100%,0 0}
+}
+
