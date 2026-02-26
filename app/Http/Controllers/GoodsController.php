@@ -21,8 +21,9 @@ class GoodsController extends Controller
 
         if ($request->ajax()) {
             // si es una carga AJAX, solo renderiza el contenido interno
-            return view('goods.index', compact('dataGoods'))
-                ->renderSections()['content'];
+            /** @var \Illuminate\View\View $view */
+            $view = view('goods.index', compact('dataGoods'));
+            return $view->renderSections()['content'];
         }
 
         // si es carga normal (primera vez), usa el layout completo
