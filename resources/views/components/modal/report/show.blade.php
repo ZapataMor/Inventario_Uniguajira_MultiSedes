@@ -31,10 +31,10 @@
                 </div>
 
                 <div class="report-folder-right">
-                    <a href="{{ route('reports.download', $report) }}"
-                       class="btn-open">
+                    <button class="btn-open"
+                        onclick='downloadReport(event, {{ $report->id }}, @json($report->name))'>
                         <i class="fas fa-download"></i> Descargar
-                    </a>
+                    </button>
                 </div>
 
             </div>

@@ -1,58 +1,59 @@
 window.loadContent = async (url, options = {}) => {
-
-    // hacer que http://127.0.0.1:8000/group/1 sea /group/1
     url = url.replace(window.location.origin, '');
     console.log(`Cargando contenido desde: ${url}`);
 
     const {
-        containerSelector = "#main-content",
+        containerSelector = '#main-content',
         updateHistory = true,
         onSuccess = null
     } = options;
 
     try {
         const container = document.querySelector(containerSelector);
-        if (!container) throw new Error(`No se encontró el contenedor: ${containerSelector}`);
+        if (!container) throw new Error(`No se encontro el contenedor: ${containerSelector}`);
 
-        container.classList.add("loading");
-        // show spinner
+        container.classList.add('loading');
         const loader = document.getElementById('loader');
         if (loader) loader.style.display = 'block';
 
         const response = await fetch(url, {
             headers: {
-                "X-Requested-With": "XMLHttpRequest"
+                'X-Requested-With': 'XMLHttpRequest'
             }
         });
 
-        if (!response.ok) throw new Error("Error al cargar la vista");
+        if (!response.ok) throw new Error('Error al cargar la vista');
         const html = await response.text();
 
         container.innerHTML = html;
-        // initializeScripts();
 
         if (onSuccess) onSuccess();
-        container.classList.remove("loading");
+        container.classList.remove('loading');
         if (loader) loader.style.display = 'none';
 
         if (updateHistory) {
-            window.history.pushState({ url }, "", url);
+            window.history.pushState({ url }, '', url);
         }
     } catch (error) {
         console.error(error);
-        alert("No se pudo cargar la página");
+        alert('No se pudo cargar la pagina');
+        const loader = document.getElementById('loader');
         if (loader) loader.style.display = 'none';
     }
 };
 
 window.initializeScripts = (url) => {
-    const path = url.split('/')[3];
+    const path = new URL(url, window.location.origin)
+        .pathname
+        .split('/')
+        .filter(Boolean)[0];
 
     const scriptMap = {
-        'home': 'initFormsTask',
-        'goods': 'initFormsBien',
-        'groups': 'initGroupFunctions',
-        'records': 'initHistorialFunctions' // TODO: Crear función de inicialización para historial y agregar aquí
+        home: 'initFormsTask',
+        goods: 'initFormsBien',
+        groups: 'initGroupFunctions',
+        records: 'initHistorialFunctions',
+        reports: 'initReportsModule'
     };
 
     const scriptName = scriptMap[path];
@@ -60,43 +61,32 @@ window.initializeScripts = (url) => {
         window[scriptName]();
     }
 
-    console.log("Scripts inicializados", scriptName);
+    console.log('Scripts inicializados', scriptName);
 };
 
-document.addEventListener("DOMContentLoaded", () => {
-    const links = document.querySelectorAll("a[data-nav]");
+document.addEventListener('DOMContentLoaded', () => {
+    const links = document.querySelectorAll('a[data-nav]');
 
     links.forEach(link => {
-        link.addEventListener("click", (e) => {
+        link.addEventListener('click', (e) => {
             e.preventDefault();
-            const url = link.getAttribute("href");
+            const url = link.getAttribute('href');
 
-            // Carga el contenido al hacer clic en un enlace
             loadContent(url, { onSuccess: () => initializeScripts(url) });
-
-            // Actualiza la URL sin recargar
-            window.history.pushState({ url }, "", url);
+            window.history.pushState({ url }, '', url);
         });
     });
 
-    // Soporte para botones "Atrás" y "Adelante"
-    window.addEventListener("popstate", (e) => {
+    window.addEventListener('popstate', (e) => {
         if (e.state?.url) {
-            // Carga el contenido al navegar con los botones
             loadContent(e.state.url);
 
-            // Obtener la parte principal del path actual (por ejemplo, "goods" de "/goods/openmodal")
             const path = window.location.pathname.split('/')[1];
-
-            // Quitar selección previa
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('selected'));
 
-            // Marcar la opción actual
-            const current = document.getElementById(path==="inventory" ? "inventories": path);
-            current.classList.add('selected');
+            const current = document.getElementById(path === 'inventory' ? 'inventories' : path);
+            if (current) current.classList.add('selected');
         }
     });
-
-    // Inicializa los scripts al cargar la página
-    // initializeScripts();
 });
+

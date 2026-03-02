@@ -96,6 +96,7 @@ Route::get('api/goods/download-template', [GoodsController::class, 'downloadTemp
 Route::get('/groups', [GroupController::class, 'index'])->name('inventory.groups');
 
 Route::prefix('api/groups')->group(function () {
+    Route::get('getAll', [GroupController::class, 'getAll']);
     Route::post('create', [GroupController::class, 'store'])->name('groups.create');
     Route::post('rename', [GroupController::class, 'update'])->name('groups.rename');
     Route::delete('delete/{id}', [GroupController::class, 'destroy'])->name('groups.delete');
@@ -110,6 +111,7 @@ Route::prefix('api/groups')->group(function () {
 Route::get('/group/{groupId}', [InventoryController::class, 'index'])->name('inventory.inventories');
 
 Route::prefix('api/inventories')->group(function () {
+    Route::get('getByGroupId/{groupId}', [InventoryController::class, 'getByGroupId']);
     Route::post('create', [InventoryController::class, 'create'])->name('inventories.create');
     Route::post('rename', [InventoryController::class, 'rename'])->name('inventories.rename');
     Route::post('updateResponsable', [InventoryController::class, 'updateResponsable'])->name('inventories.updateResponsable');
@@ -168,6 +170,11 @@ Route::prefix('api/removed')->group(function () {
  */
 
 Route::get('reports', [ReportFolderController::class, 'index'])->name('reports.index');
+Route::prefix('api/folders')->group(function () {
+    Route::post('create', [ReportFolderController::class, 'store']);
+    Route::post('rename', [ReportFolderController::class, 'rename']);
+    Route::delete('delete/{id}', [ReportFolderController::class, 'destroy']);
+});
 
 
 /**
@@ -176,6 +183,13 @@ Route::get('reports', [ReportFolderController::class, 'index'])->name('reports.i
  */
 
 Route::get('reports/folder/{folderId}', [ReportFolderController::class, 'show'])->name('reports.folder');
+Route::prefix('api/reports')->group(function () {
+    Route::get('getAll/{folderId}', [ReportController::class, 'getAll']);
+    Route::post('create', [ReportController::class, 'store']);
+    Route::post('rename', [ReportController::class, 'rename']);
+    Route::delete('delete/{id}', [ReportController::class, 'destroy']);
+    Route::post('download', [ReportController::class, 'download']);
+});
 
 
 /**
@@ -211,4 +225,3 @@ Route::prefix('api/records')->group(function () {
  */
 
 Route::get('profile', function () { return 'Profile route'; })->name('profile');
-
