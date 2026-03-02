@@ -169,6 +169,15 @@ function initFormsReporte() {
             refreshReportFolder();
         }
     });
+
+    bindAjaxFormOnce('#formReporteDeDadosDeBaja', {
+        resetOnSuccess: true,
+        closeModalOnSuccess: true,
+        onSuccess: (response) => {
+            showToast(response);
+            refreshReportFolder();
+        }
+    });
 }
 
 function initReportsFunctions() {
@@ -285,4 +294,3 @@ function btnEliminarReporte() {
         }
     });
 }
-

@@ -26,6 +26,21 @@
         .no-items { text-align: center; padding: 20px; color: #777; font-style: italic; }
         .text-center { text-align: center; }
         .logo { text-align: center; margin-bottom: 10px; }
+        .removed-section { margin-top: 40px; }
+        .removed-title {
+            background-color: #d9534f;
+            color: white;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-radius: 4px;
+        }
+        .sub-title {
+            margin: 15px 0 10px 0;
+            color: #333;
+            font-size: 13px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -104,9 +119,82 @@
         </div>
     @endforeach
 
+    <div class="removed-section">
+        <h2 class="removed-title">BIENES DADOS DE BAJA</h2>
+
+        <div class="sub-title">Tipo Cantidad</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Bien</th>
+                    <th>Cantidad</th>
+                    <th>Motivo</th>
+                    <th>Grupo</th>
+                    <th>Inventario</th>
+                    <th>Usuario</th>
+                    <th>Fecha de baja</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($removedByQuantity as $item)
+                    <tr>
+                        <td>{{ $item->bien }}</td>
+                        <td class="text-center">{{ $item->cantidad }}</td>
+                        <td>{{ $item->motivo }}</td>
+                        <td>{{ $item->grupo }}</td>
+                        <td>{{ $item->inventario }}</td>
+                        <td>{{ $item->usuario ?? 'N/A' }}</td>
+                        <td>{{ \Carbon\Carbon::parse($item->fecha_baja)->format('d/m/Y H:i') }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center">No hay bienes dados de baja de tipo Cantidad.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <div class="sub-title">Tipo Serial</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Bien</th>
+                    <th>Serial</th>
+                    <th>Marca</th>
+                    <th>Modelo</th>
+                    <th>Estado</th>
+                    <th>Motivo</th>
+                    <th>Grupo</th>
+                    <th>Inventario</th>
+                    <th>Usuario</th>
+                    <th>Fecha de baja</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($removedBySerial as $item)
+                    <tr>
+                        <td>{{ $item->bien }}</td>
+                        <td>{{ $item->serial }}</td>
+                        <td>{{ $item->marca }}</td>
+                        <td>{{ $item->modelo }}</td>
+                        <td>{{ $item->estado }}</td>
+                        <td>{{ $item->motivo }}</td>
+                        <td>{{ $item->grupo }}</td>
+                        <td>{{ $item->inventario }}</td>
+                        <td>{{ $item->usuario ?? 'N/A' }}</td>
+                        <td>{{ \Carbon\Carbon::parse($item->fecha_baja)->format('d/m/Y H:i') }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="10" class="text-center">No hay bienes dados de baja de tipo Serial.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
     <div class="footer">
         <p>Este documento es un reporte generado automaticamente por el sistema de Inventario Uniguajira sede Maicao.</p>
     </div>
 </body>
 </html>
-

@@ -50,7 +50,7 @@ class ReportController extends Controller
         $validated = $request->validate([
             'folder_id' => 'required|exists:report_folders,id',
             'nombreReporte' => 'required|string|max:255',
-            'tipoReporte' => 'required|in:inventario,grupo,allInventories,goods,serial',
+            'tipoReporte' => 'required|in:inventario,grupo,allInventories,goods,serial,removedGoods',
             'grupo_id' => 'nullable|required_if:tipoReporte,inventario,grupo|integer|exists:groups,id',
             'inventario_id' => 'nullable|required_if:tipoReporte,inventario|integer|exists:inventories,id',
         ]);
@@ -239,6 +239,12 @@ class ReportController extends Controller
                 'paper' => 'A4',
                 'orientation' => 'portrait',
             ],
+            'removedGoods' => [
+                'view' => 'reports.pdf.reporte_de_dados_de_baja',
+                'data' => array_merge($common, $this->removedGoodsData()),
+                'paper' => 'A4',
+                'orientation' => 'portrait',
+            ],
             default => throw ValidationException::withMessages([
                 'tipoReporte' => 'Tipo de reporte no soportado.',
             ]),
@@ -314,7 +320,7 @@ class ReportController extends Controller
     }
 
     /**
-     * @return array{groups: Collection<int, object>, totalGroups: int, totalInventories: int, totalGoods: int}
+     * @return array{groups: Collection<int, object>, totalGroups: int, totalInventories: int, totalGoods: int, removedByQuantity: Collection<int, object>, removedBySerial: Collection<int, object>}
      */
     private function allInventoriesData(): array
     {
@@ -349,7 +355,18 @@ class ReportController extends Controller
             return $group->inventories->sum(fn (object $inventory): int => $inventory->goods->count());
         });
 
-        return compact('groups', 'totalGroups', 'totalInventories', 'totalGoods');
+        $removed = $this->removedGoodsData();
+        $removedByQuantity = $removed['removedByQuantity'];
+        $removedBySerial = $removed['removedBySerial'];
+
+        return compact(
+            'groups',
+            'totalGroups',
+            'totalInventories',
+            'totalGoods',
+            'removedByQuantity',
+            'removedBySerial'
+        );
     }
 
     /**
@@ -395,6 +412,55 @@ class ReportController extends Controller
         return compact('groupedGoods');
     }
 
+    /**
+     * @return array{removedByQuantity: Collection<int, object>, removedBySerial: Collection<int, object>, totalRemoved: int, totalRemovedUnits: int}
+     */
+    private function removedGoodsData(): array
+    {
+        $removedByQuantity = DB::table('assets_removed as ar')
+            ->join('inventories as i', 'i.id', '=', 'ar.inventory_id')
+            ->join('groups as g', 'g.id', '=', 'i.group_id')
+            ->leftJoin('users as u', 'u.id', '=', 'ar.user_id')
+            ->select(
+                'ar.name as bien',
+                'ar.type as tipo',
+                'ar.quantity as cantidad',
+                'ar.reason as motivo',
+                'g.name as grupo',
+                'i.name as inventario',
+                'u.name as usuario',
+                'ar.created_at as fecha_baja'
+            )
+            ->orderByDesc('ar.created_at')
+            ->get();
+
+        $removedBySerial = DB::table('asset_equipments_removed as aer')
+            ->join('inventories as i', 'i.id', '=', 'aer.inventory_id')
+            ->join('groups as g', 'g.id', '=', 'i.group_id')
+            ->leftJoin('users as u', 'u.id', '=', 'aer.user_id')
+            ->select(
+                'aer.name as bien',
+                DB::raw("'Serial' as tipo"),
+                DB::raw('1 as cantidad'),
+                'aer.serial',
+                'aer.brand as marca',
+                'aer.model as modelo',
+                'aer.status as estado',
+                'aer.reason as motivo',
+                'g.name as grupo',
+                'i.name as inventario',
+                'u.name as usuario',
+                'aer.created_at as fecha_baja'
+            )
+            ->orderByDesc('aer.created_at')
+            ->get();
+
+        $totalRemoved = $removedByQuantity->count() + $removedBySerial->count();
+        $totalRemovedUnits = (int) $removedByQuantity->sum('cantidad') + $removedBySerial->count();
+
+        return compact('removedByQuantity', 'removedBySerial', 'totalRemoved', 'totalRemovedUnits');
+    }
+
     private function logoDataUri(): ?string
     {
         $path = public_path('assets/images/logoUniguajira.png');
@@ -435,4 +501,3 @@ class ReportController extends Controller
         return $name !== '' ? $name : 'reporte_' . now()->format('Y-m-d_H-i-s');
     }
 }
-

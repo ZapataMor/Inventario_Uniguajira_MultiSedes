@@ -96,6 +96,9 @@
                     <li onclick="mostrarModalReporte('#modalCrearReporteEquipos')">
                         <i class="fas fa-arrow-right"></i> reporte de equipos
                     </li>
+                    <li onclick="mostrarModalReporte('#modalCrearReporteDadosDeBaja')">
+                        <i class="fas fa-arrow-right"></i> reporte de dados de baja
+                    </li>
                 </ul>
             </div>
         </div>
@@ -251,6 +254,28 @@
         </div>
     </div>
 
+    <div id="modalCrearReporteDadosDeBaja" class="modal">
+        <div class="modal-content modal-content-medium">
+            <span class="close" onclick="ocultarModal('#modalCrearReporteDadosDeBaja')">&times;</span>
+            <h2>Reporte de dados de baja</h2>
+
+            <form id="formReporteDeDadosDeBaja" action="{{ url('/api/reports/create') }}" method="POST" autocomplete="off">
+                @csrf
+                <input type="hidden" id="folderIdDadosDeBaja" name="folder_id" />
+                <input type="hidden" name="tipoReporte" value="removedGoods" />
+
+                <div>
+                    <label for="nombreReporteDeDadosDeBaja">Nombre del reporte:</label>
+                    <input type="text" id="nombreReporteDeDadosDeBaja" name="nombreReporte" required />
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn submit-btn">Generar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="modalRenombrarReporte" class="modal">
         <div class="modal-content modal-content-medium">
             <span class="close" onclick="ocultarModal('#modalRenombrarReporte')">&times;</span>
@@ -283,4 +308,3 @@
     @endonce
 </div>
 @endsection
-
