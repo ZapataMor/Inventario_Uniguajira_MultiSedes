@@ -54,6 +54,11 @@ function btnEliminarCarpeta() {
 }
 
 function abrirCarpeta(idFolder, scrollUpRequired = true) {
+    // Evita inconsistencia visual: al abrir una carpeta se limpia la seleccion activa.
+    if (typeof deselectItem === 'function') {
+        deselectItem();
+    }
+
     currentFolderId = idFolder;
 
     const divFolders = document.getElementById('folders');
