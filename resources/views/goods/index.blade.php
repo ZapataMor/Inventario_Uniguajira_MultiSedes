@@ -75,8 +75,8 @@
 
     {{-- MODALES --}}
     @if (Auth::user()->role === 'administrador')
-        <x-modal.good mode="create" />
-        <x-modal.good mode="edit" />
+        <x-modal.goods.good mode="create" />
+        <x-modal.goods.good mode="edit" />
     @endif
 
     @once

@@ -322,7 +322,7 @@ class GoodsController extends Controller
     {
         if ($request->ajax()) {
             // si es una carga AJAX, solo renderiza el contenido interno
-            return view('goods.excel-upload')
+            return view('components.modal.goods.excel-upload')
                 ->renderSections()['content'];
         }
 

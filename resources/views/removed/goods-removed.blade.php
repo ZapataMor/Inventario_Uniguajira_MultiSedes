@@ -103,7 +103,7 @@
         <h2>Filtrar Bienes Dados de Baja</h2>
 
         <div class="form-container">
-            @include('removed.filter-removed')
+            @include('components.modal.removed.filter-removed')
         </div>
     </div>
 </div>

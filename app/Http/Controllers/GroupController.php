@@ -9,6 +9,24 @@ use App\Helpers\ActivityLogger;
 class GroupController extends Controller
 {
     /**
+     * GET /api/groups/getAll
+     * Devuelve grupos para selects de reportes.
+     */
+    public function getAll()
+    {
+        $groups = Group::query()
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get()
+            ->map(static fn (Group $group): array => [
+                'id' => $group->id,
+                'nombre' => $group->name,
+            ]);
+
+        return response()->json($groups);
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)

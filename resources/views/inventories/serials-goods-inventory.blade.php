@@ -132,8 +132,8 @@
     @endif
 
     {{-- MODALES --}}
-    <x-modal.good-inventory-edit-serial />
-    <x-modal.good-inventory-remove-serial />
+    <x-modal.inventory.good-inventory-edit-serial />
+    <x-modal.inventory.good-inventory-remove-serial />
 
     @once
         <script>

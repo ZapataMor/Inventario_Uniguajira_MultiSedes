@@ -94,7 +94,7 @@
     @endif
 </div>
 
-<x-modal.task mode="create" />
-<x-modal.task mode="edit" />
+<x-modal.tasks.task mode="create" />
+<x-modal.tasks.task mode="edit" />
 
 @endsection

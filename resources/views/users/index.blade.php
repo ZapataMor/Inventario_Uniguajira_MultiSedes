@@ -158,8 +158,8 @@
     </div>
 
     {{-- MODALES --}}
-    @include('users.modal-crear')
-    @include('users.modal-editar')
+    @include('components.modal.users.modal-crear')
+    @include('components.modal.users.modal-editar')
 
 
 

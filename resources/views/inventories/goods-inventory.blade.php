@@ -167,10 +167,10 @@
     @endif
 
     {{-- MODALES: responsable (separate component) --}}
-    <x-modal.good-inventory-create />
-    <x-modal.good-inventory-edit-quantity />
-    <x-modal.good-inventory-remove />
-    <x-modal.inventory-responsible />
+    <x-modal.inventory.good-inventory-create />
+    <x-modal.inventory.good-inventory-edit-quantity />
+    <x-modal.inventory.good-inventory-remove />
+    <x-modal.inventory.inventory-responsible />
 
     @once
         <script>

@@ -10,6 +10,25 @@ use App\Helpers\ActivityLogger;
 
 class InventoryController extends Controller
 {
+    /**
+     * GET /api/inventories/getByGroupId/{groupId}
+     * Devuelve inventarios para selects de reportes.
+     */
+    public function getByGroupId(int $groupId)
+    {
+        $inventories = Inventory::query()
+            ->where('group_id', $groupId)
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get()
+            ->map(static fn (Inventory $inventory): array => [
+                'id' => $inventory->id,
+                'nombre' => $inventory->name,
+            ]);
+
+        return response()->json($inventories);
+    }
+
 
     // ------------------------------
     // 2. Inventarios de un grupo

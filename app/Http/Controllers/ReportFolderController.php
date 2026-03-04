@@ -7,6 +7,11 @@ use App\Models\ReportFolder;
 
 class ReportFolderController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
     /**
      * Vista principal (carpetas)
      */
@@ -35,6 +40,7 @@ class ReportFolderController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => 'Carpeta creada exitosamente.',
             'folder' => $folder
         ]);
     }
@@ -49,7 +55,10 @@ class ReportFolderController extends Controller
         ReportFolder::findOrFail($request->folder_id)
             ->update(['name' => $request->nombre]);
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Carpeta renombrada exitosamente.',
+        ]);
     }
 
     public function destroy(int $id)
@@ -65,7 +74,10 @@ class ReportFolderController extends Controller
 
         $folder->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Carpeta eliminada exitosamente.',
+        ]);
     }
 
     /**
@@ -73,10 +85,10 @@ class ReportFolderController extends Controller
      */
     public function show(int $folderId)
     {
-        $folder = ReportFolder::with('reports')->findOrFail($folderId);
+        $folder = ReportFolder::findOrFail($folderId);
+        $reports = $folder->reports()->orderByDesc('created_at')->get();
 
-        return view('reports.folders.show', compact('folder'));
+        return view('reports.folders.show', compact('folder', 'reports'));
     }
 
 }
-

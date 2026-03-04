@@ -14,12 +14,12 @@ class GroupSeeder extends Seeder
     public function run(): void
     {
         $groups = [
-            ['name' => 'Block A'],
-            ['name' => 'Block B'],
-            ['name' => 'Block C'],
-            ['name' => 'Block D'],
-            ['name' => 'Rooms'],
-            ['name' => 'Administrative Block'],
+            ['name' => 'Bloque A'],
+            ['name' => 'Bloque B'],
+            ['name' => 'Bloque C'],
+            ['name' => 'Bloque D'],
+            ['name' => 'Salas'],
+            ['name' => 'Bloque Administrativo'],
         ];
 
         DB::table('groups')->insert($groups);

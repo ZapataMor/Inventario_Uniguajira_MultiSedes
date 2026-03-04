@@ -135,7 +135,7 @@ class RemovedController extends Controller
             abort(404, 'Registro de baja no encontrado');
         }
 
-        return view('removed.show', compact('removedAsset'));
+        return view('components.modal.removed.show', compact('removedAsset'));
     }
 
     /**
