@@ -39,12 +39,18 @@ RUN npm ci --silent && npm run build
 # Etapa 2: Producción (PHP-FPM + Nginx - Alpine)
 FROM php:8.3-fpm-alpine AS production
 
-# Instalar extensiones necesarias en producción
-RUN apk add --no-cache libzip-dev \
-    && docker-php-ext-install pdo pdo_mysql zip
-
-# Instalar Nginx y utilidades
-RUN apk add --no-cache nginx bash
+# Instalar Nginx, utilidades y extensiones necesarias en produccion
+RUN apk add --no-cache \
+    nginx \
+    bash \
+    libzip-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    oniguruma-dev \
+    libxml2-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_mysql mbstring gd bcmath opcache zip dom xml
 
 # Crear carpetas necesarias y limpiar configuraciones duplicadas
 RUN mkdir -p /run/nginx /var/www/html/storage /var/www/html/storage/framework/{sessions,views,cache} /var/www/html/bootstrap/cache \
