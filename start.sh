@@ -17,6 +17,7 @@ php artisan cache:clear || true
 # Regenerar symlink de storage si no existe
 if [ ! -L "public/storage" ]; then
 	php artisan storage:link --relative || true
+	ln -s ../../seeders storage/app/public/seeders
 fi
 
 # Iniciar PHP-FPM y Nginx

@@ -96,6 +96,7 @@ class ReportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error interno al generar el reporte.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
