@@ -112,7 +112,7 @@
                     </div>
                     <div>
                         <label for="editCondicionBien" class="form-label">Condición técnica:</label>
-                        <input type="text" name="condicion_tecnica" id="editCondicionBien" class="form-input" />
+                        <input type="text" name="condiciones_tecnicas" id="editCondicionBien" class="form-input" />
                     </div>
                     <div>
                         <label for="editFechaIngresoBien" class="form-label">Fecha de ingreso:</label>

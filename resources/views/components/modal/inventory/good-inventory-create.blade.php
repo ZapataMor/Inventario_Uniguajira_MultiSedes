@@ -87,7 +87,7 @@
 
                         <div>
                             <label for="condicionBien" class="form-label">Condición técnica:</label>
-                            <input type="text" name="condicion_tecnica" id="condicionBien" class="form-input" />
+                            <input type="text" name="condiciones_tecnicas" id="condicionBien" class="form-input" />
                         </div>
 
                         <div>

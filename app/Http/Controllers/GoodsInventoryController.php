@@ -124,8 +124,13 @@ class GoodsInventoryController extends Controller
             'estado'               => 'nullable|string|max:100',
             'color'                => 'nullable|string|max:100',
             'condiciones_tecnicas' => 'nullable|string|max:500',
+            'condicion_tecnica'    => 'nullable|string|max:500',
             'fecha_ingreso'        => 'nullable|date',
         ]);
+
+        $technicalConditions = $validated['condiciones_tecnicas']
+            ?? $validated['condicion_tecnica']
+            ?? '';
 
         $details = [
             'description'          => $validated['descripcion'] ?? '',
@@ -134,7 +139,7 @@ class GoodsInventoryController extends Controller
             'serial'               => $validated['serial'],
             'state'                => $validated['estado'] ?? 'activo',
             'color'                => $validated['color'] ?? '',
-            'technical_conditions' => $validated['condiciones_tecnicas'] ?? '',
+            'technical_conditions' => $technicalConditions,
             'entry_date'           => $validated['fecha_ingreso'] ?? now()->toDateString()
         ];
 
@@ -276,8 +281,13 @@ class GoodsInventoryController extends Controller
             'estado'               => 'nullable|string|max:100',
             'color'                => 'nullable|string|max:100',
             'condiciones_tecnicas' => 'nullable|string|max:500',
+            'condicion_tecnica'    => 'nullable|string|max:500',
             'fecha_ingreso'        => 'nullable|date',
         ]);
+
+        $technicalConditions = $validated['condiciones_tecnicas']
+            ?? $validated['condicion_tecnica']
+            ?? '';
 
         $details = [
             'description'          => $validated['descripcion'] ?? '',
@@ -286,7 +296,7 @@ class GoodsInventoryController extends Controller
             'serial'               => $validated['serial'],
             'status'               => $validated['estado'] ?? 'active',
             'color'                => $validated['color'] ?? '',
-            'technical_conditions' => $validated['condiciones_tecnicas'] ?? '',
+            'technical_conditions' => $technicalConditions,
             'entry_date'           => $validated['fecha_ingreso'] ?? now()->toDateString(),
         ];
 
