@@ -20,6 +20,28 @@ use App\Http\Controllers\{
     RemovedController,
 };
 
+Route::get('storage/seeders/{path}', function (string $path) {
+    $basePath = realpath(storage_path('app/seeders'));
+
+    if ($basePath === false) {
+        abort(404);
+    }
+
+    $filePath = realpath($basePath . DIRECTORY_SEPARATOR . $path);
+
+    if (
+        $filePath === false ||
+        !str_starts_with($filePath, $basePath . DIRECTORY_SEPARATOR) ||
+        !is_file($filePath)
+    ) {
+        abort(404);
+    }
+
+    return response()->file($filePath, [
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('path', '.*');
+
 /**
  * Orden de las rutas:
  * 1. Home
