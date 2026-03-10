@@ -23,6 +23,10 @@ function iniciarBusquedaHistorial(searchInputID) {
     });
 }
 
+function initHistorialFunctions() {
+    inicializarHistorial();
+}
+
 function activarBusquedaEnTablaHistorial() {
     const searchInput = document.getElementById('searchRecordInput');
     searchInput.addEventListener('keyup', function () {
