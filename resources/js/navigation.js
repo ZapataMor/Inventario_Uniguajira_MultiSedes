@@ -52,6 +52,7 @@ window.initializeScripts = (url) => {
         home: 'initFormsTask',
         goods: 'initFormsBien',
         groups: 'initGroupFunctions',
+        users: 'initUserFunctions',
         records: 'initHistorialFunctions',
         reports: 'initReportsModule'
     };
@@ -79,7 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('popstate', (e) => {
         if (e.state?.url) {
-            loadContent(e.state.url);
+            loadContent(e.state.url, {
+                updateHistory: false,
+                onSuccess: () => initializeScripts(e.state.url)
+            });
 
             const path = window.location.pathname.split('/')[1];
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('selected'));
@@ -89,4 +93,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
