@@ -36,14 +36,14 @@
                 <i class="fas fa-filter"></i>
                 Filtros
             </button>
-            <button class="create-btn" id="reportBtn"  onclick="generatePDF()"> 
+            <a class="create-btn" id="reportBtn" href="{{ route('records.export', request()->query()) }}">
                 <i class="fas fa-file-pdf"></i>
                 Reporte
-            </button>
+            </a>
         </div>
 
         <div class="overflow-x-auto">
-            <table class="tabla w-full table-auto">
+            <table class="tabla w-full table-auto record-table">
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200">
                         <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">
