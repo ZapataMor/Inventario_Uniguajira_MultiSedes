@@ -39,9 +39,8 @@
 
                     {{-- Imagen del bien --}}
                     <img
-                        src="{{ $bien->image ? (str_starts_with($bien->image, 'seeders/') ? asset('assets/' . $bien->image) : asset('storage/' . $bien->image)) : asset('assets/defaults/goods/default.jpg') }}"
+                        src="{{ $bien->image ? asset('storage/' . $bien->image) : asset('assets/defaults/goods/default.jpg') }}"
                         class="bien-image"
-                        onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
                     />
 
                     <div class="bien-info">
