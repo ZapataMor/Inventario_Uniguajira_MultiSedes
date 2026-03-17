@@ -7,25 +7,20 @@
 
     <div class="goods-header">
         <h2>Catalogo de bienes</h2>
-
-        {{-- Botones Excel --}}
-        @if (Auth::user()->role === 'administrador')
-            <label class="excel-upload-btn" title="Cargar Excel con localización (asigna a inventarios)"
-                onclick="loadContent( '{{ route('goods.excel-upload-global') }}', { onSuccess: () => initFormsGlobalExcel() } )">
-                <i class="fas fa-file-excel"></i>
-            </label>
-            {{-- <label class="excel-upload-btn" title="Cargar Excel al catálogo"
-                onclick="loadContent( '{{ route('goods.excel-upload') }}' )">
-                <i class="fas fa-file-excel"></i>
-            </label> --}}
-        @endif
     </div>
 
     <x-generals.top-bar
         id="searchGood"
         placeholder="Buscar bien..."
         modal="#modalCrearBien"
-    />
+    >
+        @if (Auth::user()->role === 'administrador')
+            <button class="excel-btn" title="Cargar Excel con localización (asigna a inventarios)"
+                onclick="loadContent( '{{ route('goods.excel-upload-global') }}', { onSuccess: () => initFormsGlobalExcel() } )">
+                <i class="fas fa-file-excel"></i>
+            </button>
+        @endif
+    </x-generals.top-bar>
 
     {{-- Cuando NO hay bienes --}}
     @if($dataGoods->isEmpty())

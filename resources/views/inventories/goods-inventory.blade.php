@@ -79,16 +79,22 @@
         id="searchGoodInventory"
         placeholder="Buscar bien..."
         onclick="btnAbrirModalCrearBien"
-    />
+    >
+        @if(Auth::user()->role === 'administrador')
+            <button class="excel-btn" onclick="btnAbrirModalExcelInventario()" title="Cargar bienes desde Excel">
+                <i class="fas fa-file-excel "></i>  Cargar Excel
+            </button>
+        @endif
+    </x-generals.top-bar>
 
-    @if(Auth::user()->role === 'administrador')
+    {{-- @if(Auth::user()->role === 'administrador')
     <div style="display:flex; justify-content:flex-end; margin-bottom: 0.5rem;">
         <button class="btn create-btn" onclick="btnAbrirModalExcelInventario()" title="Cargar bienes desde Excel"
         style="background-color: #1B5E20; ">
             <i class="fas fa-file-excel"></i> Cargar Excel
         </button>
     </div>
-    @endif
+    @endif --}}
 
     @if(Auth::user()->role === 'administrador')
     {{-- Barra de control para bienes --}}

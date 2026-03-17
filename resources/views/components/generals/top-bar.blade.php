@@ -19,20 +19,24 @@
         <i class="search-icon fas fa-search"></i>
     </div>
 
-    @if( $canCreate === "true" && Auth::user()->role === 'administrador' )
-        @php
-            $modalSelector = $modal ?? '#modalCrearBien';
-        @endphp
-        <button class="create-btn"
-            @if($onclick === 'mostrarModal')
-                onclick="mostrarModal('{{ $modalSelector }}')"
-            @elseif($onclick)
-                onclick="{{ $onclick }}()"
-            @else
-                onclick="mostrarModal('{{ $modalSelector }}')"
-            @endif
-        >
-            Crear
-        </button>
-    @endif
+    <div class="action-buttons">
+        @if( $canCreate === "true" && Auth::user()->role === 'administrador' )
+            @php
+                $modalSelector = $modal ?? '#modalCrearBien';
+            @endphp
+            <button class="create-btn"
+                @if($onclick === 'mostrarModal')
+                    onclick="mostrarModal('{{ $modalSelector }}')"
+                @elseif($onclick)
+                    onclick="{{ $onclick }}()"
+                @else
+                    onclick="mostrarModal('{{ $modalSelector }}')"
+                @endif
+            >
+                Crear
+            </button>
+        @endif
+
+        {{ $slot }}
+    </div>
 </div>
