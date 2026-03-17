@@ -10,7 +10,9 @@ class GroupController extends Controller
 {
     /**
      * GET /api/groups/getAll
-     * Devuelve grupos para selects de reportes.
+     * Obtiene todos los grupos con su ID y nombre, ordenados alfabéticamente,
+     * para ser utilizados en componentes de interfaz como selectores en reportes.
+     * Se transforma la colección para devolver un formato específico esperado por el frontend.
      */
     public function getAll()
     {
@@ -27,7 +29,9 @@ class GroupController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Muestra un listado de todos los grupos.
+     * Se incluye el conteo de inventarios asociados a cada grupo para proporcionar información adicional.
+     * Se diferencia entre peticiones AJAX para actualizaciones parciales y peticiones normales para carga completa de página.
      */
     public function index(Request $request)
     {
@@ -42,7 +46,9 @@ class GroupController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Almacena un nuevo grupo en la base de datos.
+     * Se valida que el nombre no exista previamente para mantener la unicidad,
+     * se crea el registro y se registra la acción en el log de actividad.
      */
     public function store(Request $request)
     {
@@ -52,7 +58,7 @@ class GroupController extends Controller
 
         $nombre = $request->nombre;
 
-        // Verificar existencia por nombre
+        // Se verifica si ya existe un grupo con el mismo nombre para evitar duplicados.
         if (Group::where('name', $nombre)->exists()) {
             return response()->json([
                 'success' => false,
@@ -62,7 +68,7 @@ class GroupController extends Controller
 
         $group = Group::create(['name' => $nombre]);
 
-        // ✅ Registrar actividad
+        // Se registra la creación del grupo para mantener una traza de auditoría.
         ActivityLogger::created(Group::class, $group->id, $group->name);
 
         return response()->json([
@@ -74,7 +80,9 @@ class GroupController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualiza un grupo existente en la base de datos.
+     * Se verifica que el grupo exista y que el nuevo nombre no esté siendo usado por otro grupo.
+     * Se registran los valores anteriores y nuevos para la auditoría.
      */
     public function update(Request $request)
     {
@@ -94,7 +102,7 @@ class GroupController extends Controller
             ], 404);
         }
 
-        // Si el nuevo nombre ya existe en otro grupo
+        // Se verifica que el nuevo nombre no esté siendo utilizado por otro grupo diferente al actual.
         $exists = Group::where('name', $newName)->where('id', '!=', $id)->exists();
         if ($exists) {
             return response()->json([
@@ -103,7 +111,7 @@ class GroupController extends Controller
             ], 400);
         }
 
-        // ✅ Guardar valores anteriores
+        // Se captura el valor anterior del nombre para poder registrar el cambio.
         $oldValues = ['name' => $group->name];
 
         $group->name = $newName;
@@ -116,7 +124,7 @@ class GroupController extends Controller
             ], 400);
         }
 
-        // ✅ Registrar actividad
+        // Se registra la actualización con los valores antiguos y nuevos para la auditoría.
         ActivityLogger::updated(
             Group::class,
             $group->id,
@@ -133,7 +141,9 @@ class GroupController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Elimina un grupo específico de la base de datos.
+     * Se verifica que el grupo exista y que no tenga inventarios asociados antes de proceder,
+     * para mantener la integridad referencial. Se registra la acción en el log.
      */
     public function destroy(string $id)
     {
@@ -146,17 +156,17 @@ class GroupController extends Controller
             return response()->json(['success' => false, 'message' => 'Grupo no encontrado'], 404);
         }
 
-        // Verificar inventarios asociados
+        // Se verifica si el grupo tiene inventarios asociados para prevenir la eliminación si está en uso.
         if ($group->inventories()->exists()) {
             return response()->json(['success' => false, 'message' => 'El grupo tiene inventarios asociados.']);
         }
 
-        $groupName = $group->name; // Guardar antes de eliminar
+        $groupName = $group->name; // Se guarda el nombre antes de eliminar para el registro de actividad.
 
         try {
             $group->delete();
 
-            // ✅ Registrar actividad
+            // Se registra la eliminación del grupo.
             ActivityLogger::deleted(Group::class, $id, $groupName);
 
         } catch (\Exception $e) {

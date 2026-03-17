@@ -7,6 +7,7 @@ Route::match(['get','post'], 'register', function () {
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
+    AssetImageController,
     HomeController,
     TaskController,
     GoodsController,
@@ -47,6 +48,10 @@ use App\Http\Controllers\{
 Route::get('home', [HomeController::class, 'index'])->middleware(['auth', 'verified'])->name('home.index');
 
 Route::get('/', function () { return redirect()->route('home.index'); });
+Route::get('asset-images/{path}', [AssetImageController::class, 'show'])
+    ->middleware(['auth', 'verified'])
+    ->where('path', '.*')
+    ->name('assets.image');
 
 
 /**

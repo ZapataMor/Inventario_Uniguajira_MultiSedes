@@ -108,7 +108,7 @@
                     onclick="toggleSelectItem(this)"
                 >
                     <img
-                        src="{{ !empty($serial->image) ? (str_starts_with($serial->image, 'seeders/') ? asset('assets/' . $serial->image) : asset('storage/' . $serial->image)) : asset('assets/defaults/goods/default.jpg') }}"
+                        src="{{ !empty($serial->image) ? route('assets.image', ['path' => $serial->image]) : asset('assets/defaults/goods/default.jpg') }}"
                         class="bien-image"
                         onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
                     />

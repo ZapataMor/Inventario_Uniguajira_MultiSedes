@@ -12,41 +12,48 @@ use App\Helpers\ActivityLogger;
 class GoodsController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Muestra un listado del recurso.
+     * Se obtienen los datos desde una vista de base de datos para mejorar la eficiencia de las consultas.
+     * Se diferencia entre una petición AJAX y una carga de página normal para poder renderizar
+     * secciones específicas (SPA) o la vista completa.
      */
     public function index(Request $request)
     {
-        // Consultar la vista SQL
+        // Se consulta la vista SQL que resume la información de los bienes para evitar lógica compleja en el controlador.
         $dataGoods = DB::table('assets_summary_view')->get();
 
         if ($request->ajax()) {
-            // si es una carga AJAX, solo renderiza el contenido interno
+            // Si la petición es AJAX, se renderiza únicamente la sección 'content' de la vista para una actualización parcial de la página.
             /** @var \Illuminate\View\View $view */
             $view = view('goods.index', compact('dataGoods'));
             return $view->renderSections()['content'];
         }
 
-        // si es carga normal (primera vez), usa el layout completo
+        // Si es una petición HTTP estándar, se devuelve la vista completa con el layout.
         return view('goods.index', compact('dataGoods'));
     }
 
     /**
      * GET /api/goods/get/json
-     * Devuelve todos los bienes con id, nombre y tipo (igual que la versión PHP)
+     * Proporciona un listado JSON de todos los bienes con su ID, nombre y tipo para ser consumido por el frontend
+     * en componentes dinámicos como selectores o tablas.
      */
     public function getJson()
     {
-        // Obtener todos los bienes desde la tabla `assets`
+        // Se obtienen únicamente las columnas necesarias de la tabla de bienes para minimizar la transferencia de datos.
         $goods = Asset::select('id', 'name as bien', 'type as tipo')->get();
 
         return response()->json($goods);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Almacena un recurso recién creado en la base de datos.
+     * Esta acción está restringida únicamente a usuarios con rol de administrador.
+     * Se valida la entrada, se procesa una imagen opcional y se registra la acción en el log de actividad.
      */
     public function store(Request $request)
     {
+        // Se verifica que el usuario autenticado tenga permisos de administrador; de lo contrario, se aborta la petición.
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         $request->validate([
@@ -55,7 +62,7 @@ class GoodsController extends Controller
             'imagen' => 'nullable|image|max:2048' // 2 MB
         ]);
 
-        // Guardar imagen si existe
+        // Se guarda la imagen en el disco 'public' si se ha proporcionado una en la petición.
         $path = null;
         if ($request->hasFile('imagen')) {
             $path = $request->file('imagen')->store('assets/goods', 'public');
@@ -67,7 +74,7 @@ class GoodsController extends Controller
             'image' => $path
         ]);
 
-        // ✅ Registrar actividad
+        // Se registra la creación del bien para mantener una traza de auditoría.
         ActivityLogger::created(Asset::class, $asset->id, $asset->name);
 
         return response()->json([
@@ -78,10 +85,13 @@ class GoodsController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualiza un recurso específico en la base de datos.
+     * Requiere permisos de administrador. Se valida la existencia del recurso, los datos de entrada,
+     * se gestiona la sustitución de imágenes y se registra el cambio.
      */
     public function update(Request $request)
     {
+        // Se asegura de que el usuario sea administrador antes de proceder con la actualización.
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         $asset = Asset::findOrFail($request->id);
@@ -92,29 +102,29 @@ class GoodsController extends Controller
             'imagen' => 'nullable|image|max:2048'
         ]);
 
-        // ✅ Guardar valores anteriores
+        // Se capturan los valores actuales antes de la modificación para poder registrar qué cambió exactamente.
         $oldValues = [
             'name' => $asset->name,
             'image' => $asset->image,
         ];
 
-        // Procesar imagen si viene una nueva
+        // Si se ha subido una nueva imagen, se reemplaza la anterior.
         if ($request->hasFile('imagen')) {
-            // Borrar imagen anterior
+            // Se elimina el archivo de imagen antiguo del sistema de archivos si existe para liberar espacio.
             if ($asset->image && Storage::disk('public')->exists($asset->image)) {
                 Storage::disk('public')->delete($asset->image);
             }
 
-            // Guardar nueva
+            // Se guarda la nueva imagen en el disco.
             $asset->image = $request->file('imagen')->store('assets/goods', 'public');
         }
 
-        // Actualizar nombre
+        // Se actualiza el nombre del bien.
         $asset->name = $request->nombre;
 
         $asset->save();
 
-        // ✅ Registrar actividad
+        // Se registra la actividad de actualización, incluyendo los valores antiguos y nuevos para una auditoría detallada.
         ActivityLogger::updated(
             Asset::class,
             $asset->id,
@@ -133,10 +143,13 @@ class GoodsController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Elimina un recurso específico de la base de datos.
+     * Función exclusiva para administradores. Antes de eliminar, se verifica que el bien no tenga existencias
+     * (cantidades o equipos) asociadas para mantener la integridad de los datos. También se elimina su imagen asociada.
      */
     public function destroy(string $id)
     {
+        // Se valida que el usuario tenga el rol adecuado para realizar esta operación.
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         $asset = Asset::find($id);
@@ -148,7 +161,7 @@ class GoodsController extends Controller
             ], 404);
         }
 
-        // Obtener cantidad total (igual que tu vista SQL)
+        // Se calcula la cantidad total de este bien en el inventario (suma de cantidades y equipos) para prevenir la eliminación si está en uso.
         $total = AssetInventory::where('asset_id', $id)
             ->leftJoin('asset_quantities', 'asset_inventory.id', '=', 'asset_quantities.asset_inventory_id')
             ->leftJoin('asset_equipments', 'asset_inventory.id', '=', 'asset_equipments.asset_inventory_id')
@@ -165,16 +178,16 @@ class GoodsController extends Controller
             ], 400);
         }
 
-        $assetName = $asset->name; // Guardar antes de eliminar
+        $assetName = $asset->name; // Se guarda el nombre para el log de actividad, ya que el objeto se eliminará.
 
-        // Eliminar imagen
+        // Se elimina la imagen del bien del disco duro para no dejar archivos huérfanos.
         if ($asset->image && Storage::disk('public')->exists($asset->image)) {
             Storage::disk('public')->delete($asset->image);
         }
 
         $asset->delete();
 
-        // ✅ Registrar actividad
+        // Se registra la eliminación en el log de actividad.
         ActivityLogger::deleted(Asset::class, $id, $assetName);
 
         return response()->json([
@@ -184,17 +197,14 @@ class GoodsController extends Controller
     }
 
     /**
-     * Batch create goods from Excel upload
-     * POST /api/goods/batchCreate
-     *
-     * Recibe un array de bienes con sus datos e imágenes opcionales
-     * Formato esperado:
-     * - goods[0][nombre]: nombre del bien
-     * - goods[0][tipo]: tipo (1 = Cantidad, 2 = Serial)
-     * - goods_0_imagen: archivo de imagen (opcional)
+     * Crea múltiples bienes a partir de una carga por archivo Excel (POST /api/goods/batchCreate).
+     * Recibe un array de bienes con sus datos e imágenes opcionales.
+     * Su propósito es permitir la creación masiva. Se procesa cada ítem individualmente,
+     * manejando errores por fila y registrando al final un resumen de la operación.
      */
     public function batchCreate(Request $request)
     {
+        // Solo los administradores pueden realizar cargas masivas.
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         try {
@@ -209,11 +219,11 @@ class GoodsController extends Controller
 
             $created = 0;
             $errors = [];
-            $createdAssets = []; // Para registrar en el log
+            $createdAssets = []; // Se almacenan los nombres de los bienes creados para el resumen del log.
 
             foreach ($goods as $index => $good) {
                 try {
-                    // Validar datos
+                    // Se valida que los datos de cada bien sean correctos antes de intentar crearlos.
                     $validator = validator($good, [
                         'nombre' => 'required|string|unique:assets,name',
                         'tipo' => 'required|in:1,2'
@@ -224,7 +234,7 @@ class GoodsController extends Controller
                         continue;
                     }
 
-                    // Procesar imagen
+                    // Se procesa la imagen si existe para el índice actual.
                     $imagePath = null;
                     $imageKey = "goods_{$index}_imagen";
 
@@ -243,7 +253,7 @@ class GoodsController extends Controller
                         $imagePath = $image->store('assets/goods', 'public');
                     }
 
-                    // Crear el bien
+                    // Se crea el registro del bien en la base de datos.
                     $asset = Asset::create([
                         'name' => $good['nombre'],
                         'type' => (int)$good['tipo'] === 1 ? 'Cantidad' : 'Serial',
@@ -254,11 +264,12 @@ class GoodsController extends Controller
                     $created++;
 
                 } catch (\Exception $e) {
+                    // Se captura cualquier excepción inesperada durante la creación de un bien para que el proceso continúe con los demás.
                     $errors[] = "Fila {$index}: {$e->getMessage()}";
                 }
             }
 
-            // ✅ Registrar actividad masiva
+            // Si se creó al menos un bien, se registra una entrada de actividad personalizada para la operación masiva.
             if ($created > 0) {
                 ActivityLogger::custom(
                     'batch_create',
@@ -284,6 +295,7 @@ class GoodsController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            // Error general del proceso de carga masiva, como problemas con la petición misma.
             return response()->json([
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
@@ -292,11 +304,8 @@ class GoodsController extends Controller
     }
 
     /**
-     * Download Excel template for goods import
-     * GET /api/goods/download-template
-     *
-     * Genera una plantilla Excel con las columnas: Bien y Tipo
-     * El tipo puede ser "Cantidad" o "Serial"
+     * Descarga una plantilla Excel (GET /api/goods/download-template) con el formato correcto
+     * para la importación de bienes. Esto facilita al usuario entender la estructura de datos requerida.
      */
     public function downloadTemplate()
     {
@@ -313,15 +322,14 @@ class GoodsController extends Controller
     }
 
     /**
-     * Show the view for uploading goods via Excel
-     * GET /api/goods/excel-upload/view
-     *
-     * Muestra la vista para la subida de bienes por medio de un archivo Excel
+     * Muestra la vista para la subida de bienes mediante archivo Excel (GET /api/goods/excel-upload/view).
+     * Al igual que en el índice, soporta peticiones AJAX para cargar solo el contenido del modal
+     * y peticiones normales para cargar una página completa.
      */
     public function excelUploadView(Request $request)
     {
         if ($request->ajax()) {
-            // si es una carga AJAX, solo renderiza el contenido interno
+            // Renderiza solo el contenido interno del modal para una experiencia de aplicación de una sola página (SPA).
             return view('components.modal.goods.excel-upload')
                 ->renderSections()['content'];
         }
