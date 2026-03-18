@@ -353,8 +353,9 @@ class GoodsController extends Controller
     public function excelUploadGlobalView(Request $request)
     {
         if ($request->ajax()) {
-            return view('components.modal.goods.excel-upload-global')
-                ->renderSections()['content'];
+            /** @var \Illuminate\View\View $view */
+            $view = view('goods.excel-upload-global');
+            return $view->renderSections()['content'];
         }
 
         return view('goods.excel-upload-global');

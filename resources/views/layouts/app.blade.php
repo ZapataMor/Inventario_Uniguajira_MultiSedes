@@ -44,12 +44,13 @@
     <script src="{{ asset('assets/js/helpers/modal.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/selection.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/autocomplete.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v=1"></script>
     <script src="{{ asset('assets/js/tasks.js') }}"></script>
 
     @if(Auth::user()->role === 'administrador')
         <script src="{{ asset('assets/js/goods.js') }}?v=2"></script>
         <script src="{{ asset('assets/js/goods-excel-upload.js') }}?v=2"></script>
-        <script src="{{ asset('assets/js/goods-excel-upload-global.js') }}?v=4"></script>
+        <script src="{{ asset('assets/js/goods-excel-upload-global.js') }}?v=5"></script>
     @endif
 
     <script src="{{ asset('assets/js/user.js') }}"></script>
@@ -58,7 +59,7 @@
     <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}"></script>
     @if(Auth::user()->role === 'administrador')
-        <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=5"></script>
+        <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=6"></script>
     @endif
     <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}"></script>

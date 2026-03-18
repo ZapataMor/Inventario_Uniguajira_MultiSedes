@@ -1,6 +1,6 @@
-# CLAUDE.md — Inventario Uniguajira (Laravel 12)
+# CLAUDE.md - Inventario Uniguajira (Laravel 12)
 
-Sistema de gestión de inventario para la Universidad de la Guajira.
+Sistema de gestion de inventario para la Universidad de la Guajira.
 
 ## Tech Stack
 
@@ -86,7 +86,7 @@ database/
 | `User` | Authentication |
 | `Asset` | Core goods/assets |
 | `AssetEquipment` | Equipment-type asset details |
-| `AssetInventory` | Asset ↔ Inventory junction |
+| `AssetInventory` | Asset -> Inventory junction |
 | `AssetQuantity` | Quantity tracking per inventory |
 | `AssetRemoved` | Removed assets |
 | `AssetEquipmentRemoved` | Removed equipment tracking |
@@ -99,24 +99,24 @@ database/
 
 ## Database Views (via migrations)
 
-- `goods_summary_view` — Summary of goods
-- `inventory_goods_view` — Goods within inventories
-- `serial_goods_view` — Serial-tracked goods
+- `goods_summary_view` - Summary of goods
+- `inventory_goods_view` - Goods within inventories
+- `serial_goods_view` - Serial-tracked goods
 
 ## Routes Overview
 
 All routes live in `routes/web.php`. API endpoints are grouped under the `/api` prefix (no separate `api.php` file).
 
 **Web (auth required):**
-- `GET /home` — Dashboard
-- `GET /goods` — Goods list
-- `GET /groups` — Inventory groups
-- `GET /group/{groupId}` — Inventories in group
-- `GET /group/{groupId}/inventory/{inventoryId}` — Goods in inventory
-- `GET /reports` — Reports
-- `GET /users` — User management
-- `GET /records` — Activity records
-- `GET /removed` — Removed goods
+- `GET /home` - Dashboard
+- `GET /goods` - Goods list
+- `GET /groups` - Inventory groups
+- `GET /group/{groupId}` - Inventories in group
+- `GET /group/{groupId}/inventory/{inventoryId}` - Goods in inventory
+- `GET /reports` - Reports
+- `GET /users` - User management
+- `GET /records` - Activity records
+- `GET /removed` - Removed goods
 
 **API (selected):**
 - Users: POST create/update, DELETE destroy
@@ -131,15 +131,17 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 ## Activity Logging
 
 All major actions (login, logout, create, update, delete, view) are logged via:
-- `app/Helpers/ActivityLogger.php` — Static helper called in controllers
-- `app/Listeners/LogAuthenticationActivity.php` — Auth events (login/logout)
-- `app/Observers/ModelActivityObserver.php` — Model observer
+- `app/Helpers/ActivityLogger.php` - Static helper called in controllers
+- `app/Listeners/LogAuthenticationActivity.php` - Auth events (login/logout)
+- `app/Observers/ModelActivityObserver.php` - Model observer
 
 ## Key Patterns
 
-- **Modals:** Blade components in `resources/views/components/modal/` — one per action (create, edit, delete) per module
+- **Modals:** Blade components in `resources/views/components/modal/` - one per action (create, edit, delete) per module
 - **API responses:** JSON responses from controllers for AJAX calls in frontend
 - **File uploads:** Excel import via `GET /goods/excel-upload`
+- **Excel upload UI:** Reuse `x-excel-upload-area` and `x-excel-preview-table` for Excel screens instead of redefining upload or preview markup in each module
+- **Excel upload JS:** Shared drag/drop, file reading, preview rendering, row removal, and error UI live in `public/assets/js/helpers/excel-ui.js`; each module should only provide parser, columns, and submit flow
 - **Sessions:** Database-backed (`SESSION_DRIVER=database`)
 - **Queue/Cache:** Database-backed
 
@@ -155,5 +157,5 @@ DB_USERNAME=root
 
 ## Git Branches
 
-- `master` — Main/production branch (use for PRs)
-- `develop` — Active development branch
+- `master` - Main/production branch (use for PRs)
+- `develop` - Active development branch

@@ -1,304 +1,224 @@
-// ──────────────────────────────────────────────────────────────────────────────
-// goods-excel-upload-global.js
-// Carga masiva de bienes al catálogo global con asignación opcional a inventario
-// via columna "Localización" (búsqueda case-insensitive en el backend)
-// ──────────────────────────────────────────────────────────────────────────────
+// Carga masiva de bienes al catalogo global con asignacion opcional a inventario.
 
-// Llamada al inicializar la vista (espejo de initFormsBien para esta página)
+const GLOBAL_EXCEL_CONFIG = {
+    validTypes: ['.xlsx', '.xls'],
+};
+
+const GLOBAL_EXCEL_STATE = {
+    preview: null,
+};
+
+const GLOBAL_EXCEL_COLUMNS = [
+    { field: 'bien', type: 'text' },
+    { field: 'tipo', type: 'static', value: ({ values }) => values.tipo, textStyle: 'font-size:0.85rem;' },
+    { field: 'localizacion', type: 'text', title: 'Nombre del inventario (opcional)' },
+    {
+        field: 'serial',
+        render: ({ values, helpers }) => values.esSerial
+            ? helpers.editable('serial', values.serial)
+            : helpers.placeholder('-'),
+    },
+    {
+        field: 'cantidad',
+        render: ({ values, helpers }) => values.esSerial
+            ? helpers.placeholder('-')
+            : helpers.editable('cantidad', values.cantidad),
+    },
+    { field: 'marca', type: 'text' },
+    { field: 'modelo', type: 'text' },
+    {
+        field: 'estado',
+        type: 'select',
+        value: ({ values }) => values.estado,
+        options: [
+            { value: 'activo', label: 'activo' },
+            { value: 'inactivo', label: 'inactivo' },
+        ],
+    },
+    { type: 'remove', align: 'center', padding: '4px 10px', title: 'Eliminar fila' },
+];
+
+function globalExcelPrepareRow(row) {
+    const tipo = String(row.tipo ?? 'Serial').trim().toLowerCase() === 'cantidad' ? 'Cantidad' : 'Serial';
+
+    return {
+        bien: String(row.bien ?? '').trim(),
+        tipo,
+        esSerial: tipo === 'Serial',
+        localizacion: String(row.localizacion ?? '').trim(),
+        serial: String(row.serial ?? '').trim(),
+        cantidad: String(row.cantidad ?? '1').trim() || '1',
+        marca: String(row.marca ?? '').trim(),
+        modelo: String(row.modelo ?? '').trim(),
+        estado: String(row.estado ?? '').trim() === 'inactivo' ? 'inactivo' : 'activo',
+    };
+}
+
 function initFormsGlobalExcel() {
+    GLOBAL_EXCEL_STATE.preview = ExcelUI.createPreviewManager({
+        tableId: 'globalPreviewTable',
+        bodyId: 'globalPreviewBody',
+        clearButtonId: 'btnLimpiarExcelGlobal',
+        submitButtonId: 'btnEnviarExcelGlobal',
+        errorListId: 'globalErrorList',
+        errorItemsId: 'globalErrorItems',
+        prepareRow: globalExcelPrepareRow,
+        columns: GLOBAL_EXCEL_COLUMNS,
+        onClear: globalExcelLimpiarUI,
+        onSubmit: globalExcelEnviarDatos,
+    });
+
+    ExcelUI.initUploadArea({
+        areaId: 'global-excel-upload-area',
+        inputId: 'globalExcelFileInput',
+        onFileSelected: (files) => {
+            globalExcelHandleFile(files[0]);
+        },
+    });
+
     globalExcelLimpiarUI();
 }
 
-// ── Manejo del archivo ────────────────────────────────────────────────────────
-
-function globalExcelHandleFileUpload(event) {
-    const file = event.target.files[0];
+async function globalExcelHandleFile(file) {
     if (!file) return;
 
-    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!['.xlsx', '.xls'].includes(ext)) {
-        showToast({ success: false, message: 'Formato inválido. Use .xlsx o .xls' });
+    if (!ExcelUI.hasValidExtension(file.name, GLOBAL_EXCEL_CONFIG.validTypes)) {
+        showToast({ success: false, message: 'Formato invalido. Use .xlsx o .xls' });
         return;
     }
 
-    globalExcelLeerArchivo(file);
-}
+    try {
+        const jsonData = await ExcelUI.readExcelFile(file);
+        const rows = globalExcelParsearFilas(jsonData);
 
-// ── Leer y parsear Excel con SheetJS (XLSX disponible globalmente) ─────────────
+        if (!rows) return;
 
-function globalExcelLeerArchivo(file) {
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-        try {
-            const workbook = XLSX.read(e.target.result, { type: 'binary' });
-            const sheet    = workbook.Sheets[workbook.SheetNames[0]];
-            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-            const rows = globalExcelParsearFilas(jsonData);
-            if (!rows) return; // error ya notificado
-
-            if (!rows.length) {
-                showToast({ success: false, message: 'No se encontraron datos válidos.' });
-                return;
-            }
-
-            globalExcelRenderizarTabla(rows);
-            showToast({ success: true, message: `${rows.length} fila(s) lista(s) para enviar.` });
-
-        } catch (err) {
-            console.error(err);
-            showToast({ success: false, message: 'Error al leer el archivo Excel.' });
+        if (!rows.length) {
+            showToast({ success: false, message: 'No se encontraron datos validos.' });
+            return;
         }
-    };
 
-    reader.onerror = () => showToast({ success: false, message: 'Error al leer el archivo.' });
-    reader.readAsBinaryString(file);
+        GLOBAL_EXCEL_STATE.preview?.renderRows(rows);
+        showToast({ success: true, message: `${rows.length} fila(s) lista(s) para enviar.` });
+    } catch (error) {
+        console.error(error);
+        showToast({ success: false, message: 'Error al leer el archivo Excel.' });
+    }
 }
-
-// ── Parsear filas ─────────────────────────────────────────────────────────────
 
 function globalExcelParsearFilas(jsonData) {
     if (!jsonData.length) return [];
 
-    // Normalizar encabezados (quitar asteriscos, espacios y pasar a minúsculas)
-    const rawHeaders = jsonData[0].map(h => String(h).toLowerCase().trim().replace(/\*/g, ''));
+    const headers = ExcelUI.normalizeHeaders(jsonData[0]);
 
-    // Columnas mínimas requeridas
-    if (!rawHeaders.includes('bien')) {
+    if (!headers.includes('bien')) {
         showToast({ success: false, message: 'El archivo debe tener al menos la columna "Bien".' });
         return null;
     }
 
-    // Mapa flexible de columnas por nombre
-    const col = (name) => rawHeaders.indexOf(name);
-
     const idx = {
-        bien:         col('bien'),
-        tipo:         col('tipo'),
-        localizacion: col('localizacion') >= 0 ? col('localizacion') : col('localización'),
-        serial:       col('serial'),
-        cantidad:     col('cantidad'),
-        marca:        col('marca'),
-        modelo:       col('modelo'),
-        descripcion:  col('descripcion') >= 0 ? col('descripcion') : col('descripción'),
-        estado:       col('estado'),
-        color:        col('color'),
-        condiciones:  col('condiciones'),
-        fecha:        col('fecha ingreso') >= 0 ? col('fecha ingreso') : col('fecha_ingreso'),
+        bien: ExcelUI.findColumnIndex(headers, ['bien']),
+        tipo: ExcelUI.findColumnIndex(headers, ['tipo']),
+        localizacion: ExcelUI.findColumnIndex(headers, ['localizacion']),
+        serial: ExcelUI.findColumnIndex(headers, ['serial']),
+        cantidad: ExcelUI.findColumnIndex(headers, ['cantidad']),
+        marca: ExcelUI.findColumnIndex(headers, ['marca']),
+        modelo: ExcelUI.findColumnIndex(headers, ['modelo']),
+        descripcion: ExcelUI.findColumnIndex(headers, ['descripcion']),
+        estado: ExcelUI.findColumnIndex(headers, ['estado']),
+        color: ExcelUI.findColumnIndex(headers, ['color']),
+        condiciones: ExcelUI.findColumnIndex(headers, ['condiciones']),
+        fecha: ExcelUI.findColumnIndex(headers, ['fecha ingreso', 'fecha_ingreso']),
     };
 
     const rows = [];
 
-    jsonData.slice(1).forEach((row, i) => {
+    jsonData.slice(1).forEach((row) => {
         const bien = String(row[idx.bien] ?? '').trim();
         if (!bien || bien.toLowerCase() === 'n/a') return;
 
         rows.push({
             bien,
-            tipo:         idx.tipo         >= 0 ? String(row[idx.tipo]         ?? 'Serial').trim()  : 'Serial',
-            localizacion: idx.localizacion  >= 0 ? String(row[idx.localizacion] ?? '').trim()        : '',
-            serial:       idx.serial        >= 0 ? String(row[idx.serial]       ?? '').trim()        : '',
-            cantidad:     idx.cantidad      >= 0 ? String(row[idx.cantidad]     ?? '1').trim()       : '1',
-            marca:        idx.marca         >= 0 ? String(row[idx.marca]        ?? '').trim()        : '',
-            modelo:       idx.modelo        >= 0 ? String(row[idx.modelo]       ?? '').trim()        : '',
-            descripcion:  idx.descripcion   >= 0 ? String(row[idx.descripcion]  ?? '').trim()        : '',
-            estado:       idx.estado        >= 0 ? String(row[idx.estado]       ?? 'activo').trim()  : 'activo',
-            color:        idx.color         >= 0 ? String(row[idx.color]        ?? '').trim()        : '',
-            condiciones:  idx.condiciones   >= 0 ? String(row[idx.condiciones]  ?? '').trim()        : '',
-            fecha_ingreso: idx.fecha        >= 0 ? String(row[idx.fecha]        ?? '').trim()        : '',
+            tipo: idx.tipo >= 0 ? String(row[idx.tipo] ?? 'Serial').trim() : 'Serial',
+            localizacion: idx.localizacion >= 0 ? String(row[idx.localizacion] ?? '').trim() : '',
+            serial: idx.serial >= 0 ? String(row[idx.serial] ?? '').trim() : '',
+            cantidad: idx.cantidad >= 0 ? String(row[idx.cantidad] ?? '1').trim() : '1',
+            marca: idx.marca >= 0 ? String(row[idx.marca] ?? '').trim() : '',
+            modelo: idx.modelo >= 0 ? String(row[idx.modelo] ?? '').trim() : '',
+            descripcion: idx.descripcion >= 0 ? String(row[idx.descripcion] ?? '').trim() : '',
+            estado: idx.estado >= 0 ? String(row[idx.estado] ?? 'activo').trim() : 'activo',
+            color: idx.color >= 0 ? String(row[idx.color] ?? '').trim() : '',
+            condiciones: idx.condiciones >= 0 ? String(row[idx.condiciones] ?? '').trim() : '',
+            fecha_ingreso: idx.fecha >= 0 ? String(row[idx.fecha] ?? '').trim() : '',
         });
     });
 
     return rows;
 }
-
-// ── Inyectar estilos de celdas editables (una sola vez) ───────────────────────
-
-(function globalExcelInjectStyles() {
-    if (document.getElementById('global-excel-edit-styles')) return;
-    const s = document.createElement('style');
-    s.id = 'global-excel-edit-styles';
-    s.textContent = `
-        .g-edit-cell {
-            min-width: 60px; padding: 2px 5px; border-radius: 4px;
-            border: 1px solid transparent; cursor: text; display: inline-block;
-            width: 100%; box-sizing: border-box; font-size: 0.85rem;
-        }
-        .g-edit-cell:focus {
-            border-color: #1B5E20; background: #f0faf0;
-            outline: none; box-shadow: 0 0 0 2px #c8e6c9;
-        }
-        .g-edit-cell:hover { border-color: #ccc; }
-        .g-edit-cell-disabled {
-            min-width: 60px; padding: 2px 5px; font-size: 0.85rem;
-            color: #bbb; font-style: italic;
-        }
-        .g-edit-select {
-            border: 1px solid #ddd; border-radius: 4px;
-            padding: 2px 4px; font-size: 0.82rem; background: #fff;
-            cursor: pointer; width: 100%;
-        }
-        .g-edit-select:focus { border-color: #1B5E20; outline: none; }
-        #globalPreviewBody tr:hover td { background: #fafafa; }
-        #globalPreviewBody tr.loc-error td { background: #fff3f3; }
-        #globalPreviewBody tr.loc-error .g-edit-cell[data-field="localizacion"] {
-            border-color: #c62828; background: #ffebee;
-        }
-    `;
-    document.head.appendChild(s);
-})();
-
-// ── Renderizar tabla de previsualización (celdas editables) ───────────────────
-
-function globalExcelRenderizarTabla(rows) {
-    const tbody = document.getElementById('globalPreviewBody');
-    tbody.innerHTML = '';
-
-    rows.forEach((row) => {
-        const tipoNorm  = row.tipo.toLowerCase() === 'cantidad' ? 'Cantidad' : 'Serial';
-        const esSerial  = tipoNorm === 'Serial';
-        const estadoVal = row.estado === 'inactivo' ? 'inactivo' : 'activo';
-
-        // Serial editable solo si tipo Serial; Cantidad editable solo si tipo Cantidad
-        const serialCell   = esSerial
-            ? `<div class="g-edit-cell" contenteditable="plaintext-only" data-field="serial">${row.serial ?? ''}</div>`
-            : `<span class="g-edit-cell-disabled" data-field="serial">—</span>`;
-
-        const cantidadCell = !esSerial
-            ? `<div class="g-edit-cell" contenteditable="plaintext-only" data-field="cantidad">${row.cantidad || '1'}</div>`
-            : `<span class="g-edit-cell-disabled" data-field="cantidad">—</span>`;
-
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid #eee';
-
-        tr.innerHTML = `
-            <td style="padding:4px 6px;">
-                <div class="g-edit-cell" contenteditable="plaintext-only" data-field="bien">${row.bien}</div>
-            </td>
-            <td style="padding:4px 6px;">
-                <span data-field="tipo" style="font-size:0.85rem;">${tipoNorm}</span>
-            </td>
-            <td style="padding:4px 6px;">
-                <div class="g-edit-cell" contenteditable="plaintext-only" data-field="localizacion"
-                     title="Nombre del inventario (opcional)">${row.localizacion ?? ''}</div>
-            </td>
-            <td style="padding:4px 6px;">${serialCell}</td>
-            <td style="padding:4px 6px;">${cantidadCell}</td>
-            <td style="padding:4px 6px;">
-                <div class="g-edit-cell" contenteditable="plaintext-only" data-field="marca">${row.marca ?? ''}</div>
-            </td>
-            <td style="padding:4px 6px;">
-                <div class="g-edit-cell" contenteditable="plaintext-only" data-field="modelo">${row.modelo ?? ''}</div>
-            </td>
-            <td style="padding:4px 6px;">
-                <select class="g-edit-select" data-field="estado">
-                    <option value="activo"   ${estadoVal === 'activo'   ? 'selected' : ''}>activo</option>
-                    <option value="inactivo" ${estadoVal === 'inactivo' ? 'selected' : ''}>inactivo</option>
-                </select>
-            </td>
-            <td style="padding:4px 10px; text-align:center;">
-                <i class="fas fa-times" style="cursor:pointer; color:#c62828;"
-                   onclick="globalExcelEliminarFila(this)" title="Eliminar fila"></i>
-            </td>
-        `;
-
-        tbody.appendChild(tr);
-    });
-
-    document.getElementById('globalPreviewTable').classList.remove('hidden');
-    globalExcelActualizarBoton();
-}
-
-// ── Leer filas desde el DOM (respeta ediciones manuales) ─────────────────────
 
 function globalExcelLeerFilasDeDOM() {
-    const tbody = document.getElementById('globalPreviewBody');
-    const rows  = [];
+    return GLOBAL_EXCEL_STATE.preview?.readRows((row) => {
+        if (!row.bien) return null;
 
-    tbody.querySelectorAll('tr').forEach(tr => {
-        const get = field => {
-            const el = tr.querySelector(`[data-field="${field}"]`);
-            if (!el) return '';
-            return el.tagName === 'SELECT' ? el.value : el.textContent.trim();
+        const esSerial = row.tipo === 'Serial';
+
+        return {
+            bien: row.bien,
+            tipo: row.tipo,
+            localizacion: row.localizacion ?? '',
+            serial: esSerial ? (row.serial ?? '') : null,
+            cantidad: esSerial ? null : (row.cantidad || '1'),
+            marca: row.marca ?? '',
+            modelo: row.modelo ?? '',
+            estado: row.estado ?? 'activo',
         };
-
-        const bien = get('bien');
-        if (!bien) return;
-
-        const tipo    = get('tipo'); // texto fijo: 'Serial' o 'Cantidad'
-        const esSerial = tipo === 'Serial';
-
-        rows.push({
-            bien,
-            tipo,
-            localizacion: get('localizacion'),
-            serial:       esSerial  ? get('serial')            : null,
-            cantidad:     !esSerial ? (get('cantidad') || '1') : null,
-            marca:        get('marca'),
-            modelo:       get('modelo'),
-            estado:       get('estado'),
-        });
-    });
-
-    return rows;
+    }) || [];
 }
-
-// ── Resaltar filas con localización no encontrada ─────────────────────────────
 
 function globalExcelResaltarErroresLocalizacion(errors) {
-    const tbody = document.getElementById('globalPreviewBody');
-    if (!tbody) return;
+    const preview = GLOBAL_EXCEL_STATE.preview;
+    if (!preview) return;
 
-    // Limpia resaltados previos
-    tbody.querySelectorAll('tr.loc-error').forEach(tr => tr.classList.remove('loc-error'));
+    const locations = errors
+        .map((error) => error.match(/inventario '([^']+)' no encontrado/i))
+        .filter(Boolean)
+        .map((match) => match[1].trim().toLowerCase());
 
-    errors.forEach(err => {
-        // El backend devuelve: "Fila X: inventario 'nombre' no encontrado ..."
-        const match = err.match(/inventario '([^']+)' no encontrado/i);
-        if (!match) return;
+    preview.clearHighlights();
 
-        const locFallida = match[1].toLowerCase().trim();
-
-        tbody.querySelectorAll('tr').forEach(tr => {
-            const locEl = tr.querySelector('[data-field="localizacion"]');
-            if (locEl && locEl.textContent.trim().toLowerCase() === locFallida) {
-                tr.classList.add('loc-error');
-                locEl.title = `"${match[1]}" no existe en el sistema`;
-            }
-        });
+    preview.highlightRows((tr) => {
+        const locationElement = tr.querySelector('[data-field="localizacion"]');
+        const location = locationElement ? locationElement.textContent.trim().toLowerCase() : '';
+        return locations.includes(location);
+    }, {
+        field: 'localizacion',
+        title: 'Esta localizacion no existe en el sistema.',
     });
 }
-
-// ── Eliminar fila ─────────────────────────────────────────────────────────────
-
-function globalExcelEliminarFila(btn) {
-    btn.closest('tr').remove();
-    globalExcelActualizarBoton();
-}
-
-// ── Enviar datos al backend ───────────────────────────────────────────────────
 
 async function globalExcelEnviarDatos() {
     const rows = globalExcelLeerFilasDeDOM();
-
     if (!rows.length) return;
 
-    const btn = document.getElementById('btnEnviarExcelGlobal');
-    btn.disabled  = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    const preview = GLOBAL_EXCEL_STATE.preview;
+    const button = preview?.elements.submitButton;
 
-    document.getElementById('globalErrorList').style.display = 'none';
-    document.getElementById('globalErrorItems').innerHTML    = '';
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+    }
+
+    preview?.clearErrors();
+    preview?.clearHighlights();
 
     try {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        const response  = await fetch('/api/goods/batchCreateGlobal', {
-            method:  'POST',
+        const response = await fetch('/api/goods/batchCreateGlobal', {
+            method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'Content-Type': 'application/json',
-                'Accept':       'application/json',
+                'Accept': 'application/json',
             },
             body: JSON.stringify({ rows }),
         });
@@ -306,105 +226,69 @@ async function globalExcelEnviarDatos() {
         const data = await response.json();
         showToast(data);
 
-        // Mostrar advertencias y resaltar filas con localización no encontrada
         if (data.errors && data.errors.length) {
-            const list = document.getElementById('globalErrorItems');
-            const locErrors = [];
-
-            data.errors.forEach(err => {
-                const li = document.createElement('li');
-                li.textContent = err;
-                // Resalta en rojo las filas cuya localización no existe
-                if (/no encontrado/i.test(err)) {
-                    li.style.fontWeight = 'bold';
-                    locErrors.push(err);
-                }
-                list.appendChild(li);
+            preview?.showErrors(data.errors, {
+                emphasize: (error) => /no encontrado/i.test(error),
             });
 
-            document.getElementById('globalErrorList').style.display = 'block';
-            if (locErrors.length) globalExcelResaltarErroresLocalizacion(locErrors);
-        }
-
-        if (data.success) {
-            // Solo redirige si no hubo errores de localización (filas corregibles visibles)
-            const tieneLocErrors = (data.errors || []).some(e => /no encontrado/i.test(e));
-            if (!tieneLocErrors) {
-                loadContent('/goods', { onSuccess: () => { if (typeof initFormsBien === 'function') initFormsBien(); } });
-                globalExcelLimpiarUI();
+            const locationErrors = data.errors.filter((error) => /no encontrado/i.test(error));
+            if (locationErrors.length) {
+                globalExcelResaltarErroresLocalizacion(locationErrors);
             }
         }
 
-    } catch (err) {
-        console.error(err);
-        showToast({ success: false, message: 'Error de conexión.' });
+        if (data.success) {
+            const hasLocationErrors = (data.errors || []).some((error) => /no encontrado/i.test(error));
+            if (!hasLocationErrors) {
+                loadContent('/goods', {
+                    onSuccess: () => {
+                        if (typeof initFormsBien === 'function') initFormsBien();
+                    },
+                });
+                globalExcelLimpiarUI();
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        showToast({ success: false, message: 'Error de conexion.' });
     } finally {
-        btn.disabled  = false;
-        btn.innerHTML = 'Enviar';
-        globalExcelActualizarBoton();
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = 'Enviar';
+        }
+
+        preview?.updateSubmitButton();
     }
 }
 
-// ── Descargar plantilla ───────────────────────────────────────────────────────
-// Genera el Excel en el cliente con SheetJS (sin petición al servidor)
-
 function globalExcelDescargarPlantilla() {
-    const wb = XLSX.utils.book_new();
+    const workbook = XLSX.utils.book_new();
 
     const headers = [
         'Bien', 'Tipo', 'Localizacion', 'Serial', 'Cantidad',
-        'Marca', 'Modelo', 'Descripcion', 'Estado', 'Color', 'Condiciones', 'Fecha Ingreso'
+        'Marca', 'Modelo', 'Descripcion', 'Estado', 'Color', 'Condiciones', 'Fecha Ingreso',
     ];
 
     const ejemplos = [
-        ['AIRE ACONDICIONADO MINI SPLIT', 'Serial',   'Sala de Sistemas',  'ABC-001', '',  'Samsung', 'AS24UBAN', '', 'activo', 'Blanco', 'Buen estado', new Date().toISOString().split('T')[0]],
-        ['SILLA ERGONOMICA',              'Cantidad',  'Sala de Profesores', '',       '5', 'Rimax',   '',          '', '',       '',        '',            ''],
-        ['COMPUTADOR PORTATIL',           'Serial',   '',                  'XYZ-002', '',  'Lenovo',  'ThinkPad',  '', 'activo', 'Negro',  '',            ''],
+        ['AIRE ACONDICIONADO MINI SPLIT', 'Serial', 'Sala de Sistemas', 'ABC-001', '', 'Samsung', 'AS24UBAN', '', 'activo', 'Blanco', 'Buen estado', new Date().toISOString().split('T')[0]],
+        ['SILLA ERGONOMICA', 'Cantidad', 'Sala de Profesores', '', '5', 'Rimax', '', '', '', '', '', ''],
+        ['COMPUTADOR PORTATIL', 'Serial', '', 'XYZ-002', '', 'Lenovo', 'ThinkPad', '', 'activo', 'Negro', '', ''],
     ];
 
-    const wsData = [headers, ...ejemplos];
-    const ws     = XLSX.utils.aoa_to_sheet(wsData);
-
-    // Ancho de columnas
-    ws['!cols'] = [
-        {wch:30},{wch:12},{wch:25},{wch:18},{wch:10},
-        {wch:16},{wch:16},{wch:25},{wch:18},{wch:12},{wch:25},{wch:14}
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...ejemplos]);
+    worksheet['!cols'] = [
+        { wch: 30 }, { wch: 12 }, { wch: 25 }, { wch: 18 }, { wch: 10 },
+        { wch: 16 }, { wch: 16 }, { wch: 25 }, { wch: 18 }, { wch: 12 }, { wch: 25 }, { wch: 14 },
     ];
 
-    XLSX.utils.book_append_sheet(wb, ws, 'Plantilla');
-    XLSX.writeFile(wb, 'Plantilla_Carga_Global.xlsx');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Plantilla');
+    XLSX.writeFile(workbook, 'Plantilla_Carga_Global.xlsx');
 }
-
-// ── Limpiar UI ────────────────────────────────────────────────────────────────
 
 function globalExcelLimpiarUI() {
-    const input = document.getElementById('globalExcelFileInput');
-    if (input) input.value = '';
-
-    const tbody = document.getElementById('globalPreviewBody');
-    if (tbody) tbody.innerHTML = '';
-
-    const table = document.getElementById('globalPreviewTable');
-    if (table) table.classList.add('hidden');
-
-    document.getElementById('globalErrorList').style.display = 'none';
-    document.getElementById('globalErrorItems').innerHTML    = '';
-
-    globalExcelActualizarBoton();
+    ExcelUI.resetFileInput('globalExcelFileInput');
+    GLOBAL_EXCEL_STATE.preview?.clear();
 }
 
-// ── Estado del botón Enviar ───────────────────────────────────────────────────
-
-function globalExcelActualizarBoton() {
-    const btn   = document.getElementById('btnEnviarExcelGlobal');
-    const count = document.getElementById('globalPreviewBody')?.querySelectorAll('tr').length ?? 0;
-    if (btn) btn.disabled = count === 0;
-}
-
-// ── Exponer funciones en window (necesario para llamadas inline desde HTML) ───
-window.initFormsGlobalExcel        = initFormsGlobalExcel;
-window.globalExcelHandleFileUpload = globalExcelHandleFileUpload;
+window.initFormsGlobalExcel = initFormsGlobalExcel;
 window.globalExcelDescargarPlantilla = globalExcelDescargarPlantilla;
-window.globalExcelEliminarFila     = globalExcelEliminarFila;
-window.globalExcelEnviarDatos      = globalExcelEnviarDatos;
-window.globalExcelLimpiarUI        = globalExcelLimpiarUI;

@@ -1,49 +1,56 @@
-# TEST.md — Guía de pruebas · Inventario Uniguajira
+# TEST.md - Guia de pruebas · Inventario Uniguajira
 
-Guía de referencia para escribir, organizar y ejecutar los tests del proyecto.
-**Framework:** PEST PHP 4 · **Base:** Laravel 12 · **DB de pruebas:** SQLite en memoria (RefreshDatabase)
+Guia de referencia para escribir, organizar y ejecutar los tests del proyecto.
+
+Framework: PEST PHP 4
+Base: Laravel 12
+DB de pruebas: SQLite en memoria con `RefreshDatabase`
 
 ---
 
-## Índice
+## Indice
 
-1. [Comandos rápidos](#1-comandos-rápidos)
+1. [Comandos rapidos](#1-comandos-rapidos)
 2. [Estructura de carpetas](#2-estructura-de-carpetas)
 3. [Roles y permisos](#3-roles-y-permisos)
-4. [Helpers globales (Pest.php)](#4-helpers-globales-pestphp)
+4. [Helpers globales](#4-helpers-globales)
 5. [Convenciones de escritura](#5-convenciones-de-escritura)
-6. [Tipos de tests por módulo](#6-tipos-de-tests-por-módulo)
-7. [Qué testear en cada rol](#7-qué-testear-en-cada-rol)
-8. [Reglas de validación comunes](#8-reglas-de-validación-comunes)
-9. [Añadir un nuevo módulo](#9-añadir-un-nuevo-módulo)
+6. [Tipos de tests por modulo](#6-tipos-de-tests-por-modulo)
+7. [Que testear por rol](#7-que-testear-por-rol)
+8. [Reglas de validacion comunes](#8-reglas-de-validacion-comunes)
+9. [Como agregar un modulo nuevo](#9-como-agregar-un-modulo-nuevo)
+10. [Test transversal de rutas web](#10-test-transversal-de-rutas-web)
 
 ---
 
-## 1. Comandos rápidos
+## 1. Comandos rapidos
 
 ```bash
-# Correr TODA la suite
+# Correr toda la suite
 ./vendor/bin/pest
 
-# Correr solo los tests de Feature
+# Correr solo Feature
 ./vendor/bin/pest tests/Feature/
 
-# Correr un módulo específico
+# Correr solo Unit
+./vendor/bin/pest tests/Unit/
+
+# Correr un modulo especifico
 ./vendor/bin/pest tests/Feature/Tasks/
 
-# Correr un archivo específico
-./vendor/bin/pest tests/Feature/Tasks/Admin/TaskCrudTest.php
+# Correr un archivo puntual
+./vendor/bin/pest tests/Feature/Users/Admin/UserCrudTest.php
 
-# Correr un test por nombre (busca el string en el título)
+# Filtrar por nombre del test
 ./vendor/bin/pest --filter "puede crear una tarea"
 
-# Ver output detallado (útil para depurar)
+# Salida detallada
 ./vendor/bin/pest --verbose
 
-# Correr en paralelo (más rápido)
+# Paralelo
 ./vendor/bin/pest --parallel
 
-# Ver cobertura de código
+# Cobertura
 ./vendor/bin/pest --coverage
 ```
 
@@ -51,136 +58,117 @@ Guía de referencia para escribir, organizar y ejecutar los tests del proyecto.
 
 ## 2. Estructura de carpetas
 
-Los tests se organizan **por módulo** y dentro de cada módulo **por rol**.
+Los tests se organizan por modulo y, dentro de cada modulo, por rol o tipo de comportamiento.
 
-```
+```text
 tests/
-├── Pest.php                        ← Configuración global + helpers reutilizables
-├── TestCase.php                    ← Clase base (extiende Laravel TestCase)
-├── TEST.md                         ← Esta guía
-│
-├── Feature/                        ← Tests de integración (HTTP, BD, vistas)
-│   ├── Auth/
-│   │   └── AuthenticationTest.php
-│   │
-│   ├── Home/                       ← Módulo: vista principal
-│   │   ├── Admin/
-│   │   │   └── AdminHomeViewTest.php
-│   │   └── Consultor/
-│   │       └── ConsultorHomeViewTest.php
-│   │
-│   ├── Tasks/                      ← Módulo: tareas
-│   │   ├── Admin/
-│   │   │   ├── TaskCrudTest.php
-│   │   │   └── TaskValidationTest.php
-│   │   └── Consultor/
-│   │       └── TaskAccessTest.php
-│   │
-│   └── {Modulo}/                   ← Patrón para futuros módulos
-│       ├── Admin/
-│       │   ├── {Modulo}CrudTest.php
-│       │   └── {Modulo}ValidationTest.php
-│       └── Consultor/
-│           └── {Modulo}AccessTest.php
-│
-└── Unit/                           ← Tests unitarios puros (sin BD, sin HTTP)
-    └── ExampleTest.php
+|-- Pest.php
+|-- TestCase.php
+|-- TEST.md
+|
+|-- Feature/
+|   |-- Auth/
+|   |-- Goods/
+|   |-- Home/
+|   |-- Tasks/
+|   |-- Users/
+|   |-- WebRoutesPerformanceTest.php
+|
+`-- Unit/
 ```
 
-### Convención de nombres de archivo
+### Convencion de nombres
 
-| Tipo de test | Sufijo | Ejemplo |
+| Tipo | Sufijo | Ejemplo |
 |---|---|---|
-| Vista / UI | `ViewTest.php` | `AdminHomeViewTest.php` |
-| CRUD completo | `CrudTest.php` | `TaskCrudTest.php` |
-| Validaciones | `ValidationTest.php` | `TaskValidationTest.php` |
-| Control de acceso | `AccessTest.php` | `TaskAccessTest.php` |
+| Vista | `ViewTest.php` | `AdminHomeViewTest.php` |
+| CRUD | `CrudTest.php` | `TaskCrudTest.php` |
+| Validacion | `ValidationTest.php` | `TaskValidationTest.php` |
+| Acceso | `AccessTest.php` | `TaskAccessTest.php` |
+| Rendimiento transversal | `PerformanceTest.php` | `WebRoutesPerformanceTest.php` |
 
 ---
 
 ## 3. Roles y permisos
 
-El sistema tiene dos roles definidos en la columna `users.role` (enum):
+El sistema usa dos roles en `users.role`:
 
-| Rol | Valor en BD | Puede hacer |
+| Rol | Valor en BD | Alcance esperado |
 |---|---|---|
-| **Administrador** | `'administrador'` | CRUD completo de todos los módulos |
-| **Consultor** | `'consultor'` | Solo lectura de las vistas permitidas; no ve módulos de gestión |
+| Administrador | `administrador` | Gestion completa de modulos |
+| Consultor | `consultor` | Solo lectura de vistas permitidas |
 
-### Comportamiento esperado por rol
+### Comportamiento esperado
 
-**Administrador:**
-- Accede a `/home` y ve el panel completo de tareas
-- Puede crear, editar, marcar como completada y eliminar tareas
-- Ve la interfaz de gestión (botones, formularios, modales)
+Administrador:
+- accede a vistas de gestion
+- puede crear, editar y eliminar registros
+- ve botones, modales y acciones administrativas
 
-**Consultor:**
-- Accede a `/home` y ve únicamente el mensaje de bienvenida e información de consultor
-- **No ve** ningún elemento del módulo de tareas (botones, listas, formularios)
-- Recibe `401` en todos los endpoints de la API si no está autenticado
-- No tiene restricción de rol en la API (solo `auth` middleware); la restricción es visual
+Consultor:
+- accede solo a las vistas permitidas
+- no ve controles de gestion
+- no debe ejecutar acciones administrativas
+
+No autenticado:
+- es redirigido a login en vistas protegidas
+- recibe `401` o redireccion en endpoints segun el middleware aplicado
 
 ---
 
-## 4. Helpers globales (`Pest.php`)
+## 4. Helpers globales
 
-Todos los helpers están disponibles en cualquier test de `Feature/` sin importar nada.
+Los helpers compartidos viven en `tests/Pest.php`.
 
 ### Usuarios
 
 ```php
-// Crea un usuario con rol 'administrador'
 adminUser(): User
-
-// Crea un usuario con rol 'consultor'
 consultorUser(): User
 ```
 
-También se pueden usar los estados de la factory directamente:
+Tambien se pueden usar estados de factory:
 
 ```php
 User::factory()->administrador()->create();
-User::factory()->consultor()->create(['name' => 'Juan Pérez']);
+User::factory()->consultor()->create();
 ```
 
 ### Tareas
 
 ```php
-// Crea una tarea pendiente (date: +5 días por defecto)
 crearTareaPendiente(User $user, array $overrides = []): Task
-
-// Crea una tarea completada (date: +5 días por defecto)
 crearTareaCompletada(User $user, array $overrides = []): Task
 ```
 
-**Ejemplo de uso con overrides:**
+### Bienes
 
 ```php
-// Tarea vencida (insertada directo en BD para saltarse validación de API)
-Task::create([
-    'name'    => 'Tarea vencida',
-    'date'    => now()->subDays(2)->toDateString(),
-    'status'  => 'pending',
-    'user_id' => $admin->id,
-]);
-
-// Tarea con fecha específica
-crearTareaPendiente($admin, [
-    'name' => 'Tarea urgente',
-    'date' => now()->addDay()->toDateString(),
-]);
+crearBien(array $overrides = []): Asset
+crearBienConCantidad(int $cantidad = 5, array $overrides = []): Asset
+crearBienConSerial(array $overrides = []): Asset
 ```
 
-### Añadir nuevos helpers
+### Cuando agregar un helper nuevo
 
-Agregar en `tests/Pest.php` siguiendo el mismo patrón:
+Conviene agregar helpers cuando:
+
+- el mismo setup aparece en varios archivos
+- el modelo tiene relaciones minimas obligatorias
+- el flujo de prueba requiere datos coherentes y repetibles
+
+Ejemplo:
 
 ```php
-function crearInventario(User $user, array $overrides = []): Inventory
+function crearInventario(array $overrides = []): Inventory
 {
+    $group = Group::create(['name' => 'Grupo de prueba']);
+
     return Inventory::create(array_merge([
-        'name'    => 'Inventario de prueba',
-        'user_id' => $user->id,
+        'name' => 'Inventario de prueba',
+        'responsible' => 'Usuario demo',
+        'conservation_status' => 'good',
+        'group_id' => $group->id,
     ], $overrides));
 }
 ```
@@ -189,175 +177,135 @@ function crearInventario(User $user, array $overrides = []): Inventory
 
 ## 5. Convenciones de escritura
 
-### Sintaxis PEST (obligatoria)
+### Sintaxis
 
-Todos los tests usan la sintaxis funcional de PEST, **no** clases PHPUnit.
-
-```php
-<?php
-
-// ✅ Correcto — PEST funcional con describe anidado
-describe('Módulo X - Rol Y', function () {
-
-    describe('Acción específica', function () {
-
-        it('descripción en español del comportamiento esperado', function () {
-            $admin = adminUser();
-
-            $this->actingAs($admin)
-                ->postJson(route('ruta.nombre'), [...])
-                ->assertStatus(200)
-                ->assertJson(['success' => true]);
-        });
-    });
-});
-
-// ❌ Incorrecto — No usar clases PHPUnit
-class MiTest extends TestCase {
-    public function test_algo() { ... }
-}
-```
-
-### Títulos de tests
-
-- Escritos en **español**, en tercera persona o infinitivo
-- Describen el **comportamiento esperado**, no el código que se ejecuta
-- Suficientemente específicos para entender el fallo sin leer el cuerpo
-
-```php
-// ✅ Buenos títulos
-it('no puede crear una tarea con fecha anterior a hoy')
-it('el consultor no ve el botón de eliminar tarea')
-it('retorna 404 al intentar editar una tarea inexistente')
-
-// ❌ Malos títulos
-it('test fecha')
-it('valida tarea')
-it('funciona bien')
-```
-
-### Estructura interna de un test
-
-```php
-it('puede crear una tarea con todos los campos', function () {
-    // 1. ARRANGE — preparar datos
-    $admin = adminUser();
-
-    // 2. ACT — ejecutar la acción
-    $response = $this->actingAs($admin)
-        ->postJson(route('tasks.store'), [
-            'name' => 'Nueva tarea',
-            'date' => now()->addDays(3)->toDateString(),
-        ]);
-
-    // 3. ASSERT — verificar resultado
-    $response->assertStatus(200)->assertJson(['success' => true]);
-
-    $this->assertDatabaseHas('tasks', [
-        'name'   => 'Nueva tarea',
-        'status' => 'pending',
-    ]);
-});
-```
-
-### `describe` anidado
-
-Usar dos niveles:
-1. Nivel 1 → `Módulo - Rol` (contexto general)
-2. Nivel 2 → Acción o grupo de validación
+La suite usa PEST. No se deben crear clases PHPUnit para tests nuevos salvo que haya una razon fuerte y documentada.
 
 ```php
 describe('CRUD de Tareas - Administrador', function () {
     describe('Crear tarea', function () {
-        it('puede crear con todos los campos', function () { ... });
-        it('puede crear sin descripción', function () { ... });
-    });
-    describe('Eliminar tarea', function () {
-        it('puede eliminar una tarea pendiente', function () { ... });
-        it('retorna 404 si no existe', function () { ... });
+        it('puede crear una tarea con datos validos', function () {
+            $admin = adminUser();
+
+            $this->actingAs($admin)
+                ->postJson(route('tasks.store'), [
+                    'name' => 'Nueva tarea',
+                    'date' => now()->addDays(3)->toDateString(),
+                ])
+                ->assertStatus(200);
+        });
     });
 });
 ```
 
----
+### Titulos
 
-## 6. Tipos de tests por módulo
+Los titulos deben:
 
-Cada módulo debe cubrir estos cuatro tipos de archivos:
+- estar en espanol
+- describir comportamiento esperado
+- permitir entender el fallo sin leer el cuerpo
 
-### `{Modulo}CrudTest.php` — Operaciones de datos (Admin)
+Buenos ejemplos:
 
-Prueba que el administrador pueda ejecutar cada operación exitosamente:
+- `it('no puede crear una tarea con fecha anterior a hoy')`
+- `it('el consultor no ve el boton de eliminar tarea')`
+- `it('retorna 404 al editar un registro inexistente')`
 
-- **Crear** → `POST /api/{modulo}/store` → `assertStatus(200)` + `assertDatabaseHas`
-- **Editar** → `PUT /api/{modulo}/update` → `assertStatus(200)` + `assertDatabaseHas`
-- **Eliminar** → `DELETE /api/{modulo}/delete/{id}` → `assertStatus(200)` + `assertDatabaseMissing`
-- **Casos 404** → id inexistente devuelve `assertStatus(404)`
+Malos ejemplos:
 
-### `{Modulo}ValidationTest.php` — Reglas de validación (Admin)
+- `it('test fecha')`
+- `it('funciona bien')`
+- `it('valida')`
 
-Prueba que la API rechace datos incorrectos con `422` y `assertJsonValidationErrors`:
+### Estructura recomendada
 
-- Campos requeridos vacíos
-- Longitudes máximas superadas (nombre max:255)
-- Formatos inválidos (fecha no válida)
-- Reglas de negocio (fecha no puede ser pasada)
-- Mensajes de error en español
-
-### `Admin{Modulo}ViewTest.php` — Vista del administrador
-
-Prueba lo que el admin **ve** en la vista HTML:
-
-- Secciones y títulos presentes (`assertSee`)
-- Botones de acción presentes (`assertSee('css-class-o-texto')`)
-- Contenido de registros en la lista
-- Estado vacío (mensajes cuando no hay registros)
-- Elementos que **no** debe ver (`assertDontSee`)
-
-### `{Modulo}AccessTest.php` — Control de acceso (Consultor / No autenticado)
-
-Prueba que usuarios sin permisos no puedan:
-
-- **No autenticado:** `401` en endpoints de API, redirección a `/login` en vistas
-- **Consultor:** no ve elementos de gestión en la vista (`assertDontSee`)
-- **Consultor:** no ve registros aunque existan en BD
+1. Arrange
+2. Act
+3. Assert
 
 ---
 
-## 7. Qué testear en cada rol
+## 6. Tipos de tests por modulo
 
-### Administrador ✅
+### `*CrudTest.php`
 
-| Escenario | Verificar |
-|---|---|
-| Acceso a vista | `assertStatus(200)` |
-| Ve interfaz de gestión | `assertSee('botón/sección')` |
-| CRUD exitoso | `assertStatus(200)` + `assertDatabaseHas/Missing` |
-| Estado vacío | Mensaje de "sin registros" |
-| Errores de validación | `assertStatus(422)` + `assertJsonValidationErrors` |
-| Recurso no encontrado | `assertStatus(404)` |
+Valida operaciones exitosas y fallos basicos del recurso:
 
-### Consultor 🔒
+- crear
+- actualizar
+- eliminar
+- respuesta `404` cuando el registro no existe
 
-| Escenario | Verificar |
-|---|---|
-| Acceso a vista | `assertStatus(200)` |
-| Ve bienvenida/info | `assertSee('Información del Consultor')` |
-| No ve gestión | `assertDontSee('add-task-button')`, etc. |
-| No ve datos de admin | `assertDontSee('nombre del registro')` |
+### `*ValidationTest.php`
 
-### No autenticado 🚫
+Valida reglas de negocio y entradas invalidas:
 
-| Escenario | Verificar |
-|---|---|
-| Vista protegida | `assertRedirect('/login')` |
-| Endpoint API (auth) | `assertStatus(401)` |
+- campos requeridos
+- longitud maxima
+- formato incorrecto
+- mensajes y estructura `422`
+
+### `*ViewTest.php`
+
+Valida lo que el usuario realmente ve:
+
+- titulos
+- tablas
+- botones
+- modales
+- estados vacios
+
+### `*AccessTest.php`
+
+Valida autorizacion:
+
+- no autenticado
+- consultor
+- restricciones de UI
+- restricciones de endpoints
+
+### `*PerformanceTest.php`
+
+Valida tiempos de respuesta y disponibilidad transversal:
+
+- rutas que deben responder sin error
+- rutas con parametros dinamicos
+- umbrales maximos de tiempo
+- exclusiones controladas
 
 ---
 
-## 8. Reglas de validación comunes
+## 7. Que testear por rol
 
-Reglas que se repiten en varios módulos y cómo testearlas:
+### Administrador
+
+| Escenario | Verificacion |
+|---|---|
+| Acceso a vista | `200` |
+| Ve interfaz de gestion | `assertSee(...)` |
+| CRUD exitoso | `assertStatus(200)` + BD |
+| Validaciones | `422` + `assertJsonValidationErrors` |
+| Recurso inexistente | `404` |
+
+### Consultor
+
+| Escenario | Verificacion |
+|---|---|
+| Acceso a vistas permitidas | `200` |
+| No ve gestion | `assertDontSee(...)` |
+| No ejecuta acciones admin | `403`, `401` o ausencia de UI segun aplique |
+
+### No autenticado
+
+| Escenario | Verificacion |
+|---|---|
+| Vista protegida | redireccion a `/login` |
+| API protegida | `401` |
+
+---
+
+## 8. Reglas de validacion comunes
 
 ### Campo requerido
 
@@ -370,64 +318,41 @@ it('el nombre es obligatorio', function () {
 });
 ```
 
-### Longitud máxima (max:255)
+### Longitud maxima
 
 ```php
 it('el nombre no puede superar 255 caracteres', function () {
     $this->actingAs(adminUser())
-        ->postJson(route('modulo.store'), ['name' => str_repeat('A', 256)])
+        ->postJson(route('modulo.store'), [
+            'name' => str_repeat('A', 256),
+        ])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['name']);
 });
-
-it('acepta exactamente 255 caracteres', function () {
-    $this->actingAs(adminUser())
-        ->postJson(route('modulo.store'), ['name' => str_repeat('A', 255)])
-        ->assertStatus(200);
-});
 ```
 
-### Fecha no puede ser pasada
+### Fecha no valida o pasada
 
 ```php
 it('la fecha no puede ser anterior a hoy', function () {
-    $response = $this->actingAs(adminUser())
+    $this->actingAs(adminUser())
         ->postJson(route('modulo.store'), [
             'name' => 'Test',
             'date' => now()->subDay()->toDateString(),
-        ]);
-
-    $response->assertStatus(422)
+        ])
+        ->assertStatus(422)
         ->assertJsonValidationErrors(['date']);
-
-    // Verificar mensaje en español
-    $errors = $response->json('errors.date');
-    expect($errors)->toContain('La fecha no puede ser anterior al día de hoy.');
 });
-```
-
-### Comparación de fechas en BD
-
-MySQL guarda `date` como `Y-m-d H:i:s`. Usar el cast del modelo:
-
-```php
-// ✅ Correcto
-$fechaGuardada = MiModelo::find($id)->date->toDateString();
-expect($fechaGuardada)->toBe($fecha);
-
-// ❌ Puede fallar por el timestamp
-$this->assertDatabaseHas('tabla', ['date' => '2026-03-01']);
 ```
 
 ### Campo nullable
 
 ```php
-it('la descripción es opcional', function () {
+it('la descripcion es opcional', function () {
     $this->actingAs(adminUser())
         ->postJson(route('modulo.store'), [
-            'name' => 'Sin descripción',
+            'name' => 'Sin descripcion',
             'date' => now()->addDays(2)->toDateString(),
-            // 'description' omitido intencionalmente
         ])
         ->assertStatus(200);
 });
@@ -435,79 +360,33 @@ it('la descripción es opcional', function () {
 
 ---
 
-## 9. Añadir un nuevo módulo
+## 9. Como agregar un modulo nuevo
 
-Pasos para añadir tests a un módulo nuevo (ej. `Goods`):
+Ejemplo con `Goods`.
 
 ### 1. Crear carpetas
 
-```
+```text
 tests/Feature/Goods/
-├── Admin/
-│   ├── GoodsCrudTest.php
-│   └── GoodsValidationTest.php
-└── Consultor/
-    └── GoodsAccessTest.php
+|-- Admin/
+|   |-- GoodsCrudTest.php
+|   `-- GoodsValidationTest.php
+`-- Consultor/
+    `-- GoodsAccessTest.php
 ```
 
-### 2. Añadir helpers en `Pest.php`
+### 2. Agregar helpers si hace falta
 
-```php
-function crearBien(User $user, array $overrides = []): Asset
-{
-    return Asset::create(array_merge([
-        'name'    => 'Bien de prueba',
-        'user_id' => $user->id,
-    ], $overrides));
-}
-```
+Evitar repetir setup complejo dentro de cada test.
 
-### 3. Esqueleto de `GoodsCrudTest.php`
+### 3. Empezar por cuatro frentes
 
-```php
-<?php
+- vista admin
+- CRUD admin
+- validaciones admin
+- acceso consultor y no autenticado
 
-describe('CRUD de Bienes - Administrador', function () {
-
-    describe('Crear bien', function () {
-        it('puede crear un bien con datos válidos', function () {
-            // ...
-        });
-    });
-
-    describe('Editar bien', function () {
-        it('puede actualizar el nombre de un bien', function () {
-            // ...
-        });
-    });
-
-    describe('Eliminar bien', function () {
-        it('puede eliminar un bien', function () {
-            // ...
-        });
-        it('retorna 404 si no existe', function () {
-            // ...
-        });
-    });
-});
-```
-
-### 4. Esqueleto de `GoodsAccessTest.php`
-
-```php
-<?php
-
-describe('Acceso a Bienes - No autenticado', function () {
-    it('no puede crear un bien (401)', function () { ... });
-    it('no puede eliminar un bien (401)', function () { ... });
-});
-
-describe('Vista de Bienes - Consultor', function () {
-    it('no ve los botones de gestión', function () { ... });
-});
-```
-
-### 5. Correr solo el nuevo módulo
+### 4. Correr solo ese modulo
 
 ```bash
 ./vendor/bin/pest tests/Feature/Goods/
@@ -515,19 +394,132 @@ describe('Vista de Bienes - Consultor', function () {
 
 ---
 
+## 10. Test transversal de rutas web
+
+Archivo agregado:
+
+```text
+tests/Feature/WebRoutesPerformanceTest.php
+```
+
+### Objetivo
+
+Este test recorre las rutas `GET` web mas relevantes del proyecto y valida dos cosas:
+
+1. que respondan sin error funcional
+2. que lo hagan dentro de un tiempo razonable
+
+La asercion acepta:
+
+- `200`
+- redirecciones validas
+- `204`
+
+### Por que existe
+
+Este test sirve como red de seguridad transversal. No reemplaza los tests por modulo, pero ayuda a detectar rapido:
+
+- rutas rotas por cambios de controladores o vistas
+- joins o vistas SQL que fallan por falta de datos
+- regresiones de rendimiento evidentes
+- rutas con parametros que dejaron de resolverse
+
+### Datos minimos que prepara
+
+Antes de medir rutas, el test crea un contexto pequeno pero realista:
+
+- un usuario administrador autenticado
+- tareas pendientes y completadas para `/home`
+- un `Group` y un `Inventory`
+- un bien de tipo `Cantidad` con registro en `asset_quantities`
+- un bien de tipo `Serial` con registro en `asset_equipments`
+- un registro en `assets_removed` para `/removed/{id}`
+- una carpeta y un reporte para `/reports/folder/{folderId}`
+- un `ActivityLog` para `/records`
+
+Esto permite que rutas como:
+
+- `/group/{groupId}`
+- `/group/{groupId}/inventory/{inventoryId}`
+- `/group/{groupId}/inventory/{inventoryId}/goods/{assetId}/serials`
+- `/removed/{id}`
+- `/reports/folder/{folderId}`
+
+puedan resolverse con datos consistentes.
+
+### Como resuelve parametros dinamicos
+
+El test construye URLs reales para placeholders frecuentes:
+
+- `groupId`
+- `inventoryId`
+- `assetId`
+- `folderId`
+- `id`
+- `path`
+- `token`
+
+Si aparece una ruta con un parametro obligatorio que todavia no tiene valor mapeado, esa ruta se omite para evitar falsos negativos. Cuando se agregue una ruta nueva con parametros, hay que extender el mapa de valores del test.
+
+### Rutas excluidas
+
+No todo `GET` registrado conviene medir en esta prueba. Se excluyen:
+
+- `api/*`
+- `flux/*`
+- `livewire/*`
+- `storage/*`
+- `user/two-factor-*`
+- `user/confirmed-password-status`
+- rutas con middleware `signed`
+- `register`, porque la aplicacion la deshabilita intencionalmente con `404`
+
+Motivo: varias de esas rutas pertenecen al framework, requieren contexto especial o no representan pantallas funcionales del sistema.
+
+### Estrategia de medicion
+
+Cada ruta se llama dos veces:
+
+1. una peticion de calentamiento
+2. una segunda peticion que es la que se mide
+
+Con eso se reduce el ruido inicial de bootstrapping y la medicion queda mas estable.
+
+### Umbrales actuales
+
+```php
+DEFAULT_MAX_MS = 500
+HEAVY_MAX_MS = 1500
+```
+
+Regla aplicada:
+
+- rutas normales: `500 ms`
+- rutas que contienen `download` o `export`: `1500 ms`
+
+Si una ruta nueva supera el limite, primero revisar consultas, vistas o carga de datos. Subir el umbral debe ser la ultima opcion y siempre conviene documentar el motivo.
+
+### Como ejecutarlo
+
+```bash
+./vendor/bin/pest tests/Feature/WebRoutesPerformanceTest.php
+```
+
+### Nota de implementacion
+
+El ejemplo base compartido para este trabajo estaba escrito como clase PHPUnit. En este proyecto se adapto a PEST para mantener coherencia con la suite actual, reutilizar los helpers globales y seguir la convencion de `tests/Pest.php`.
+
+---
+
 ## Estado actual de la suite
 
-| Módulo | Admin | Consultor | Tests | Estado |
-|---|---|---|---|---|
-| Auth | Login / Logout | — | ~5 | ✅ |
-| Home (vista) | Vista con tareas | Vista sin tareas | 25 | ✅ |
-| Tasks (CRUD) | Crear / Editar / Toggle / Eliminar | — | 16 | ✅ |
-| Tasks (Validaciones) | Nombre, Fecha, Descripción, Colores | — | 26 | ✅ |
-| Tasks (Acceso) | — | Sin UI + No auth 401 | 8 | ✅ |
-| Goods | 🔲 pendiente | 🔲 pendiente | — | — |
-| Inventories | 🔲 pendiente | 🔲 pendiente | — | — |
-| Groups | 🔲 pendiente | 🔲 pendiente | — | — |
-| Reports | 🔲 pendiente | 🔲 pendiente | — | — |
-| Users | 🔲 pendiente | 🔲 pendiente | — | — |
-| Records | 🔲 pendiente | 🔲 pendiente | — | — |
-| Removed | 🔲 pendiente | 🔲 pendiente | — | — |
+| Modulo | Cobertura principal | Estado |
+|---|---|---|
+| Auth | login, logout, rutas publicas bloqueadas | OK |
+| Home | vista admin y consultor | OK |
+| Tasks | CRUD, validaciones, acceso | OK |
+| Users | vista, CRUD, validaciones, acceso | OK |
+| Goods | CRUD, vista, validaciones, carga Excel | OK |
+| Web routes | smoke test + rendimiento GET | OK |
+
+Actualizar esta tabla cuando se agregue un modulo o un nuevo tipo de prueba transversal.
