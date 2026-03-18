@@ -1,16 +1,16 @@
 <?php
 
-describe('Vista de carga global Excel de bienes', function () {
+describe('Vista alias de carga Excel de bienes', function () {
 
-    it('el administrador puede acceder a la vista global de carga Excel', function () {
+    it('el administrador puede acceder a la vista alias de carga Excel', function () {
         $this->actingAs(adminUser())
             ->get(route('goods.excel-upload-global'))
             ->assertStatus(200)
-            ->assertSee('Cargar bienes al catalogo y asignar a inventarios')
-            ->assertSee('globalExcelFileInput')
-            ->assertSee('globalPreviewTable')
-            ->assertSee('btnLimpiarExcelGlobal')
-            ->assertSee('btnEnviarExcelGlobal');
+            ->assertSee('Cargar bienes al catalogo desde Excel')
+            ->assertSee('excelFileInput')
+            ->assertSee('goodsPreviewTable')
+            ->assertSee('btnLimpiarExcel')
+            ->assertSee('btnEnviarExcel');
     });
 
     it('el usuario no autenticado es redirigido al login', function () {

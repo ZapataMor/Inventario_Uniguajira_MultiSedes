@@ -49,7 +49,7 @@
 
     @if(Auth::user()->role === 'administrador')
         <script src="{{ asset('assets/js/goods.js') }}?v=2"></script>
-        <script src="{{ asset('assets/js/goods-excel-upload.js') }}?v=2"></script>
+        <script src="{{ asset('assets/js/goods-excel-upload.js') }}?v=3"></script>
         <script src="{{ asset('assets/js/goods-excel-upload-global.js') }}?v=5"></script>
     @endif
 

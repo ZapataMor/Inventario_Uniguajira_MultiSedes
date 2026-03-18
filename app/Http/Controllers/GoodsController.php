@@ -10,6 +10,10 @@ use App\Models\Inventory;
 use Illuminate\Support\Facades\Storage;
 use App\Helpers\ActivityLogger;
 use App\Services\GoodsInventoryService;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class GoodsController extends Controller
 {
@@ -217,7 +221,7 @@ class GoodsController extends Controller
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         try {
-            $goods = $request->input('goods', []);
+            $goods = $request->input('goods', $request->input('rows', []));
 
             if (empty($goods)) {
                 return response()->json([
@@ -231,15 +235,24 @@ class GoodsController extends Controller
             $createdAssets = []; // Se almacenan los nombres de los bienes creados para el resumen del log.
 
             foreach ($goods as $index => $good) {
+                $rowNumber = $index + 2;
+
                 try {
+                    $normalizedGood = $this->normalizeBatchGood($good);
                     // Se valida que los datos de cada bien sean correctos antes de intentar crearlos.
-                    $validator = validator($good, [
-                        'nombre' => 'required|string|unique:assets,name',
-                        'tipo' => 'required|in:1,2'
+                    $validator = validator([
+                        'nombre' => $normalizedGood['nombre'],
+                        'tipo' => $normalizedGood['tipo'],
+                    ], [
+                        'nombre' => 'required|string|max:255|unique:assets,name',
+                        'tipo' => 'required|in:Cantidad,Serial'
+                    ], [
+                        'tipo.required' => 'El campo tipo es obligatorio.',
+                        'tipo.in' => 'El tipo debe ser Cantidad o Serial.',
                     ]);
 
                     if ($validator->fails()) {
-                        $errors[] = "Fila {$index}: " . $validator->errors()->first();
+                        $errors[] = "Fila {$rowNumber}: " . $validator->errors()->first();
                         continue;
                     }
 
@@ -255,7 +268,7 @@ class GoodsController extends Controller
                         ]);
 
                         if ($validator->fails()) {
-                            $errors[] = "Fila {$index}: " . $validator->errors()->first();
+                            $errors[] = "Fila {$rowNumber}: " . $validator->errors()->first();
                             continue;
                         }
 
@@ -264,8 +277,8 @@ class GoodsController extends Controller
 
                     // Se crea el registro del bien en la base de datos.
                     $asset = Asset::create([
-                        'name' => $good['nombre'],
-                        'type' => (int)$good['tipo'] === 1 ? 'Cantidad' : 'Serial',
+                        'name' => $normalizedGood['nombre'],
+                        'type' => $normalizedGood['tipo'],
                         'image' => $imagePath
                     ]);
 
@@ -274,7 +287,7 @@ class GoodsController extends Controller
 
                 } catch (\Exception $e) {
                     // Se captura cualquier excepción inesperada durante la creación de un bien para que el proceso continúe con los demás.
-                    $errors[] = "Fila {$index}: {$e->getMessage()}";
+                    $errors[] = "Fila {$rowNumber}: {$e->getMessage()}";
                 }
             }
 
@@ -318,16 +331,68 @@ class GoodsController extends Controller
      */
     public function downloadTemplate()
     {
-        $filePath = storage_path('app/templates/Plantilla Crear Bienes.xlsx');
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Plantilla');
 
-        if (!file_exists($filePath)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'El archivo de plantilla no se encuentra disponible.'
-            ], 404);
+        $headers = [
+            'A1' => 'Nombre*',
+            'B1' => 'Tipo*',
+        ];
+
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
         }
 
-        return response()->download($filePath, 'Plantilla Crear Bienes.xlsx');
+        $sheet->getStyle('A1:B1')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1B5E20'],
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+            ],
+        ]);
+
+        $sheet->getColumnDimension('A')->setWidth(34);
+        $sheet->getColumnDimension('B')->setWidth(18);
+
+        $examples = [
+            ['SILLA ERGONOMICA', 'Cantidad'],
+            ['COMPUTADOR PORTATIL', 'Serial'],
+        ];
+
+        foreach ($examples as $rowIndex => $example) {
+            $sheet->fromArray($example, null, 'A' . ($rowIndex + 2));
+        }
+
+        $sheet->setCellValue('A5', '* Campos obligatorios. Tipo: Cantidad o Serial. Mayusculas y minusculas no importan.');
+        $sheet->mergeCells('A5:B5');
+        $sheet->getStyle('A5')->applyFromArray([
+            'font' => [
+                'italic' => true,
+                'color' => ['rgb' => '555555'],
+            ],
+        ]);
+
+        $filename = 'Plantilla_Crear_Bienes.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->stream(
+            function () use ($writer) {
+                $writer->save('php://output');
+            },
+            200,
+            [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Cache-Control' => 'max-age=0',
+            ]
+        );
     }
 
     /**
@@ -352,13 +417,7 @@ class GoodsController extends Controller
      */
     public function excelUploadGlobalView(Request $request)
     {
-        if ($request->ajax()) {
-            /** @var \Illuminate\View\View $view */
-            $view = view('goods.excel-upload-global');
-            return $view->renderSections()['content'];
-        }
-
-        return view('goods.excel-upload-global');
+        return $this->excelUploadView($request);
     }
 
     /**
@@ -368,6 +427,8 @@ class GoodsController extends Controller
      */
     public function batchCreateGlobal(Request $request)
     {
+        return $this->batchCreate($request);
+
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         $rows = $request->input('rows', []);
@@ -500,6 +561,8 @@ class GoodsController extends Controller
      */
     public function batchCreateGlobalOptimized(Request $request)
     {
+        return $this->batchCreate($request);
+
         abort_if(auth()->user()->role !== 'administrador', 403);
 
         $rows = $request->input('rows', []);
@@ -690,5 +753,24 @@ class GoodsController extends Controller
             'errors'   => $errors,
             'message'  => $message,
         ]);
+    }
+
+    private function normalizeBatchGood(array $good): array
+    {
+        return [
+            'nombre' => trim((string) ($good['nombre'] ?? $good['bien'] ?? '')),
+            'tipo' => $this->normalizeBulkType($good['tipo'] ?? null),
+        ];
+    }
+
+    private function normalizeBulkType(mixed $value): ?string
+    {
+        $type = mb_strtolower(trim((string) $value));
+
+        return match ($type) {
+            '1', 'cantidad' => 'Cantidad',
+            '2', 'serial' => 'Serial',
+            default => null,
+        };
     }
 }

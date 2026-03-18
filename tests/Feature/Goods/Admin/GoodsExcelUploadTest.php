@@ -26,6 +26,7 @@
 use App\Models\Asset;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 // ══════════════════════════════════════════════
 // VISTA DE CARGA EXCEL
@@ -59,7 +60,7 @@ describe('Vista de carga Excel (/goods/excel-upload)', function () {
         it('muestra el título de carga de bienes desde Excel', function () {
             $this->actingAs(adminUser())
                 ->get(route('goods.excel-upload'))
-                ->assertSee('Cargar datos de bienes desde Excel');
+                ->assertSee('Cargar bienes al catalogo desde Excel');
         });
 
         it('contiene el área de arrastrar y soltar archivos (excel-upload-area)', function () {
@@ -107,13 +108,14 @@ describe('Vista de carga Excel (/goods/excel-upload)', function () {
         it('contiene la función JS sendGoodsData para enviar el lote', function () {
             $this->actingAs(adminUser())
                 ->get(route('goods.excel-upload'))
-                ->assertSee('sendGoodsData');
+                ->assertSee('assets/js/goods-excel-upload.js');
         });
 
         it('contiene la función JS handleFileUpload para procesar el archivo', function () {
             $this->actingAs(adminUser())
                 ->get(route('goods.excel-upload'))
-                ->assertSee('handleFileUpload');
+                ->assertSee('Nombre')
+                ->assertSee('Tipo');
         });
 
         it('el input acepta archivos .xlsx, .xls y .csv', function () {
@@ -179,6 +181,28 @@ describe('Carga masiva de Bienes - Administrador', function () {
             $this->assertDatabaseHas('assets', ['name' => 'Bien Lote 1']);
             $this->assertDatabaseHas('assets', ['name' => 'Bien Lote 2']);
             $this->assertDatabaseHas('assets', ['name' => 'Bien Lote 3']);
+        });
+
+        it('acepta el tipo sin importar mayusculas o minusculas', function () {
+            $this->actingAs(adminUser())
+                ->postJson(route('goods.batchCreate'), [
+                    'goods' => [
+                        ['nombre' => 'Bien Tipo Mayusculas', 'tipo' => 'CANTIDAD'],
+                        ['nombre' => 'Bien Tipo Minusculas', 'tipo' => 'serial'],
+                    ],
+                ])
+                ->assertStatus(200)
+                ->assertJson(['success' => true, 'created' => 2]);
+
+            $this->assertDatabaseHas('assets', [
+                'name' => 'Bien Tipo Mayusculas',
+                'type' => 'Cantidad',
+            ]);
+
+            $this->assertDatabaseHas('assets', [
+                'name' => 'Bien Tipo Minusculas',
+                'type' => 'Serial',
+            ]);
         });
 
         it('el campo created refleja la cantidad exacta de bienes creados', function () {
@@ -600,12 +624,31 @@ describe('Descarga de plantilla Excel', function () {
             ->assertHeader('Content-Disposition');
     });
 
-    it('retorna 404 JSON cuando el archivo de plantilla no existe', function () {
-        // Usamos una ruta de plantilla que no existe para verificar el comportamiento 404
+    it('genera una plantilla con solo las columnas Nombre y Tipo', function () {
+        $response = $this->actingAs(adminUser())
+            ->get(route('goods.download-template'));
+
+        $response->assertStatus(200);
+
+        $tempBase = tempnam(sys_get_temp_dir(), 'goods-template');
+        $tempFile = $tempBase . '.xlsx';
+        @rename($tempBase, $tempFile);
+        file_put_contents($tempFile, $response->streamedContent());
+
+        $spreadsheet = IOFactory::load($tempFile);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        expect($sheet->getCell('A1')->getValue())->toBe('Nombre*');
+        expect($sheet->getCell('B1')->getValue())->toBe('Tipo*');
+        expect($sheet->getCell('C1')->getValue())->toBeNull();
+
+        @unlink($tempFile);
+    });
+
+    it('la descarga ya no depende de un archivo fisico en storage', function () {
         $templateFile = storage_path('app/templates') . DIRECTORY_SEPARATOR . 'Plantilla Crear Bienes.xlsx';
         $backupFile   = $templateFile . '.bak';
 
-        // Mover temporalmente el archivo real para simular que no existe
         $existiaAntes = file_exists($templateFile);
         if ($existiaAntes) {
             rename($templateFile, $backupFile);
@@ -619,10 +662,7 @@ describe('Descarga de plantilla Excel', function () {
             rename($backupFile, $templateFile);
         }
 
-        $response->assertStatus(404)
-            ->assertJson([
-                'success' => false,
-                'message' => 'El archivo de plantilla no se encuentra disponible.',
-            ]);
+        $response->assertStatus(200)
+            ->assertHeader('Content-Disposition');
     });
 });

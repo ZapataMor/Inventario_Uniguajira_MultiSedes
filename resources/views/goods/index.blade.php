@@ -15,8 +15,8 @@
         modal="#modalCrearBien"
     >
         @if (Auth::user()->role === 'administrador')
-            <button class="excel-btn" title="Cargar Excel con localización (asigna a inventarios)"
-                onclick="loadContent( '{{ route('goods.excel-upload-global') }}', { onSuccess: () => initFormsGlobalExcel() } )">
+            <button class="excel-btn" title="Cargar bienes desde Excel"
+                onclick="loadContent('{{ route('goods.excel-upload') }}', { onSuccess: () => initGoodsExcelUpload() })">
                 <i class="fas fa-file-excel"></i>
             </button>
         @endif
@@ -29,7 +29,7 @@
             <p>No hay bienes disponibles</p>
         </div>
 
-    {{-- Cuando SÍ hay bienes --}}
+    {{-- Cuando SI hay bienes --}}
     @else
         <div id="bienes-grid" class="bienes-grid">
 

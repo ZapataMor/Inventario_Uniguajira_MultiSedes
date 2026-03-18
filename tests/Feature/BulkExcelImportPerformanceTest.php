@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Asset;
-use App\Models\AssetEquipment;
 use App\Models\AssetInventory;
 use App\Models\AssetQuantity;
 use App\Models\Group;
@@ -9,42 +8,36 @@ use App\Models\Inventory;
 
 describe('Carga masiva optimizada de Excel', function () {
 
-    it('evita insertar seriales duplicados dentro del mismo lote global', function () {
-        $group = Group::create(['name' => 'Grupo Global']);
-        $inventory = Inventory::create([
-            'name' => 'Laboratorio A',
-            'responsible' => 'Coordinacion',
-            'conservation_status' => 'good',
-            'group_id' => $group->id,
-        ]);
-
+    it('la ruta global crea bienes solo en catalogo y acepta tipo case-insensitive', function () {
         $response = $this->actingAs(adminUser())
             ->postJson(route('goods.batchCreateGlobal'), [
                 'rows' => [
                     [
                         'bien' => 'Portatil Global',
-                        'tipo' => 'Serial',
-                        'localizacion' => 'Laboratorio A',
-                        'serial' => 'SER-100',
+                        'tipo' => 'serial',
+                    ],
+                    [
+                        'bien' => 'Silla Global',
+                        'tipo' => 'CANTIDAD',
                     ],
                     [
                         'bien' => 'Portatil Global',
                         'tipo' => 'Serial',
-                        'localizacion' => 'Laboratorio A',
-                        'serial' => 'SER-100',
                     ],
                 ],
             ]);
 
         $response->assertStatus(200)
             ->assertJson([
+                'success' => true,
                 'created' => 2,
-                'assigned' => 1,
             ]);
 
         expect($response->json('errors'))->toHaveCount(1);
-        expect(AssetEquipment::where('serial', 'SER-100')->count())->toBe(1);
         expect(Asset::where('name', 'Portatil Global')->count())->toBe(1);
+        expect(Asset::where('name', 'Portatil Global')->value('type'))->toBe('Serial');
+        expect(Asset::where('name', 'Silla Global')->value('type'))->toBe('Cantidad');
+        expect(AssetInventory::count())->toBe(0);
     });
 
     it('acumula cantidades del mismo bien en una sola relacion de inventario', function () {
