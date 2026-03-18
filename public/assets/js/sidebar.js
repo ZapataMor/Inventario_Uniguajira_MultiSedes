@@ -11,20 +11,26 @@ const isMobile = () => window.matchMedia('(max-width: 500px)').matches;
 
 // Función para alternar el menú
 const toggleMenu = () => {
+    if (!sidebar || !menu || !main) {
+        return;
+    }
+
     sidebar.classList.toggle('menu-toggle');
     menu.classList.toggle('menu-toggle');
     main.classList.toggle('menu-toggle');
 };
 
 // Evento del menú (toggle)
-menu.addEventListener('click', (e) => {
-    e.stopPropagation(); // Evita que el evento se propague al documento
-    toggleMenu();
-});
+if (menu) {
+    menu.addEventListener('click', (e) => {
+        e.stopPropagation(); // Evita que el evento se propague al documento
+        toggleMenu();
+    });
+}
 
 // Cerrar menú al hacer clic fuera (solo en móviles)
 document.addEventListener('click', (e) => {
-    if (isMobile() && sidebar.classList.contains('menu-toggle')) {
+    if (sidebar && menu && isMobile() && sidebar.classList.contains('menu-toggle')) {
         // Verifica si el clic fue fuera del sidebar y del botón del menú
         if (!sidebar.contains(e.target) && e.target !== menu && !menu.contains(e.target)) {
             toggleMenu();
@@ -42,9 +48,11 @@ document.querySelectorAll('#sidebar a').forEach(link => {
 });
 
 // Opcional: Prevenir el cierre al hacer clic dentro del sidebar
-sidebar.addEventListener('click', (e) => {
-    e.stopPropagation();
-});
+if (sidebar) {
+    sidebar.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
 
 
 // asignar evento click a las etiquetas <a> del sidebar
@@ -66,4 +74,6 @@ document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('selecte
 
 // Marcar la opción actual
 const current = document.getElementById(path==="groups" || path==="group" ? "inventories": path);
-current.classList.add('selected');
+if (current) {
+    current.classList.add('selected');
+}

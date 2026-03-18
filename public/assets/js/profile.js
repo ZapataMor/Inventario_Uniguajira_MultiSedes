@@ -1,17 +1,38 @@
-// Inicializar el formulario de edición de perfil
-let editarPerfil = () => inicializarFormularioAjax('#formEditarPerfil', {
-    closeModalOnSuccess: true,
-    onSuccess: (response) => {
-        showToast(response);
-        loadContent('/profile');
-    }
-});
+function initProfileFunctions() {
+    inicializarFormularioAjax('#formEditarPerfil', {
+        onSuccess: (response) => {
+            showToast(response);
+            loadContent('/profile', {
+                onSuccess: () => initProfileFunctions()
+            });
+        }
+    });
 
-// Inicializar el formulario de cambio de contraseña
-inicializarFormularioAjax('#formCambiarContraseña', {
-    closeModalOnSuccess: true,
-    onSuccess: (response) => {
-        showToast(response)
-        logout(); // Redirigir a la página de inicio de sesión después de cambiar la contraseña
+    inicializarFormularioAjax('#formCambiarPassword', {
+        resetOnSuccess: true,
+        onSuccess: (response) => {
+            showToast(response);
+        }
+    });
+}
+
+function openProfile(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) {
+        userMenu.classList.add('hidden');
+    }
+
+    loadContent('/profile', {
+        onSuccess: () => initProfileFunctions()
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('formEditarPerfil')) {
+        initProfileFunctions();
     }
 });

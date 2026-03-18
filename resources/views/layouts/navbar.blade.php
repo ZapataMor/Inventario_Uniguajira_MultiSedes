@@ -24,16 +24,17 @@
 
 <div class="user-menu" style="min-width: 200px;">
     <div id="userMenu" class="user-menu-content hidden">
+        <div class="user-menu-account">
+            <p class="user-menu-name">{{ auth()->user()->name }}</p>
+            <p class="user-menu-handle">{{ '@' . auth()->user()->username }}</p>
+        </div>
+
         <button class="user-menu-item"
-            onclick="btnEditarUser(this)"
-            data-id="{{ auth()->user()->id }}"
-            data-nombre="{{ auth()->user()->name }}"
-            data-nombre-usuario="{{ auth()->user()->username }}"
-            data-email="{{ auth()->user()->email }}"
-            data-role="{{ auth()->user()->role }}"
+            type="button"
+            onclick="openProfile(event)"
         >
             <img class="user-menu-icon" src="{{ asset('assets/icons/editarPerfil.svg') }}" alt="edit">
-            <span>Editar Usuario</span>
+            <span>Mi perfil</span>
         </button>
 
         <form action="{{ route('logout') }}" method="POST" onclick="logout()">

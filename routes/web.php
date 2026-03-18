@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AssetImageController,
     HomeController,
+    ProfileController,
     TaskController,
     GoodsController,
     GroupController,
@@ -53,6 +54,7 @@ Route::get('asset-images/{path}', [AssetImageController::class, 'show'])
     ->where('path', '.*')
     ->name('assets.image');
 
+Route::middleware('auth')->group(function () {
 
 /**
  * 2. Tareas
@@ -92,7 +94,7 @@ Route::get('/goods/excel-upload', [GoodsController::class, 'excelUploadView'])->
 Route::get('/goods/excel-upload-global', [GoodsController::class, 'excelUploadGlobalView'])->middleware('auth')->name('goods.excel-upload-global');
 
 Route::get('api/goods/download-template', [GoodsController::class, 'downloadTemplate'])->middleware('auth')->name('goods.download-template');
-Route::post('api/goods/batchCreateGlobal', [GoodsController::class, 'batchCreateGlobal'])->middleware('auth')->name('goods.batchCreateGlobal');
+Route::post('api/goods/batchCreateGlobal', [GoodsController::class, 'batchCreateGlobalOptimized'])->middleware('auth')->name('goods.batchCreateGlobal');
 
 
 /**
@@ -143,7 +145,7 @@ Route::prefix('api/goods-inventory')->group(function () {
     Route::post('/update-serial', [GoodsInventoryController::class, 'updateSerial'])->name('goods-inventory.update-serial');
     Route::post('/remove-good', [GoodsInventoryController::class, 'removeGood']);
     Route::post('/remove-good-serial', [GoodsInventoryController::class, 'removeGoodSerial']);
-    Route::post('/batchCreate/{inventoryId}', [GoodsInventoryController::class, 'batchCreateFromExcel'])->name('goods-inventory.batchCreate');
+    Route::post('/batchCreate/{inventoryId}', [GoodsInventoryController::class, 'batchCreateFromExcelOptimized'])->name('goods-inventory.batchCreate');
     Route::get('/download-template', [GoodsInventoryController::class, 'downloadInventoryTemplate'])->name('goods-inventory.download-template');
 });
 
@@ -234,4 +236,9 @@ Route::prefix('api/records')->group(function () {
  * ----------------------------------------------------------------------------
  */
 
-Route::get('profile', function () { return 'Profile route'; })->name('profile');
+Route::get('profile', [ProfileController::class, 'show'])->name('profile');
+Route::prefix('api/profile')->group(function () {
+    Route::post('update', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+});
+});
