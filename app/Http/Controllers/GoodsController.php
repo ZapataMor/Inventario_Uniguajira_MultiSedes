@@ -493,4 +493,202 @@ class GoodsController extends Controller
             'message'  => $message,
         ]);
     }
+
+    /**
+     * VersiÃ³n optimizada de la carga masiva global.
+     * Reduce consultas por fila precargando bienes, inventarios, relaciones y seriales.
+     */
+    public function batchCreateGlobalOptimized(Request $request)
+    {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+
+        $rows = $request->input('rows', []);
+
+        if (empty($rows)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se recibieron datos vÃ¡lidos.',
+            ], 400);
+        }
+
+        $created = 0;
+        $assigned = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+        try {
+            $assetDefinitions = [];
+            $requestedLocations = [];
+            $serials = [];
+
+            foreach ($rows as $row) {
+                $nombre = trim($row['bien'] ?? '');
+                if ($nombre === '') {
+                    continue;
+                }
+
+                $tipo = trim($row['tipo'] ?? 'Serial');
+                $assetDefinitions[$nombre] ??= strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
+
+                $localizacion = trim($row['localizacion'] ?? '');
+                if ($localizacion !== '') {
+                    $requestedLocations[mb_strtolower($localizacion)] = true;
+                }
+
+                $serial = trim($row['serial'] ?? '');
+                if ($serial !== '') {
+                    $serials[] = $serial;
+                }
+            }
+
+            $assetsByName = $this->inventoryService->getOrCreateAssetsByName($assetDefinitions);
+
+            $inventoriesByName = Inventory::query()
+                ->get(['id', 'name'])
+                ->mapWithKeys(fn ($inventory) => [mb_strtolower(trim($inventory->name)) => $inventory])
+                ->all();
+
+            $pairs = [];
+            foreach ($rows as $row) {
+                $nombre = trim($row['bien'] ?? '');
+                $localizacion = trim($row['localizacion'] ?? '');
+
+                if ($nombre === '' || $localizacion === '' || !isset($assetsByName[$nombre])) {
+                    continue;
+                }
+
+                $inventory = $inventoriesByName[mb_strtolower($localizacion)] ?? null;
+                if (!$inventory) {
+                    continue;
+                }
+
+                $pairs[] = [
+                    'inventory_id' => $inventory->id,
+                    'asset_id' => $assetsByName[$nombre]->id,
+                ];
+            }
+
+            $relations = $this->inventoryService->ensureAssetInventoryRelations($pairs);
+            $existingSerials = $this->inventoryService->getExistingSerialLookup($serials);
+            $newSerials = [];
+            $quantityIncrements = [];
+            $equipmentsToInsert = [];
+            $now = now();
+
+            foreach ($rows as $i => $row) {
+                $nombre       = trim($row['bien'] ?? '');
+                $tipo         = trim($row['tipo'] ?? 'Serial');
+                $localizacion = trim($row['localizacion'] ?? '');
+                $serial       = trim($row['serial'] ?? '');
+                $cantidad     = max(1, intval($row['cantidad'] ?? 1));
+                $marca        = trim($row['marca'] ?? '');
+                $modelo       = trim($row['modelo'] ?? '');
+                $desc         = trim($row['descripcion'] ?? '');
+                $estado       = trim($row['estado'] ?? 'activo');
+                $color        = trim($row['color'] ?? '');
+                $condicion    = trim($row['condiciones'] ?? '');
+                $fecha        = trim($row['fecha_ingreso'] ?? '');
+
+                if ($nombre === '') {
+                    $errors[] = "Fila {$i}: nombre de bien vacÃ­o.";
+                    continue;
+                }
+
+                $tipoNorm = strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
+                $asset = $assetsByName[$nombre] ?? null;
+
+                if (!$asset) {
+                    $errors[] = "Fila {$i}: no se pudo resolver el bien '{$nombre}'.";
+                    continue;
+                }
+
+                $created++;
+
+                if ($localizacion === '') {
+                    continue;
+                }
+
+                $inventory = $inventoriesByName[mb_strtolower($localizacion)] ?? null;
+                if (!$inventory) {
+                    $errors[] = "Fila {$i}: inventario '{$localizacion}' no encontrado (bien '{$nombre}' creado en catÃ¡logo).";
+                    continue;
+                }
+
+                $relationId = $relations[$inventory->id . ':' . $asset->id] ?? null;
+                if (!$relationId) {
+                    $errors[] = "Fila {$i}: no se pudo preparar la relaciÃ³n inventario-bien para '{$nombre}'.";
+                    continue;
+                }
+
+                $validEstados = ['activo', 'inactivo', 'en_mantenimiento'];
+                $estadoFinal  = in_array($estado, $validEstados) ? $estado : 'activo';
+
+                if ($tipoNorm === 'Serial') {
+                    if ($serial === '') {
+                        $errors[] = "Fila {$i}: serial vacÃ­o para '{$nombre}' (bien creado en catÃ¡logo sin asignar).";
+                        continue;
+                    }
+
+                    $serialKey = $this->inventoryService->serialKey($serial);
+                    if (isset($existingSerials[$serialKey]) || isset($newSerials[$serialKey])) {
+                        $errors[] = "Fila {$i}: serial '{$serial}' ya existe.";
+                        continue;
+                    }
+
+                    $newSerials[$serialKey] = true;
+                    $equipmentsToInsert[] = [
+                        'asset_inventory_id' => $relationId,
+                        'description' => $desc ?: null,
+                        'brand' => $marca ?: null,
+                        'model' => $modelo ?: null,
+                        'serial' => $serial,
+                        'status' => $estadoFinal,
+                        'color' => $color ?: null,
+                        'technical_conditions' => $condicion ?: null,
+                        'entry_date' => $fecha ?: now()->toDateString(),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $assigned++;
+                    continue;
+                }
+
+                $quantityIncrements[$relationId] = ($quantityIncrements[$relationId] ?? 0) + $cantidad;
+                $assigned++;
+            }
+
+            $this->inventoryService->applyQuantityIncrements($quantityIncrements);
+            $this->inventoryService->insertSerialEquipments($equipmentsToInsert);
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        if ($created > 0) {
+            ActivityLogger::custom(
+                'batch_create',
+                "Carga global: {$created} bien(es) al catÃ¡logo, {$assigned} asignado(s) a inventario.",
+                ['model' => 'Asset', 'count' => $created, 'assigned' => $assigned]
+            );
+        }
+
+        $message = "Se procesaron {$created} bien(es): {$assigned} asignado(s) a inventario.";
+        if (!empty($errors)) {
+            $message .= ' ' . count($errors) . ' advertencia(s).';
+        }
+
+        return response()->json([
+            'success'  => $created > 0,
+            'created'  => $created,
+            'assigned' => $assigned,
+            'errors'   => $errors,
+            'message'  => $message,
+        ]);
+    }
 }

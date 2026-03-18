@@ -751,6 +751,172 @@ class GoodsInventoryController extends Controller
         ]);
     }
 
+    /**
+     * VersiÃ³n optimizada de la carga masiva al inventario.
+     * Reduce consultas repetidas por fila agrupando bienes, relaciones, seriales y cantidades.
+     */
+    public function batchCreateFromExcelOptimized(Request $request, int $inventoryId)
+    {
+        abort_if(auth()->user()->role !== 'administrador', 403);
+
+        $inventory = Inventory::findOrFail($inventoryId);
+
+        $rows = $request->input('rows', []);
+
+        if (empty($rows)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se recibieron datos vÃ¡lidos.'
+            ], 400);
+        }
+
+        $created = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+        try {
+            $assetDefinitions = [];
+            $serials = [];
+
+            foreach ($rows as $row) {
+                $nombre = trim($row['bien'] ?? '');
+                if ($nombre === '') {
+                    continue;
+                }
+
+                $tipo = trim($row['tipo'] ?? 'Serial');
+                $assetDefinitions[$nombre] ??= strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
+
+                $serial = trim($row['serial'] ?? '');
+                if ($serial !== '') {
+                    $serials[] = $serial;
+                }
+            }
+
+            $assetsByName = $this->service->getOrCreateAssetsByName($assetDefinitions);
+
+            $pairs = [];
+            foreach ($assetsByName as $asset) {
+                $pairs[] = [
+                    'inventory_id' => $inventoryId,
+                    'asset_id' => $asset->id,
+                ];
+            }
+
+            $relations = $this->service->ensureAssetInventoryRelations($pairs);
+            $existingSerials = $this->service->getExistingSerialLookup($serials);
+            $newSerials = [];
+            $quantityIncrements = [];
+            $equipmentsToInsert = [];
+            $now = now();
+
+            foreach ($rows as $i => $row) {
+                $nombre    = trim($row['bien'] ?? '');
+                $tipo      = trim($row['tipo'] ?? 'Serial');
+                $serial    = trim($row['serial'] ?? '');
+                $cantidad  = intval($row['cantidad'] ?? 1);
+                $marca     = trim($row['marca'] ?? '');
+                $modelo    = trim($row['modelo'] ?? '');
+                $desc      = trim($row['descripcion'] ?? '');
+                $estado    = trim($row['estado'] ?? 'activo');
+                $color     = trim($row['color'] ?? '');
+                $condicion = trim($row['condiciones'] ?? '');
+                $fecha     = trim($row['fecha_ingreso'] ?? '');
+
+                if ($nombre === '') {
+                    $errors[] = "Fila {$i}: nombre vacÃ­o.";
+                    continue;
+                }
+
+                $tipoNorm = strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
+                $asset = $assetsByName[$nombre] ?? null;
+
+                if (!$asset) {
+                    $errors[] = "Fila {$i}: no se pudo resolver el bien '{$nombre}'.";
+                    continue;
+                }
+
+                $relationId = $relations[$inventoryId . ':' . $asset->id] ?? null;
+                if (!$relationId) {
+                    $errors[] = "Fila {$i}: no se pudo preparar la relaciÃ³n inventario-bien para '{$nombre}'.";
+                    continue;
+                }
+
+                if ($tipoNorm === 'Serial') {
+                    if ($serial === '') {
+                        $errors[] = "Fila {$i}: serial vacÃ­o para '{$nombre}'.";
+                        continue;
+                    }
+
+                    $validEstados = ['activo', 'inactivo', 'en_mantenimiento'];
+                    $estadoFinal  = in_array($estado, $validEstados) ? $estado : 'activo';
+                    $serialKey = $this->service->serialKey($serial);
+
+                    if (isset($existingSerials[$serialKey]) || isset($newSerials[$serialKey])) {
+                        $errors[] = "Fila {$i}: serial '{$serial}' ya existe.";
+                        continue;
+                    }
+
+                    $newSerials[$serialKey] = true;
+                    $equipmentsToInsert[] = [
+                        'asset_inventory_id' => $relationId,
+                        'description' => $desc ?: null,
+                        'brand' => $marca ?: null,
+                        'model' => $modelo ?: null,
+                        'serial' => $serial,
+                        'status' => $estadoFinal,
+                        'color' => $color ?: null,
+                        'technical_conditions' => $condicion ?: null,
+                        'entry_date' => $fecha ?: now()->toDateString(),
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                    $created++;
+                    continue;
+                }
+
+                if ($cantidad < 1) {
+                    $cantidad = 1;
+                }
+
+                $quantityIncrements[$relationId] = ($quantityIncrements[$relationId] ?? 0) + $cantidad;
+                $created++;
+            }
+
+            $this->service->applyQuantityIncrements($quantityIncrements);
+            $this->service->insertSerialEquipments($equipmentsToInsert);
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage()
+            ], 500);
+        }
+
+        if ($created > 0) {
+            ActivityLogger::custom(
+                'batch_create',
+                "CargÃ³ {$created} bien(es) al inventario: {$inventory->name}",
+                ['model' => 'AssetInventory', 'count' => $created]
+            );
+        }
+
+        $message = "Se cargaron {$created} bien(es) exitosamente.";
+        if (!empty($errors)) {
+            $message .= ' ' . count($errors) . ' error(es).';
+        }
+
+        return response()->json([
+            'success' => $created > 0,
+            'created' => $created,
+            'errors'  => $errors,
+            'message' => $message,
+        ]);
+    }
+
 
     /**
      * Descarga la plantilla Excel para carga masiva en inventario
