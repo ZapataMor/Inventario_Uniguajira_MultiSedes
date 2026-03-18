@@ -12,7 +12,6 @@
     'errorItemsId' => null,
     'errorTitle' => 'Errores',
     'wrapperClass' => 'mt-8',
-    'wrapperStyle' => null,
 ])
 
 @php
@@ -21,7 +20,7 @@
     });
 @endphp
 
-<section class="{{ $wrapperClass }}" @if($wrapperStyle) style="{{ $wrapperStyle }}" @endif>
+<section class="{{ $wrapperClass }}">
     <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
 
         {{-- Cabecera --}}

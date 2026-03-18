@@ -135,6 +135,27 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `app/Listeners/LogAuthenticationActivity.php` - Auth events (login/logout)
 - `app/Observers/ModelActivityObserver.php` - Model observer
 
+## Styling Standard
+
+**Tailwind CSS es el único método aceptado para escribir estilos en este proyecto.** No uses atributos `style=""` ni crees nuevas clases CSS para estilos visuales. Los archivos CSS legacy en `public/assets/css/` existen pero no deben extenderse.
+
+### Reglas
+- Usa clases Tailwind para todo: layout, espaciado, colores, tipografía y efectos.
+- Prefiere valores estándar de Tailwind (e.g. `rounded-2xl`, `text-sm`, `tracking-widest`) sobre valores arbitrarios (`rounded-[30px]`, `text-[1.9rem]`, `tracking-[0.3em]`). Solo usa valores arbitrarios cuando no existe equivalente en la escala estándar.
+- Nunca uses `style=""` en el HTML. Pasa variaciones de layout como props de clase Tailwind (e.g. `wrapperClass`).
+- No agregues reglas nuevas a los archivos CSS legacy (`public/assets/css/**`). Esos archivos están congelados.
+- Al modificar una vista o componente existente, reemplaza cualquier clase CSS o `style=""` que toques con su equivalente en Tailwind.
+
+### Paleta de colores en uso
+| Propósito | Token Tailwind |
+|---|---|
+| Acción principal | `emerald-600` / `emerald-700` |
+| Destructivo | `rose-600` / `rose-700` |
+| Advertencia | `amber-600` / `amber-700` |
+| Texto | `slate-800` (títulos), `slate-600` (cuerpo), `slate-500` (muted) |
+| Bordes | `slate-200` |
+| Fondos | `white`, `slate-50`, `emerald-50` |
+
 ## Key Patterns
 
 - **Modals:** Blade components in `resources/views/components/modal/` - one per action (create, edit, delete) per module
