@@ -15,7 +15,7 @@
         modal="#modalCrearBien"
     >
         @if (Auth::user()->role === 'administrador')
-            <button class="excel-btn" title="Cargar bienes desde Excel"
+            <button class="excel-btn excel-upload-btn" title="Cargar bienes desde Excel"
                 onclick="loadContent('{{ route('goods.excel-upload') }}', { onSuccess: () => initGoodsExcelUpload() })">
                 <i class="fas fa-file-excel"></i>
             </button>
