@@ -161,7 +161,15 @@ function inicializarFormularioAjax(formSelector, options = {}) {
                     // Cerrar modal si corresponde
                     if (settings.closeModalOnSuccess) {
                         const modal = form.closest('.modal');
-                        if (modal) modal.classList.remove("active");
+                        if (modal) {
+                            modal.dataset.modalSaved = 'true';
+
+                            if (typeof ocultarModal === 'function' && modal.id) {
+                                ocultarModal(`#${modal.id}`);
+                            } else {
+                                modal.classList.remove("active");
+                            }
+                        }
                     }
 
                     // Redireccionar si se indicó

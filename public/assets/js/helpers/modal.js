@@ -21,6 +21,15 @@
 // Variable global para cada modal
 const modales = new Map();
 
+function debeResetearAlCerrarSinGuardar(modal) {
+    return modal?.dataset?.resetOnCloseWithoutSave === "true";
+}
+
+function resetearFormulariosDelModal(modal) {
+    const formularios = modal.querySelectorAll("form");
+    formularios.forEach(form => form.reset());
+}
+
 /**
  * Muestra un modal y configura sus event listeners
  * @param {string} selectorModal - Selector CSS del modal a mostrar
@@ -94,6 +103,17 @@ function mostrarModal(selectorModal) {
 function ocultarModal(selectorModal) {
     const modal = document.querySelector(selectorModal);
     if (!modal) return;
+
+    const fueGuardado = modal.dataset.modalSaved === "true";
+
+    // Si el modal está configurado para limpiar al cerrar sin guardar,
+    // reiniciamos sus formularios solo cuando no hubo un guardado exitoso.
+    if (debeResetearAlCerrarSinGuardar(modal) && !fueGuardado) {
+        resetearFormulariosDelModal(modal);
+    }
+
+    // Limpiar la bandera de guardado para el próximo ciclo de apertura/cierre.
+    delete modal.dataset.modalSaved;
 
     // Ocultamos el modal
     modal.classList.remove("active");

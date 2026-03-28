@@ -11,7 +11,13 @@
     $route = $isEdit ? route('goods.update') : route('goods.store');
 @endphp
 
-<div id="{{ $modalId }}" class="modal">
+<div
+    id="{{ $modalId }}"
+    class="modal"
+    @unless($isEdit)
+        data-reset-on-close-without-save="true"
+    @endunless
+>
     <div class="modal-content modal-content-medium">
 
         <span class="close" onclick="ocultarModal('#{{ $modalId }}')">&times;</span>
