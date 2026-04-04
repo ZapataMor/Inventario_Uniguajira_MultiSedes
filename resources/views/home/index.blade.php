@@ -6,7 +6,7 @@
 <div class="content">
     <h1>¡Bienvenido, {{ Auth::user()->name ?? 'Usuario' }}!</h1>
 
-    @if(Auth::user()->role === 'administrador')
+    @if(Auth::user()->isAdministrator())
         <div class="tasks-header tasks-header-pending" style="display: flex; justify-content: space-between; align-items: center;">
             <h2 class="section-title">Tareas pendientes</h2>
             <button class="add-task-button" onclick="mostrarModal('#taskModal')">

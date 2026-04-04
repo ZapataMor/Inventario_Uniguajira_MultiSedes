@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Inventario Uniguajira')</title>
-    <link rel="icon" href="{{ asset('assets/images/favicon-uniguajira-32x32.webp') }}" type="image/png">
+    <title>@yield('title', $branding?->app_name ?? config('app.name', 'Inventario Uniguajira'))</title>
+    <link rel="icon" href="{{ asset($branding?->favicon ?? 'assets/images/favicon-uniguajira-32x32.webp') }}" type="image/png">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -47,8 +47,8 @@
     <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v=1"></script>
     <script src="{{ asset('assets/js/tasks.js') }}"></script>
 
-    @if(Auth::user()->role === 'administrador')
-        <script src="{{ asset('assets/js/goods.js') }}?v=2"></script>
+    <script src="{{ asset('assets/js/goods.js') }}?v=3"></script>
+    @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/goods-excel-upload.js') }}?v=3"></script>
         <script src="{{ asset('assets/js/goods-excel-upload-global.js') }}?v=5"></script>
     @endif
@@ -58,7 +58,7 @@
     <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}"></script>
-    @if(Auth::user()->role === 'administrador')
+    @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=6"></script>
     @endif
     <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}"></script>

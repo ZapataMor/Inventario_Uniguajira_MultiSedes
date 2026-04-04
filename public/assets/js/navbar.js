@@ -1,24 +1,25 @@
-/*Animacion al cliquear el boton de Menu de usuario*/
+/*Animacion al clickear el boton de menu de usuario*/
 function toggleUserMenu() {
     const menu = document.getElementById('userMenu');
     menu.classList.toggle('hidden'); // Usar una sola clase para mostrar/ocultar
 }
 
 function logout() {
-    // Eliminar la última opción seleccionada antes de cerrar sesión
+    // Eliminar la ultima opcion seleccionada antes de cerrar sesion
     localStorage.removeItem('lastSelected');
     localStorage.removeItem('openGroup');
     localStorage.removeItem('openInventory');
 }
 
-// Cerrar el menú al hacer clic fuera de él
+// Cerrar el menu al hacer clic fuera de el
 document.addEventListener('click', function (event) {
     const userMenu = document.getElementById('userMenu');
-    const userImage = document.querySelector('.user');
+    const userTrigger = document.querySelector('[data-user-trigger]') || document.querySelector('.user');
+    const clickedOnTrigger = userTrigger ? userTrigger.contains(event.target) : false;
 
-    // Si el menú está visible y el clic no fue dentro del menú ni sobre la imagen del usuario
+    // Si el menu esta visible y el clic no fue dentro del menu ni sobre el trigger de usuario
     if (userMenu && !userMenu.classList.contains('hidden') &&
-        !userMenu.contains(event.target) && !userImage.contains(event.target)) {
+        !userMenu.contains(event.target) && !clickedOnTrigger) {
         userMenu.classList.add('hidden');
     }
 });

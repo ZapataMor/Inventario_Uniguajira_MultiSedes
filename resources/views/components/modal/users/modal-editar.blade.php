@@ -38,6 +38,9 @@
                         <select id="edit-role" name="role" class="form-input" required>
                             <option value="">Selecciona un rol</option>
                             <option value="administrador">Administrador</option>
+                            @if(auth()->user()->isSuperAdmin())
+                                <option value="super_administrador">Super Administrador</option>
+                            @endif
                             <option value="consultor">Consultor</option>
                         </select>
                     </div>

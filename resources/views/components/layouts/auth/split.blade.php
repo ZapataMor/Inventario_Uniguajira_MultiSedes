@@ -6,8 +6,14 @@
     <body class="min-h-screen bg-white antialiased">
         <div class="relative grid h-dvh flex-col items-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
 
-            <!-- Background image -->
-            <div class="absolute inset-0 z-[-20] bg-cover" style="background-image: url('{{ asset('images/fondo-uniguajira.jpeg') }}');"></div>
+            <!-- Background image (dynamic per tenant) -->
+            <div class="absolute inset-0 z-[-20] overflow-hidden">
+                <img
+                    src="{{ asset($branding?->login_background ?? 'assets/images/portal-uniguajira.jpeg') }}"
+                    alt="Fondo del portal general"
+                    class="h-full w-full object-cover"
+                >
+            </div>
 
             <!-- Animación -->
             <style>
@@ -39,12 +45,15 @@
                                 <x-app-logo-icon />
                                 <span>Bienvenido a <br>
                                     <span class="text-[#ad3728] drop-shadow-lg">
-                                        {{ config('app.name', 'Laravel') }}
+                                        {{ $branding?->app_name ?? config('app.name', 'Laravel') }}
                                     </span>
+                                    @if($branding?->sede_name)
+                                        <br><span class="text-2xl text-white/90 font-semibold">{{ $branding?->sede_name }}</span>
+                                    @endif
                                 </span>
                         </h1>
                         <p class="text-sm text-gray-300 leading-relaxed">
-                            Gestiona el inventario de la Universidad y mantén el control de tus activos.
+                            {{ $branding?->login_welcome_text ?? 'Gestiona el inventario de la Universidad y mantén el control de tus activos.' }}
                         </p>
                     </div>
 

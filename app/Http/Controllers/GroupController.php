@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Central\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use App\Models\Group;
 use App\Helpers\ActivityLogger;
 
@@ -35,14 +39,22 @@ class GroupController extends Controller
      */
     public function index(Request $request)
     {
-        $groups = Group::withCount('inventories')->get();
+        $isPortalInventoryCatalog = ! tenant() && $request->user()?->isGlobalAdmin();
+        $groupsBySede = collect();
+
+        if ($isPortalInventoryCatalog) {
+            $groupsBySede = $this->getGroupsBySedeForPortal();
+            $groups = $groupsBySede->flatMap(fn (array $sede) => $sede['groups'])->values();
+        } else {
+            $groups = Group::withCount('inventories')->orderBy('name')->get();
+        }
 
         if ($request->ajax()) {
-            return view('inventories.groups', compact('groups'))
+            return view('inventories.groups', compact('groups', 'groupsBySede', 'isPortalInventoryCatalog'))
                 ->renderSections()['content'];
         }
 
-        return view('inventories.groups', compact('groups'));
+        return view('inventories.groups', compact('groups', 'groupsBySede', 'isPortalInventoryCatalog'));
     }
 
     /**
@@ -52,6 +64,8 @@ class GroupController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'nombre' => 'required|string|max:255',
         ]);
@@ -86,6 +100,8 @@ class GroupController extends Controller
      */
     public function update(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'id' => 'required|integer',
             'nombre' => 'required|string|max:255',
@@ -147,6 +163,8 @@ class GroupController extends Controller
      */
     public function destroy(string $id)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         if (empty($id)) {
             return response()->json(['success' => false, 'message' => 'El ID del grupo es requerido.'], 400);
         }
@@ -174,5 +192,53 @@ class GroupController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => 'Grupo eliminado exitosamente.']);
+    }
+
+    /**
+     * Consulta grupos de cada sede activa para mostrarlos en el portal central.
+     */
+    private function getGroupsBySedeForPortal(): Collection
+    {
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with(['branding', 'domains'])
+            ->orderBy('id')
+            ->get();
+
+        $originalTenantDatabase = config('database.connections.tenant.database');
+
+        try {
+            return $tenants->map(function (Tenant $tenant) {
+                Config::set('database.connections.tenant.database', $tenant->database);
+                DB::purge('tenant');
+                DB::reconnect('tenant');
+
+                $groups = Group::withCount('inventories')
+                    ->orderBy('name')
+                    ->get();
+
+                $sedeName = $this->resolveSedeName($tenant);
+
+                return [
+                    'tenant_id' => $tenant->id,
+                    'tenant_slug' => $tenant->slug,
+                    'sede_name' => $sedeName,
+                    'dropdown_label' => "Grupos sede {$sedeName}",
+                    'groups' => $groups,
+                ];
+            });
+        } finally {
+            Config::set('database.connections.tenant.database', $originalTenantDatabase);
+            DB::purge('tenant');
+            DB::reconnect('tenant');
+        }
+    }
+
+    private function resolveSedeName(Tenant $tenant): string
+    {
+        $rawName = trim((string) ($tenant->branding?->sede_name ?: $tenant->name ?: $tenant->slug));
+        $normalized = preg_replace('/^sede\s+/iu', '', $rawName);
+
+        return $normalized ?: ucfirst($tenant->slug);
     }
 }

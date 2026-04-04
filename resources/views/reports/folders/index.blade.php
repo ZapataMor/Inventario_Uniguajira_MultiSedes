@@ -3,6 +3,10 @@
 @section('title', 'Carpetas de Reportes')
 
 @section('content')
+@php
+    $isPortalReportsCatalog = $isPortalReportsCatalog ?? false;
+    $foldersBySede = $foldersBySede ?? collect();
+@endphp
 <div class="container content">
     <h1>Carpetas</h1>
 
@@ -10,11 +14,12 @@
         <x-generals.top-bar
             id="searchFolder"
             placeholder="Buscar carpeta"
-            :modal="Auth::user()->role === 'administrador' ? '#modalCrearCarpeta' : null"
+            :modal="Auth::user()->isAdministrator() ? '#modalCrearCarpeta' : null"
+            canCreate="{{ $isPortalReportsCatalog ? 'false' : 'true' }}"
         />
     </div>
 
-    @if(Auth::user()->role === 'administrador')
+    @if(Auth::user()->isAdministrator())
         <div id="control-bar-folder" class="control-bar">
             <div class="selected-name">1 seleccionado</div>
             <div class="control-actions">
@@ -34,11 +39,61 @@
                 <i class="fas fa-folder fa-3x"></i>
                 <p>No hay carpetas de reportes disponibles</p>
             </div>
+        @elseif($isPortalReportsCatalog)
+            <div class="inventory-sede-list">
+                @foreach ($foldersBySede as $sedeData)
+                    <details class="inventory-sede-dropdown" data-report-sede-dropdown>
+                        <summary class="inventory-sede-summary">
+                            <span class="inventory-sede-title">{{ $sedeData['dropdown_label'] }}</span>
+                            <span class="inventory-sede-count">
+                                <span data-visible-count>{{ $sedeData['folders']->count() }}</span> carpetas
+                            </span>
+                        </summary>
+
+                        <div class="inventory-sede-body">
+                            @if($sedeData['folders']->isEmpty())
+                                <p class="inventory-sede-empty">No hay carpetas de reportes en esta sede.</p>
+                            @else
+                                @foreach($sedeData['folders'] as $folder)
+                                    <div class="report-folder-card card-item">
+                                        <div class="report-folder-left">
+                                            <i class="fas fa-folder fa-2x report-folder-icon"></i>
+                                        </div>
+
+                                        <div class="report-folder-center">
+                                            <div class="report-folder-name name-item">{{ $folder->name }}</div>
+                                            <div class="report-folder-stats">
+                                                <span class="report-stat-item">
+                                                    <i class="fas fa-file-alt"></i>
+                                                    {{ $folder->reports_count }} reportes
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div class="report-folder-right">
+                                            <button
+                                                class="btn-open"
+                                                onclick="loadContent('{{ route('portal.switch', ['slug' => $sedeData['tenant_slug'], 'redirect' => '/reports/folder/' . $folder->id, 'inplace' => 1]) }}', { updateHistory: false, onSuccess: () => initReportsModule() })"
+                                            >
+                                                <i class="fas fa-external-link-alt"></i> Abrir
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endforeach
+
+                                <p class="inventory-sede-filter-empty hidden" data-sede-empty>
+                                    No hay resultados para esta sede con el filtro actual.
+                                </p>
+                            @endif
+                        </div>
+                    </details>
+                @endforeach
+            </div>
         @else
             @foreach($folders as $folder)
                 <div
                     class="report-folder-card card-item"
-                    @if(Auth::user()->role === 'administrador')
+                    @if(Auth::user()->isAdministrator())
                         data-id="{{ $folder->id }}"
                         data-name="{{ $folder->name }}"
                         data-type="folder"
@@ -79,7 +134,7 @@
 
         <x-generals.top-bar id="searchReport" placeholder="Buscar reporte" canCreate="false" />
 
-        @if(Auth::user()->role === 'administrador')
+        @if(Auth::user()->isAdministrator())
             <div class="report-options-panel">
                 <div class="report-option-box">
                     <h3>Generar</h3>
@@ -107,7 +162,7 @@
             </div>
         @endif
 
-        @if(Auth::user()->role === 'administrador')
+        @if(Auth::user()->isAdministrator())
             <div id="control-bar-report" class="control-bar">
                 <div class="selected-name">1 seleccionado</div>
                 <div class="control-actions">

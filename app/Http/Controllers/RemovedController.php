@@ -328,6 +328,8 @@ class RemovedController extends Controller
      */
     public function destroy($id)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $removed = AssetRemoved::find($id);
 
         if (!$removed) {

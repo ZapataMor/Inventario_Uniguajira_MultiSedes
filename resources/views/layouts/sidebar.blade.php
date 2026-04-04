@@ -36,7 +36,7 @@
                 </a>
             </li>
 
-            @if(auth()->user()->role === 'administrador')
+            @if(auth()->user()->isAdministrator() || auth()->user()->isSuperAdmin())
                 <li>
                     <a id="users" href="{{ route('users.index') }}" data-nav>
                         <img src="{{ asset('assets/icons/usuarios.svg') }}" alt="">

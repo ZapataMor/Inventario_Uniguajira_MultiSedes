@@ -14,6 +14,20 @@
     .top-bar .search-container {
         width: 100%;
     }
+
+    .inventory-sede-summary {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .inventory-sede-title {
+        width: 100%;
+    }
+
+    .inventory-sede-count {
+        margin-top: 2px;
+    }
 }
 
 @media (max-width: 600px) {

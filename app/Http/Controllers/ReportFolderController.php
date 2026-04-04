@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Central\Tenant;
 use Illuminate\Http\Request;
 use App\Models\ReportFolder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 
 class ReportFolderController extends Controller
 {
@@ -17,19 +21,31 @@ class ReportFolderController extends Controller
      */
     public function index(Request $request)
     {
-        $folders = ReportFolder::withCount('reports')->get();
+        $isPortalReportsCatalog = ! tenant() && $request->user()?->isGlobalAdmin();
+        $foldersBySede = collect();
+
+        if ($isPortalReportsCatalog) {
+            $foldersBySede = $this->getFoldersBySedeForPortal();
+            $folders = $foldersBySede->flatMap(fn (array $sedeData) => $sedeData['folders'])->values();
+        } else {
+            $folders = ReportFolder::withCount('reports')
+                ->orderByDesc('created_at')
+                ->get();
+        }
 
         if ($request->ajax()) {
             /** @var \Illuminate\View\View $view */
-            $view = view('reports.folders.index', compact('folders'));
+            $view = view('reports.folders.index', compact('folders', 'foldersBySede', 'isPortalReportsCatalog'));
             return $view->renderSections()['content'];
         }
 
-        return view('reports.folders.index', compact('folders'));
+        return view('reports.folders.index', compact('folders', 'foldersBySede', 'isPortalReportsCatalog'));
     }
 
     public function store(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'nombreCarpeta' => 'required|string|max:255|unique:report_folders,name'
         ]);
@@ -47,6 +63,8 @@ class ReportFolderController extends Controller
 
     public function rename(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'folder_id' => 'required|exists:report_folders,id',
             'nombre'    => 'required|string|max:255'
@@ -63,6 +81,8 @@ class ReportFolderController extends Controller
 
     public function destroy(int $id)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $folder = ReportFolder::findOrFail($id);
 
         if ($folder->reports()->exists()) {
@@ -89,6 +109,59 @@ class ReportFolderController extends Controller
         $reports = $folder->reports()->orderByDesc('created_at')->get();
 
         return view('reports.folders.show', compact('folder', 'reports'));
+    }
+
+    /**
+     * Consulta carpetas de reportes de cada sede activa para mostrarlas en portal.
+     */
+    private function getFoldersBySedeForPortal(): Collection
+    {
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with('branding')
+            ->orderBy('id')
+            ->get();
+
+        $originalTenantDatabase = config('database.connections.tenant.database');
+
+        try {
+            return $tenants->map(function (Tenant $tenant): array {
+                Config::set('database.connections.tenant.database', $tenant->database);
+                DB::purge('tenant');
+                DB::reconnect('tenant');
+
+                try {
+                    $folders = ReportFolder::on('tenant')
+                        ->withCount('reports')
+                        ->orderByDesc('created_at')
+                        ->get();
+                } catch (\Throwable $e) {
+                    $folders = collect();
+                }
+
+                $sedeName = $this->resolveSedeName($tenant);
+
+                return [
+                    'tenant_id' => $tenant->id,
+                    'tenant_slug' => $tenant->slug,
+                    'sede_name' => $sedeName,
+                    'dropdown_label' => "Reportes sede {$sedeName}",
+                    'folders' => $folders,
+                ];
+            });
+        } finally {
+            Config::set('database.connections.tenant.database', $originalTenantDatabase);
+            DB::purge('tenant');
+            DB::reconnect('tenant');
+        }
+    }
+
+    private function resolveSedeName(Tenant $tenant): string
+    {
+        $rawName = trim((string) ($tenant->branding?->sede_name ?: $tenant->name ?: $tenant->slug));
+        $normalized = preg_replace('/^sede\s+/iu', '', $rawName);
+
+        return $normalized ?: ucfirst($tenant->slug);
     }
 
 }

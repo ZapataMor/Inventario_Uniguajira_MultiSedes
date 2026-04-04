@@ -30,14 +30,14 @@
     <div class="header">
         <div class="logo">
             @if($logoDataUri)
-                <img src="{{ $logoDataUri }}" width="500" alt="Logo Uniguajira">
+                <img src="{{ $logoDataUri }}" width="500" alt="{{ $branding?->sede_name ?? 'Logo' }}">
             @else
                 <div style="width:300px;height:100px;border:2px solid #333;display:flex;align-items:center;justify-content:center;margin:0 auto;">
-                    <span style="color:#333;font-weight:bold;">UNIGUAJIRA MAICAO</span>
+                    <span style="color:#333;font-weight:bold;">{{ $branding?->report_header_text ?? 'UNIGUAJIRA' }}</span>
                 </div>
             @endif
         </div>
-        <h1>REPORTE DE TODOS LOS EQUIPOS UNIGUAJIRA MAICAO</h1>
+        <h1>REPORTE DE TODOS LOS EQUIPOS {{ $branding?->report_header_text ?? 'UNIGUAJIRA' }}</h1>
         <p>Fecha de generacion: {{ $date }}</p>
     </div>
 
@@ -80,7 +80,7 @@
     @endforelse
 
     <div class="footer">
-        <p>Este documento es un reporte generado automaticamente por el sistema de Inventario Uniguajira sede Maicao.</p>
+        <p>{{ $branding?->report_footer ?? 'Este documento es un reporte generado automáticamente.' }}</p>
     </div>
 </body>
 </html>

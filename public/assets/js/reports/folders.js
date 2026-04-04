@@ -27,6 +27,7 @@ function initFoldersFunctions() {
     });
 
     iniciarBusqueda('searchFolder');
+    initPortalReportDropdowns();
 }
 
 function initFolderFunctions() {
@@ -131,4 +132,61 @@ function updateAllFolderIdFields(folderId) {
         const field = document.getElementById(fieldId);
         if (field) field.value = folderId;
     });
+}
+
+function initPortalReportDropdowns() {
+    const dropdowns = document.querySelectorAll('[data-report-sede-dropdown]');
+    const searchInput = document.getElementById('searchFolder');
+
+    if (!dropdowns.length || !searchInput) {
+        return;
+    }
+
+    const controllers = Array.from(dropdowns).map((dropdown) => ({
+        dropdown,
+        controller: getReportSedeDropdownController(dropdown, '.inventory-sede-body'),
+    }));
+
+    const updateDropdownState = () => {
+        const hasFilter = searchInput.value.trim().length > 0;
+
+        controllers.forEach(({ dropdown, controller }) => {
+            const cards = dropdown.querySelectorAll('.card-item');
+            const visibleCards = Array.from(cards).filter((card) => card.style.display !== 'none');
+            const visibleCountBadge = dropdown.querySelector('[data-visible-count]');
+            const emptyByFilterMessage = dropdown.querySelector('[data-sede-empty]');
+
+            if (visibleCountBadge) {
+                visibleCountBadge.textContent = String(visibleCards.length);
+            }
+
+            if (emptyByFilterMessage) {
+                emptyByFilterMessage.classList.toggle('hidden', visibleCards.length > 0);
+            }
+
+            if (hasFilter) {
+                controller.setOpen(visibleCards.length > 0, true);
+            } else {
+                controller.setOpen(false, true);
+            }
+        });
+    };
+
+    ['keyup', 'input', 'search'].forEach((eventName) => {
+        searchInput.addEventListener(eventName, updateDropdownState);
+    });
+
+    updateDropdownState();
+}
+
+function getReportSedeDropdownController(dropdown, bodySelector) {
+    if (typeof createSedeDropdownController === 'function') {
+        return createSedeDropdownController(dropdown, bodySelector);
+    }
+
+    return {
+        setOpen: (shouldOpen) => {
+            dropdown.open = shouldOpen;
+        }
+    };
 }

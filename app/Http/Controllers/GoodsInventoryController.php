@@ -74,6 +74,8 @@ class GoodsInventoryController extends Controller
      */
     public function store(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $data = $request->validate([
             'inventarioId' => 'required|integer|exists:inventories,id',
             'bien_id'      => 'required|integer|exists:assets,id',
@@ -183,6 +185,8 @@ class GoodsInventoryController extends Controller
      */
     public function updateQuantity(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $data = $request->validate([
             'bienId'       => 'required|integer|exists:assets,id',
             'inventarioId' => 'required|integer|exists:inventories,id',
@@ -248,6 +252,8 @@ class GoodsInventoryController extends Controller
      */
     public function deleteQuantity($inventoryId, $goodId)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         if (!$inventoryId || !$goodId) {
             return response()->json([
                 'success' => false,
@@ -298,6 +304,8 @@ class GoodsInventoryController extends Controller
      */
     public function updateSerial(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $validated = $request->validate([
             'bienEquipoId'         => 'required|integer|exists:asset_equipments,id',
             'serial'               => 'required|string|max:255',
@@ -377,6 +385,8 @@ class GoodsInventoryController extends Controller
      */
     public function deleteSerial(int $equipmentId)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         // ✅ Obtener datos antes de eliminar para el log
         $equipment = DB::table('asset_equipments as ae')
             ->join('asset_inventory as ai', 'ai.id', '=', 'ae.asset_inventory_id')
@@ -420,6 +430,8 @@ class GoodsInventoryController extends Controller
      */
     public function removeGood(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $validated = $request->validate([
             'bienId'       => 'required|integer|exists:assets,id',
             'inventarioId' => 'required|integer|exists:inventories,id',
@@ -535,6 +547,8 @@ class GoodsInventoryController extends Controller
      */
     public function removeGoodSerial(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $validated = $request->validate([
             'equipmentId'  => 'required|integer|exists:asset_equipments,id',
             'inventarioId' => 'required|integer|exists:inventories,id',
@@ -643,7 +657,7 @@ class GoodsInventoryController extends Controller
      */
     public function batchCreateFromExcel(Request $request, int $inventoryId)
     {
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $inventory = Inventory::findOrFail($inventoryId);
 
@@ -757,7 +771,7 @@ class GoodsInventoryController extends Controller
      */
     public function batchCreateFromExcelOptimized(Request $request, int $inventoryId)
     {
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $inventory = Inventory::findOrFail($inventoryId);
 

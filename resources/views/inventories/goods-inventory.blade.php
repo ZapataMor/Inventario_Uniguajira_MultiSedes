@@ -20,7 +20,7 @@
 
                         {{-- MALO = 3 --}}
                         <div class="light light-red {{ $inventory->conservation_status == 'bad' ? 'active' : 'inactive' }}"
-                            @if(Auth::user()->role === 'administrador')
+                            @if(Auth::user()->isAdministrator())
                                 onclick="
                                     this.closest('form').estado.value='3';
                                     this.closest('form').querySelector('button[type=submit]').click();
@@ -30,7 +30,7 @@
 
                         {{-- REGULAR = 2 --}}
                         <div class="light light-yellow {{ $inventory->conservation_status == 'regular' ? 'active' : 'inactive' }}"
-                            @if(Auth::user()->role === 'administrador')
+                            @if(Auth::user()->isAdministrator())
                                 onclick="
                                     this.closest('form').estado.value='2';
                                     this.closest('form').querySelector('button[type=submit]').click();
@@ -40,7 +40,7 @@
 
                         {{-- BUENO = 1 --}}
                         <div class="light light-green {{ $inventory->conservation_status == 'good' ? 'active' : 'inactive' }}"
-                            @if(Auth::user()->role === 'administrador')
+                            @if(Auth::user()->isAdministrator())
                                 onclick="
                                     this.closest('form').estado.value='1';
                                     this.closest('form').querySelector('button[type=submit]').click();
@@ -52,7 +52,7 @@
 
                     <button type="submit" style="display:none"></button>
                 </form>
-                @if(Auth::user()->role === 'administrador')
+                @if(Auth::user()->isAdministrator())
                     <button class="edit-btn" onclick="btnEditarResponsable()" title="Editar responsable">
                         <i class="fas fa-user-edit"></i>
                     </button>
@@ -80,7 +80,7 @@
         placeholder="Buscar bien..."
         onclick="btnAbrirModalCrearBien"
     >
-        @if(Auth::user()->role === 'administrador')
+        @if(Auth::user()->isAdministrator())
             <button class="excel-btn" onclick="btnAbrirModalExcelInventario()" title="Cargar bienes desde Excel">
                 <i class="fas fa-file-excel "></i>  Cargar Excel
             </button>
@@ -96,7 +96,7 @@
     </div>
     @endif --}}
 
-    @if(Auth::user()->role === 'administrador')
+    @if(Auth::user()->isAdministrator())
     {{-- Barra de control para bienes --}}
     <div id="control-bar-good" class="control-bar">
         <div class="selected-name">1 seleccionado</div>
@@ -146,7 +146,7 @@
         <div class="bienes-grid">
             @foreach($assets as $asset)
                 <div class="bien-card card-item"
-                    @if (Auth::user()->role === 'administrador')
+                    @if (Auth::user()->isAdministrator())
                         data-id="{{ $asset->asset_id }}"
                         data-name="{{ $asset->asset }}"
                         data-cantidad="{{ $asset->quantity }}"

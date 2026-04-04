@@ -5,10 +5,13 @@ Route::match(['get','post'], 'register', function () {
     abort(404);
 })->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AssetImageController,
     HomeController,
+    PortalController,
     ProfileController,
     TaskController,
     GoodsController,
@@ -21,6 +24,21 @@ use App\Http\Controllers\{
     ReportFolderController,
     RemovedController,
 };
+
+Route::post('logout', function (Request $request) {
+    Auth::guard('web')->logout();
+
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
+
+    return redirect()->route('login');
+})->middleware('auth')->name('logout');
+
+// ─── Portal Central (selector de sedes) ────────────────────────
+Route::middleware('auth')->group(function () {
+    Route::get('/portal', [PortalController::class, 'index'])->name('portal.index');
+    Route::get('/portal/sede/{slug}', [PortalController::class, 'switchToTenant'])->name('portal.switch');
+});
 
 /**
  * Orden de las rutas:
@@ -46,9 +64,20 @@ use App\Http\Controllers\{
  * ----------------------------------------------------------------------------
  */
 
-Route::get('home', [HomeController::class, 'index'])->middleware(['auth', 'verified'])->name('home.index');
+Route::get('home', function (Request $request) {
+    // Si no hay tenant resuelto, redirigir al portal central
+    if (! tenant()) {
+        return redirect()->route('portal.index');
+    }
+    return app(HomeController::class)->index($request);
+})->middleware(['auth', 'verified'])->name('home.index');
 
-Route::get('/', function () { return redirect()->route('home.index'); });
+Route::get('/', function () {
+    if (! tenant()) {
+        return redirect()->route('portal.index');
+    }
+    return redirect()->route('home.index');
+});
 Route::get('asset-images/{path}', [AssetImageController::class, 'show'])
     ->middleware(['auth', 'verified'])
     ->where('path', '.*')
@@ -241,4 +270,13 @@ Route::prefix('api/profile')->group(function () {
     Route::post('update', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 });
+
+/**
+ * 15. Semillero
+ * ----------------------------------------------------------------------------
+ */
+
+Route::get('semillero', function () {
+    return view('semillero.index');
+})->name('semillero.index');
 });

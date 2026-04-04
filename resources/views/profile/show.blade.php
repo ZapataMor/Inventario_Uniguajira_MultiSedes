@@ -6,7 +6,7 @@
 @php
     $defaultPhoto = asset('assets/uploads/img/users/defaultProfile.jpg');
     $photoPath = $user->profile_photo_path ? asset($user->profile_photo_path) : $defaultPhoto;
-    $roleLabel = $user->role === 'administrador' ? 'Administrador' : 'Consultor';
+    $roleLabel = $user->displayRole();
     $emailStatus = $user->email_verified_at ? 'Verificado' : 'Pendiente';
 @endphp
 
@@ -29,7 +29,7 @@
                 >
 
                 <div class="profile-identity">
-                    <span class="profile-chip {{ $user->role === 'administrador' ? 'chip-admin' : 'chip-consultor' }}">
+                    <span class="profile-chip {{ $user->isAdministrator() ? 'chip-admin' : 'chip-consultor' }}">
                         {{ $roleLabel }}
                     </span>
 

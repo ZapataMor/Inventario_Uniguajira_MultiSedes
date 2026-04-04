@@ -109,6 +109,10 @@ header {
     background-color: var(--background-hover);
 }
 
+.right .sem-link:hover {
+    background-color: transparent;
+}
+
 .right img {
     width: 1.5rem;
     margin: 0.5rem;

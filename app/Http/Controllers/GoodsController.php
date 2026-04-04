@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Central\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use App\Models\Asset;
 use App\Models\AssetInventory;
@@ -32,18 +35,26 @@ class GoodsController extends Controller
      */
     public function index(Request $request)
     {
-        // Se consulta la vista SQL que resume la información de los bienes para evitar lógica compleja en el controlador.
-        $dataGoods = DB::table('assets_summary_view')->get();
+        $isPortalCatalog = ! tenant() && $request->user()?->isGlobalAdmin();
+        $goodsBySede = collect();
+
+        if ($isPortalCatalog) {
+            $goodsBySede = $this->getGoodsBySedeForPortal();
+            $dataGoods = $goodsBySede->flatMap(fn (array $sede) => $sede['goods'])->values();
+        } else {
+            // Se consulta la vista SQL que resume la información de los bienes para evitar lógica compleja en el controlador.
+            $dataGoods = DB::table('assets_summary_view')->orderBy('name')->get();
+        }
 
         if ($request->ajax()) {
             // Si la petición es AJAX, se renderiza únicamente la sección 'content' de la vista para una actualización parcial de la página.
             /** @var \Illuminate\View\View $view */
-            $view = view('goods.index', compact('dataGoods'));
+            $view = view('goods.index', compact('dataGoods', 'goodsBySede', 'isPortalCatalog'));
             return $view->renderSections()['content'];
         }
 
         // Si es una petición HTTP estándar, se devuelve la vista completa con el layout.
-        return view('goods.index', compact('dataGoods'));
+        return view('goods.index', compact('dataGoods', 'goodsBySede', 'isPortalCatalog'));
     }
 
     /**
@@ -67,7 +78,7 @@ class GoodsController extends Controller
     public function store(Request $request)
     {
         // Se verifica que el usuario autenticado tenga permisos de administrador; de lo contrario, se aborta la petición.
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $request->validate([
             'nombre' => 'required|string|max:255|unique:assets,name',
@@ -105,7 +116,7 @@ class GoodsController extends Controller
     public function update(Request $request)
     {
         // Se asegura de que el usuario sea administrador antes de proceder con la actualización.
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $asset = Asset::findOrFail($request->id);
 
@@ -163,7 +174,7 @@ class GoodsController extends Controller
     public function destroy(string $id)
     {
         // Se valida que el usuario tenga el rol adecuado para realizar esta operación.
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $asset = Asset::find($id);
 
@@ -218,7 +229,7 @@ class GoodsController extends Controller
     public function batchCreate(Request $request)
     {
         // Solo los administradores pueden realizar cargas masivas.
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         try {
             $goods = $request->input('goods', $request->input('rows', []));
@@ -429,7 +440,7 @@ class GoodsController extends Controller
     {
         return $this->batchCreate($request);
 
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $rows = $request->input('rows', []);
 
@@ -563,7 +574,7 @@ class GoodsController extends Controller
     {
         return $this->batchCreate($request);
 
-        abort_if(auth()->user()->role !== 'administrador', 403);
+        abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $rows = $request->input('rows', []);
 
@@ -772,5 +783,54 @@ class GoodsController extends Controller
             '2', 'serial' => 'Serial',
             default => null,
         };
+    }
+
+    /**
+     * Consulta bienes de cada sede activa para mostrarlos en el portal central.
+     */
+    private function getGoodsBySedeForPortal(): Collection
+    {
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with('branding')
+            ->orderBy('id')
+            ->get();
+
+        $originalTenantDatabase = config('database.connections.tenant.database');
+
+        try {
+            return $tenants->map(function (Tenant $tenant) {
+                Config::set('database.connections.tenant.database', $tenant->database);
+                DB::purge('tenant');
+                DB::reconnect('tenant');
+
+                $goods = DB::connection('tenant')
+                    ->table('assets_summary_view')
+                    ->orderBy('name')
+                    ->get();
+
+                $sedeName = $this->resolveSedeName($tenant);
+
+                return [
+                    'tenant_id' => $tenant->id,
+                    'tenant_slug' => $tenant->slug,
+                    'sede_name' => $sedeName,
+                    'dropdown_label' => "Bienes sede {$sedeName}",
+                    'goods' => $goods,
+                ];
+            });
+        } finally {
+            Config::set('database.connections.tenant.database', $originalTenantDatabase);
+            DB::purge('tenant');
+            DB::reconnect('tenant');
+        }
+    }
+
+    private function resolveSedeName(Tenant $tenant): string
+    {
+        $rawName = trim((string) ($tenant->branding?->sede_name ?: $tenant->name ?: $tenant->slug));
+        $normalized = preg_replace('/^sede\s+/iu', '', $rawName);
+
+        return $normalized ?: ucfirst($tenant->slug);
     }
 }

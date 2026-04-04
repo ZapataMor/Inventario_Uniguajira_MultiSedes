@@ -84,6 +84,10 @@ return [
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
+    'sede' => env('SEDE', 'Maicao'),
+
+    'available_sedes' => ['Maicao', 'Fonseca', 'Villanueva'],
+
     /*
     |--------------------------------------------------------------------------
     | Encryption Key

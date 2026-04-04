@@ -6,7 +6,7 @@
 <div class="content">
     <h1>Bienvenido, {{ Auth::user()->name ?? 'Usuario' }}</h1>
 
-    @if(Auth::user()->role === 'consultor')
+    @if(Auth::user()->isConsultor())
         <section class="consultor-home">
             <div class="consultor-home-hero">
                 <h2 class="section-title">Que puedes hacer en la plataforma</h2>

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Concerns\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class AssetInventory extends Model
 {
-    use HasFactory;
+    use HasFactory, UsesTenantConnection;
 
     protected $table = 'asset_inventory';
 

@@ -7,7 +7,7 @@
     @foreach($reports as $report)
         <div
             class="report-item-card card-item"
-            @if(Auth::user()->role === 'administrador')
+            @if(Auth::user()->isAdministrator())
                 data-id="{{ $report->id }}"
                 data-name="{{ $report->name }}"
                 data-type="report"

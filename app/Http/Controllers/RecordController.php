@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\Central\Tenant;
 use App\Models\User;
 use App\Services\Reports\SimplePdfService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 
 class RecordController extends Controller
 {
@@ -22,28 +25,53 @@ class RecordController extends Controller
      */
     public function index(Request $request)
     {
-        $logs = $this->filteredLogsQuery($request)
-            ->paginate(50)
-            ->withQueryString();
+        $isPortalRecordsCatalog = ! tenant() && $request->user()?->isGlobalAdmin();
+        $logsBySede = collect();
 
-        $users = User::orderBy('name')->get();
-        $actions = ActivityLog::select('action')
-            ->distinct()
-            ->orderBy('action')
-            ->pluck('action');
-        $models = ActivityLog::select('model')
-            ->distinct()
-            ->whereNotNull('model')
-            ->orderBy('model')
-            ->pluck('model');
+        if ($isPortalRecordsCatalog) {
+            $logsBySede = $this->getLogsBySedeForPortal();
+            $logs = $logsBySede->flatMap(fn (array $sedeData) => $sedeData['logs'])->values();
+            $users = collect();
+            $actions = collect();
+            $models = collect();
+        } else {
+            $logs = $this->filteredLogsQuery($request)
+                ->paginate(50)
+                ->withQueryString();
+
+            $users = User::orderBy('name')->get();
+            $actions = ActivityLog::select('action')
+                ->distinct()
+                ->orderBy('action')
+                ->pluck('action');
+            $models = ActivityLog::select('model')
+                ->distinct()
+                ->whereNotNull('model')
+                ->orderBy('model')
+                ->pluck('model');
+        }
 
         if ($request->ajax()) {
             /** @var \Illuminate\View\View $view */
-            $view = view('records.index', compact('logs', 'users', 'actions', 'models'));
+            $view = view('records.index', compact(
+                'logs',
+                'users',
+                'actions',
+                'models',
+                'logsBySede',
+                'isPortalRecordsCatalog'
+            ));
             return $view->renderSections()['content'];
         }
 
-        return view('records.index', compact('logs', 'users', 'actions', 'models'));
+        return view('records.index', compact(
+            'logs',
+            'users',
+            'actions',
+            'models',
+            'logsBySede',
+            'isPortalRecordsCatalog'
+        ));
     }
 
     /**
@@ -76,6 +104,13 @@ class RecordController extends Controller
      */
     public function export(Request $request)
     {
+        // El super administrador no puede descargar historial al operar dentro de una sede.
+        abort_if(
+            tenant() && $request->user()?->isSuperAdmin(),
+            403,
+            'No tienes permiso para descargar reportes de historial en esta sede.'
+        );
+
         $logs = $this->filteredLogsQuery($request)->get();
         $format = strtolower((string) $request->input('format', 'pdf'));
 
@@ -83,9 +118,13 @@ class RecordController extends Controller
             return $this->exportCsv($logs);
         }
 
+        $branding = tenant()?->branding;
+        $timezone = $branding?->timezone_value ?? 'America/Bogota';
+
         $html = view('reports.pdf.reporte_de_historial', [
-            'date' => now()->setTimezone('America/Bogota')->format('d/m/Y'),
-            'logoDataUri' => $this->logoDataUri(),
+            'date' => now()->setTimezone($timezone)->format('d/m/Y'),
+            'logoDataUri' => $this->logoDataUri($branding),
+            'branding' => $branding,
             'logs' => $logs,
             'totalRecords' => $logs->count(),
             'weekCount' => ActivityLog::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
@@ -187,9 +226,68 @@ class RecordController extends Controller
         return $query;
     }
 
-    private function logoDataUri(): ?string
+    /**
+     * Consulta historial de cada sede activa para mostrarlo en portal.
+     */
+    private function getLogsBySedeForPortal(): Collection
     {
-        $path = public_path('assets/images/logoUniguajira.png');
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with('branding')
+            ->orderBy('id')
+            ->get();
+
+        $originalTenantDatabase = config('database.connections.tenant.database');
+
+        try {
+            return $tenants->map(function (Tenant $tenant): array {
+                Config::set('database.connections.tenant.database', $tenant->database);
+                DB::purge('tenant');
+                DB::reconnect('tenant');
+
+                try {
+                    $logs = ActivityLog::on('tenant')
+                        ->with('user')
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+                } catch (\Throwable $e) {
+                    $logs = collect();
+                }
+
+                $sedeName = $this->resolveSedeName($tenant);
+
+                return [
+                    'tenant_id' => $tenant->id,
+                    'tenant_slug' => $tenant->slug,
+                    'sede_name' => $sedeName,
+                    'dropdown_label' => "Historial sede {$sedeName}",
+                    'manage_url' => route('portal.switch', [
+                        'slug' => $tenant->slug,
+                        'redirect' => '/records',
+                        'inplace' => 1,
+                    ]),
+                    'logs' => $logs,
+                ];
+            });
+        } finally {
+            Config::set('database.connections.tenant.database', $originalTenantDatabase);
+            DB::purge('tenant');
+            DB::reconnect('tenant');
+        }
+    }
+
+    private function resolveSedeName(Tenant $tenant): string
+    {
+        $rawName = trim((string) ($tenant->branding?->sede_name ?: $tenant->name ?: $tenant->slug));
+        $normalized = preg_replace('/^sede\s+/iu', '', $rawName);
+
+        return $normalized ?: ucfirst($tenant->slug);
+    }
+
+    private function logoDataUri(?\App\Models\Central\TenantBranding $branding = null): ?string
+    {
+        $logoPath = $branding?->logo_report ?? 'assets/images/logoUniguajira.png';
+        $path = public_path($logoPath);
 
         if (!file_exists($path)) {
             return null;

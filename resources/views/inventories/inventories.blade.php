@@ -27,7 +27,7 @@
     />
 
     {{-- Barra de control --}}
-    @if(Auth::user()->role === 'administrador')
+    @if(Auth::user()->isAdministrator())
         <div id="control-bar-inventory" class="control-bar">
             <div class="selected-name">1 seleccionado</div>
             <div class="control-actions">
@@ -55,7 +55,7 @@
 
             @foreach ($inventories as $inventory)
                 <div class="card card-item"
-                    @if(Auth::user()->role === 'administrador')
+                    @if(Auth::user()->isAdministrator())
                         data-id="{{ $inventory->id }}"
                         data-name="{{ $inventory->name }}"
                         data-type="inventory"

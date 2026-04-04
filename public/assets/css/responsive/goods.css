@@ -32,4 +32,18 @@
     .actions {
         justify-content: center;
     }
+
+    .goods-sede-summary {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .goods-sede-title {
+        width: 100%;
+    }
+
+    .goods-sede-count {
+        margin-top: 2px;
+    }
 }

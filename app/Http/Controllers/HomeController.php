@@ -20,7 +20,7 @@ class HomeController extends Controller
 
         // si el usuario es consultor, muestra la vista de consultor
         $user = $request->user();
-        if ($user && isset($user->role) && $user->role === 'consultor') {
+        if ($user?->isConsultor()) {
             if ($request->ajax()) {
                 /** @var \Illuminate\View\View $view */
                 $view = view('home.consultor', compact('dataTasks'));

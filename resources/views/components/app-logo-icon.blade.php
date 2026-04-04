@@ -11,9 +11,9 @@
 ])
 
 <div>
-    <img 
-        src="{{ asset('images/logo-uniguajira-seo-150x150.webp') }}" 
-        alt="Logo Uniguajira" 
+    <img
+        src="{{ asset($branding?->logo_login ?? 'images/logo-uniguajira-seo-150x150.webp') }}"
+        alt="{{ $branding?->sede_name ?? 'Logo Uniguajira' }}"
         class="logo-uniguajira me-1 rounded-sm"
         style="{{ $style }}"
     >

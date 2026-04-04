@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ReportFolder;
 use App\Services\Reports\SimplePdfService;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,8 @@ class ReportController extends Controller
 
     public function store(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $validated = $request->validate([
             'folder_id' => 'required|exists:report_folders,id',
             'nombreReporte' => 'required|string|max:255',
@@ -64,7 +67,7 @@ class ReportController extends Controller
                 $safeName = 'reporte';
             }
 
-            $relativePath = 'reports/' . now()->format('Y/m') . '/' . $safeName . '_' . now()->format('Ymd_His') . '.pdf';
+            $relativePath = tenant_asset('reports/' . now()->format('Y/m') . '/' . $safeName . '_' . now()->format('Ymd_His') . '.pdf');
 
             $pdfContent = $this->pdfService->buildHtml(
                 $html,
@@ -103,6 +106,8 @@ class ReportController extends Controller
 
     public function rename(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'report_id' => 'required|exists:reports,id',
             'nombre' => 'required|string|max:255',
@@ -119,6 +124,8 @@ class ReportController extends Controller
 
     public function destroy(int $id)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $report = Report::findOrFail($id);
 
         try {
@@ -204,9 +211,13 @@ class ReportController extends Controller
      */
     private function buildStyledPayload(array $validated): array
     {
+        $branding = tenant()?->branding;
+        $timezone = $branding?->timezone_value ?? 'America/Bogota';
+
         $common = [
-            'date' => now()->setTimezone('America/Bogota')->format('d/m/Y'),
-            'logoDataUri' => $this->logoDataUri(),
+            'date' => now()->setTimezone($timezone)->format('d/m/Y'),
+            'logoDataUri' => $this->logoDataUri($branding),
+            'branding' => $branding,
         ];
 
         return match ((string) $validated['tipoReporte']) {
@@ -462,9 +473,10 @@ class ReportController extends Controller
         return compact('removedByQuantity', 'removedBySerial', 'totalRemoved', 'totalRemovedUnits');
     }
 
-    private function logoDataUri(): ?string
+    private function logoDataUri(?\App\Models\Central\TenantBranding $branding = null): ?string
     {
-        $path = public_path('assets/images/logoUniguajira.png');
+        $logoPath = $branding?->logo_report ?? 'assets/images/logoUniguajira.png';
+        $path = public_path($logoPath);
 
         if (!file_exists($path)) {
             return null;

@@ -120,6 +120,8 @@ class InventoryController extends Controller
 
     public function updateEstado(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'id_inventario' => 'required|integer|exists:inventories,id',
             'estado' => 'required|integer|in:1,2,3'
@@ -156,6 +158,8 @@ class InventoryController extends Controller
     // ------------------------------
     public function create(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'grupo_id' => 'required|integer|exists:groups,id',
             'nombre' => 'required|string|max:255',
@@ -194,6 +198,8 @@ class InventoryController extends Controller
     // ------------------------------
     public function rename(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'inventory_id' => 'required|integer',
             'nombre' => 'required|string|max:255',
@@ -245,6 +251,8 @@ class InventoryController extends Controller
     // ------------------------------
     public function updateResponsable(Request $request)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         $request->validate([
             'id' => 'required|integer|exists:inventories,id',
             'responsable' => 'nullable|string|max:255',
@@ -276,6 +284,8 @@ class InventoryController extends Controller
     // ------------------------------
     public function delete($id)
     {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
         if (empty($id)) {
             return response()->json(['success' => false, 'message' => 'El ID del inventario es requerido.'], 400);
         }
