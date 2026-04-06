@@ -25,6 +25,12 @@ class PortalController extends Controller
     {
         $tenants = Tenant::where('is_active', true)->with('branding')->get();
 
+        if ($request->ajax()) {
+            /** @var \Illuminate\View\View $view */
+            $view = view('portal.index', compact('tenants'));
+            return $view->renderSections()['content'];
+        }
+
         return view('portal.index', compact('tenants'));
     }
 

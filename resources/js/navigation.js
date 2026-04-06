@@ -75,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = link.getAttribute('href');
 
             loadContent(url, { onSuccess: () => initializeScripts(url) });
-            window.history.pushState({ url }, '', url);
         });
     });
 

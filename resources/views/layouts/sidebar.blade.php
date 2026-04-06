@@ -2,7 +2,7 @@
     <nav>
         <ul class="list-unstyled">
             <li>
-                <a id="home" href="{{ route('home.index') }}" data-nav>
+                <a id="home" href="{{ tenant() ? route('home.index') : route('portal.index') }}" data-nav>
                     <img src="{{ asset('assets/icons/home.svg') }}" alt="">
                     <span>Inicio</span>
                 </a>
