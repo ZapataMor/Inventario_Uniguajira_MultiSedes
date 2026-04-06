@@ -8,14 +8,15 @@ use Illuminate\Support\Facades\Artisan;
 /**
  * Ejecuta migraciones sobre la base de datos central.
  *
- * Las migraciones centrales están en database/migrations/central.
+ * Las migraciones centrales estan en database/migrations/central.
  */
 class CentralMigrate extends Command
 {
     protected $signature = 'central:migrate
         {--fresh : Hacer migrate:fresh en lugar de migrate}
-        {--seed : Ejecutar seeders después de migrar}
-        {--force : Forzar ejecución en producción}';
+        {--seed : Ejecutar seeders despues de migrar}
+        {--class= : Seeder especifico a ejecutar cuando se usa --seed}
+        {--force : Forzar ejecucion en produccion}';
 
     protected $description = 'Ejecuta migraciones en la base de datos central';
 
@@ -35,20 +36,18 @@ class CentralMigrate extends Command
             $params['--force'] = true;
         }
 
-        if ($this->option('seed') && $this->option('fresh')) {
-            $params['--seed'] = true;
-        }
-
         $exitCode = Artisan::call($command, $params, $this->output);
 
         if ($exitCode !== 0) {
             $this->error('Error migrando la base central.');
+
             return self::FAILURE;
         }
 
-        if ($this->option('seed') && ! $this->option('fresh')) {
+        if ($this->option('seed')) {
             $seedParams = [
                 '--database' => 'central',
+                '--class' => $this->option('class') ?: 'Database\\Seeders\\CentralDatabaseSeeder',
             ];
 
             if ($this->option('force')) {
@@ -59,11 +58,13 @@ class CentralMigrate extends Command
 
             if ($seedExitCode !== 0) {
                 $this->error('Error ejecutando seeders en la base central.');
+
                 return self::FAILURE;
             }
         }
 
         $this->info('Base de datos central migrada correctamente.');
+
         return self::SUCCESS;
     }
 }
