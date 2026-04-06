@@ -1,4 +1,4 @@
-<header>
+<header class="bg-[linear-gradient(90deg,#E8BE33_0%,#FF672C_25%,#E8BE33_50%,#FF672C_75%,#E8BE33_100%)] bg-[length:200%_100%] animate-navbar-sunset [will-change:background-position]">
     <div class="left">
         <div class="menu-container">
             <div class="menu" id="menu">
