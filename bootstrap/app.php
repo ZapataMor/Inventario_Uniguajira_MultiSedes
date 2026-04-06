@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Resolver tenant al inicio de cada request web
         $middleware->append(\App\Http\Middleware\ResolveTenant::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\PreventHistoryCache::class);
 
         // Verificar acceso del usuario al tenant después de autenticación
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureTenantAccess::class);

@@ -31,7 +31,7 @@ Route::post('logout', function (Request $request) {
     $request->session()->invalidate();
     $request->session()->regenerateToken();
 
-    return redirect()->route('login');
+    return redirect()->route('login')->with('lock_login_back', true);
 })->middleware('auth')->name('logout');
 
 // ─── Portal Central (selector de sedes) ────────────────────────

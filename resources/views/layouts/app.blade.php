@@ -45,6 +45,7 @@
     <script src="{{ asset('assets/js/helpers/selection.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/autocomplete.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v=1"></script>
+    <script src="{{ asset('assets/js/history-guard.js') }}?v=1"></script>
     <script src="{{ asset('assets/js/tasks.js') }}"></script>
 
     <script src="{{ asset('assets/js/goods.js') }}?v=3"></script>
