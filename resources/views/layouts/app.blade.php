@@ -16,15 +16,19 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body>
+<body class="bg-white">
     @include('layouts.navbar')
     @include('layouts.sidebar')
 
-    <main id="main">
+    <main id="main" class="relative isolate min-h-[calc(100vh-4.8rem)]">
+        <div
+            class="pointer-events-none absolute inset-0 z-0 [background-image:linear-gradient(45deg,transparent_49%,#e5e7eb_49%,#e5e7eb_51%,transparent_51%),linear-gradient(-45deg,transparent_49%,#e5e7eb_49%,#e5e7eb_51%,transparent_51%)] [background-size:40px_40px] [-webkit-mask-image:radial-gradient(ellipse_80%_80%_at_100%_100%,#000_50%,transparent_90%)] [mask-image:radial-gradient(ellipse_80%_80%_at_100%_100%,#000_50%,transparent_90%)]"
+            aria-hidden="true">
+        </div>
         <div id="toastContainer" class="toast-container"></div>
         {{-- loader shown while AJAX content loads --}}
         <div id="loader" class="loader"></div>
-        <div id="main-content">
+        <div id="main-content" class="relative z-10">
             @yield('content')
         </div>
     </main>
