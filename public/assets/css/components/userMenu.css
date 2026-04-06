@@ -20,8 +20,10 @@
 }
 
 .user-menu-content {
-    position: absolute;
-    right: 0;
+    position: fixed;
+    right: auto;
+    bottom: auto;
+    z-index: 1100;
     overflow: hidden;
     background-color: #ffffff;
     border: 1px solid var(--border-color);
