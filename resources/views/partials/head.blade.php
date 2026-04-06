@@ -3,9 +3,12 @@
 
 <title>{{ $title ?? config('app.name') }}</title>
 
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+@php
+    $faviconPath = $branding?->favicon ?? 'assets/images/favicon-uniguajira-32x32.webp';
+    $appleTouchPath = $branding?->logo_navbar ?? 'assets/images/logo-uniguajira-seo-150x150.webp';
+@endphp
+<link rel="icon" href="{{ asset($faviconPath) }}" type="image/webp">
+<link rel="apple-touch-icon" href="{{ asset($appleTouchPath) }}">
 
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
