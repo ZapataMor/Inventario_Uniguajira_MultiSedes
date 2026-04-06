@@ -11,11 +11,22 @@
 @endphp
 
 <div class="content profile-page">
-    <div class="profile-header">
+    <div class="profile-header flex items-start justify-between gap-4">
         <div>
             <h1>Mi perfil</h1>
             <p>Consulta y actualiza los datos principales de tu cuenta.</p>
         </div>
+
+        <button
+            id="profileBackButton"
+            type="button"
+            data-fallback-url="{{ tenant() ? route('home.index') : route('portal.index') }}"
+            onclick="goBackFromProfile(event)"
+            class="back-button"
+        >
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            Volver
+        </button>
     </div>
 
     <div class="profile-grid">
@@ -408,6 +419,30 @@
     }
 
     .profile-submit-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 14px 26px rgba(21, 94, 117, 0.22);
+    }
+
+    .back-button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        font-size: 0.92rem;
+        font-weight: 700;;
+        border: rgb(194, 194, 194) 1px solid;
+        border-radius: 14px;
+        padding: 10px 20px;
+        background:rgba(241, 241, 241, 0.93);
+        color:rgb(22, 22, 22);
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(21, 94, 117, 0.18);
+    }
+
+    .back-button:hover {
+        background:rgb(221, 221, 221);
         transform: translateY(-1px);
         box-shadow: 0 14px 26px rgba(21, 94, 117, 0.22);
     }
