@@ -20,12 +20,30 @@ class TenantContext
     protected bool $resolved = false;
 
     /**
+     * Configuración base de la conexión tenant (según .env).
+     */
+    protected array $baseTenantConnection = [];
+
+    /**
+     * Conexión por defecto antes de aplicar tenancy.
+     */
+    protected ?string $baseDefaultConnection = null;
+
+    /**
      * Establece el tenant activo y configura la conexión dinámica.
      */
     public function set(Tenant $tenant): void
     {
         $this->tenant = $tenant;
         $this->resolved = true;
+
+        if (empty($this->baseTenantConnection)) {
+            $this->baseTenantConnection = config('database.connections.tenant', []);
+        }
+
+        if ($this->baseDefaultConnection === null) {
+            $this->baseDefaultConnection = config('database.default');
+        }
 
         $this->configureTenantConnection($tenant);
     }
@@ -86,9 +104,17 @@ class TenantContext
         $this->tenant = null;
         $this->resolved = false;
 
-        // Restaurar conexión tenant al default
-        $defaultDb = config('database.connections.tenant.database');
-        Config::set('database.connections.tenant.database', $defaultDb);
+        // Restaurar conexión tenant al default inicial
+        if (! empty($this->baseTenantConnection)) {
+            foreach ($this->baseTenantConnection as $key => $value) {
+                Config::set("database.connections.tenant.{$key}", $value);
+            }
+        }
+
+        if ($this->baseDefaultConnection !== null) {
+            Config::set('database.default', $this->baseDefaultConnection);
+        }
+
         DB::purge('tenant');
     }
 
@@ -102,9 +128,35 @@ class TenantContext
      */
     protected function configureTenantConnection(Tenant $tenant): void
     {
-        $databaseName = $tenant->database;
+        $overrides = config('tenancy.tenant_credentials.' . $tenant->slug, []);
+        $base = $this->baseTenantConnection ?: config('database.connections.tenant', []);
 
-        Config::set('database.connections.tenant.database', $databaseName);
+        $databaseName = $overrides['database'] ?? $tenant->database ?? ($base['database'] ?? null);
+
+        if ($databaseName) {
+            Config::set('database.connections.tenant.database', $databaseName);
+        }
+
+        $host = $overrides['host'] ?? config('tenancy.tenant_db_host', $base['host'] ?? null);
+        if ($host !== null) {
+            Config::set('database.connections.tenant.host', $host);
+        }
+
+        $port = $overrides['port'] ?? config('tenancy.tenant_db_port', $base['port'] ?? null);
+        if ($port !== null) {
+            Config::set('database.connections.tenant.port', $port);
+        }
+
+        $username = $overrides['username'] ?? ($base['username'] ?? null);
+        if ($username !== null) {
+            Config::set('database.connections.tenant.username', $username);
+        }
+
+        if (array_key_exists('password', $overrides)) {
+            Config::set('database.connections.tenant.password', $overrides['password']);
+        } elseif (array_key_exists('password', $base)) {
+            Config::set('database.connections.tenant.password', $base['password']);
+        }
 
         // Purgar conexión existente para forzar reconexión
         DB::purge('tenant');

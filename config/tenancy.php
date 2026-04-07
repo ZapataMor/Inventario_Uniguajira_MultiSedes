@@ -40,6 +40,43 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tenant Connection Overrides (per sede)
+    |--------------------------------------------------------------------------
+    |
+    | En hosting compartido es común que cada base tenga su propio usuario.
+    | Aquí puedes definir credenciales por slug sin tocar la BD central.
+    |
+    */
+
+    'tenant_db_host' => env('TENANT_DB_HOST', env('DB_HOST', '127.0.0.1')),
+    'tenant_db_port' => env('TENANT_DB_PORT', env('DB_PORT', '3306')),
+
+    'tenant_credentials' => [
+        'maicao' => [
+            'database' => env('TENANT_MAICAO_DATABASE'),
+            'username' => env('TENANT_MAICAO_USERNAME'),
+            'password' => env('TENANT_MAICAO_PASSWORD'),
+            'host' => env('TENANT_MAICAO_HOST'),
+            'port' => env('TENANT_MAICAO_PORT'),
+        ],
+        'villanueva' => [
+            'database' => env('TENANT_VILLANUEVA_DATABASE'),
+            'username' => env('TENANT_VILLANUEVA_USERNAME'),
+            'password' => env('TENANT_VILLANUEVA_PASSWORD'),
+            'host' => env('TENANT_VILLANUEVA_HOST'),
+            'port' => env('TENANT_VILLANUEVA_PORT'),
+        ],
+        'fonseca' => [
+            'database' => env('TENANT_FONSECA_DATABASE'),
+            'username' => env('TENANT_FONSECA_USERNAME'),
+            'password' => env('TENANT_FONSECA_PASSWORD'),
+            'host' => env('TENANT_FONSECA_HOST'),
+            'port' => env('TENANT_FONSECA_PORT'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Tenant (Fallback)
     |--------------------------------------------------------------------------
     |
