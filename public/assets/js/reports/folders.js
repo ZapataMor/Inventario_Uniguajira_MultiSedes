@@ -125,7 +125,8 @@ function updateAllFolderIdFields(folderId) {
         'folderIdTodosLosInventarios',
         'folderIdDeBienes',
         'folderIdDeEquipos',
-        'folderIdDadosDeBaja'
+        'folderIdDadosDeBaja',
+        'folderIdHistorial'
     ];
 
     folderIdFields.forEach(fieldId => {
