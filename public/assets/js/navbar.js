@@ -1,3 +1,13 @@
+function syncNavbarHeightVar() {
+    const navbar = document.querySelector('body > header');
+    if (!navbar) {
+        return;
+    }
+
+    const navbarHeight = Math.ceil(navbar.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--app-navbar-height', `${navbarHeight}px`);
+}
+
 /*Animacion al clickear el boton de menu de usuario*/
 function positionUserMenu() {
     const userMenu = document.getElementById('userMenu');
@@ -54,6 +64,10 @@ function logout() {
     localStorage.removeItem('openGroup');
     localStorage.removeItem('openInventory');
 }
+
+document.addEventListener('DOMContentLoaded', syncNavbarHeightVar);
+window.addEventListener('load', syncNavbarHeightVar);
+window.addEventListener('resize', syncNavbarHeightVar);
 
 // Cerrar el menu al hacer clic fuera de el
 document.addEventListener('click', function (event) {

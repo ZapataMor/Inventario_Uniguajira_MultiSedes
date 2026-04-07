@@ -233,8 +233,8 @@
     <style>
         .modal.flyout-modal {
             position: fixed !important;
-            top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
-            width: 100vw !important; height: 100vh !important;
+            top: var(--app-navbar-height, 4.8rem) !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100vw !important; height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
             background: rgba(0, 0, 0, 0.45);
             z-index: 9999 !important;
             margin: 0 !important; padding: 0 !important;
@@ -246,8 +246,8 @@
         }
         .modal.flyout-modal > .flyout-panel {
             position: fixed !important;
-            top: 0; right: 0; bottom: 0;
-            height: 100vh !important;
+            top: var(--app-navbar-height, 4.8rem) !important; right: 0; bottom: 0;
+            height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
             width: 42% !important; max-width: 680px !important; min-width: 380px !important;
             background: #fff;
             border-radius: 0 !important;
