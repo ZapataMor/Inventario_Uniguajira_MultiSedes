@@ -24,7 +24,7 @@
 
     {{-- Barra de control para selección múltiple --}}
     @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
-    <div id="control-bar-group" class="control-bar hidden">
+    <div id="control-bar-group" class="control-bar">
         <div class="selected-name">1 seleccionado</div>
         <div class="control-actions">
             <button class="control-btn" title="Renombrar" onclick="btnRenombrarGrupo()">
