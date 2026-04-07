@@ -178,6 +178,15 @@ function initFormsReporte() {
             refreshReportFolder();
         }
     });
+
+    bindAjaxFormOnce('#formReporteDeHistorial', {
+        resetOnSuccess: true,
+        closeModalOnSuccess: true,
+        onSuccess: (response) => {
+            showToast(response);
+            refreshReportFolder();
+        }
+    });
 }
 
 function initReportsFunctions() {

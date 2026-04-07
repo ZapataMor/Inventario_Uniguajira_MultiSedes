@@ -12,18 +12,25 @@
 
 /* Sidebar */
 .sidebar {
-    margin-top: 4rem;
+    margin-top: 0;
     width: 4rem;
-    height: 100%;
+    height: calc(100vh - 4rem);
     position: fixed;
-    top: 0;
+    top: 4rem;
     left: 0;
     z-index: 100;
-    padding: 1.1rem 0;
+    padding: 1.1rem 0 10px;
     border-right: 1px solid #ccc;
-    overflow-y: auto;
+    overflow: hidden;
     background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
     transition: width 0.5s ease;
+}
+
+.sidebar > nav {
+    flex: 1 1 auto;
+    overflow-y: auto;
 }
 
 /* Cambia el ancho del sidebar cuando se activa el toggle del menú */

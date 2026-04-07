@@ -53,7 +53,7 @@ class ReportController extends Controller
         $validated = $request->validate([
             'folder_id' => 'required|exists:report_folders,id',
             'nombreReporte' => 'required|string|max:255',
-            'tipoReporte' => 'required|in:inventario,grupo,allInventories,goods,serial,removedGoods',
+            'tipoReporte' => 'required|in:inventario,grupo,allInventories,goods,serial,removedGoods,historial',
             'grupo_id' => 'nullable|required_if:tipoReporte,inventario,grupo|integer|exists:groups,id',
             'inventario_id' => 'nullable|required_if:tipoReporte,inventario|integer|exists:inventories,id',
         ]);
@@ -256,6 +256,12 @@ class ReportController extends Controller
                 'data' => array_merge($common, $this->removedGoodsData()),
                 'paper' => 'A4',
                 'orientation' => 'portrait',
+            ],
+            'historial' => [
+                'view' => 'reports.pdf.reporte_de_historial',
+                'data' => array_merge($common, $this->historialData()),
+                'paper' => 'A4',
+                'orientation' => 'landscape',
             ],
             default => throw ValidationException::withMessages([
                 'tipoReporte' => 'Tipo de reporte no soportado.',
@@ -471,6 +477,30 @@ class ReportController extends Controller
         $totalRemovedUnits = (int) $removedByQuantity->sum('cantidad') + $removedBySerial->count();
 
         return compact('removedByQuantity', 'removedBySerial', 'totalRemoved', 'totalRemovedUnits');
+    }
+
+    /**
+     * @return array{logs: Collection<int, object>, totalRecords: int, weekCount: int, todayCount: int, activeUsersToday: int, filters: array<string, null>}
+     */
+    private function historialData(): array
+    {
+        $logs = \App\Models\ActivityLog::with('user')->orderBy('created_at', 'desc')->get();
+
+        return [
+            'logs' => $logs,
+            'totalRecords' => $logs->count(),
+            'weekCount' => \App\Models\ActivityLog::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'todayCount' => \App\Models\ActivityLog::whereDate('created_at', today())->count(),
+            'activeUsersToday' => \App\Models\ActivityLog::distinct('user_id')->whereDate('created_at', today())->count('user_id'),
+            'filters' => [
+                'user' => null,
+                'action' => null,
+                'model' => null,
+                'date_from' => null,
+                'date_to' => null,
+                'search' => null,
+            ],
+        ];
     }
 
     private function logoDataUri(?\App\Models\Central\TenantBranding $branding = null): ?string

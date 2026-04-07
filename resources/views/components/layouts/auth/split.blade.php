@@ -3,7 +3,7 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white antialiased">
+    <body class="min-h-screen bg-white antialiased" data-auth-page="1" data-auth-lock="{{ session('lock_login_back') ? '1' : '0' }}">
         <div class="relative grid h-dvh flex-col items-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
 
             <!-- Background image (dynamic per tenant) -->
@@ -132,6 +132,7 @@
                 </div>
             </div>
         </div>
+        <script src="{{ asset('assets/js/history-guard.js') }}?v=1"></script>
         @fluxScripts
     </body>
 </html>

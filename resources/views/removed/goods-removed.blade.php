@@ -115,14 +115,14 @@
     #modalRemovedDetails,
     #modalFilterRemoved {
         position: fixed !important;
-        top: 0 !important;
+        top: var(--app-navbar-height, 4.8rem) !important;
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
         width: 100vw !important;
-        height: 100vh !important;
-        min-height: 100vh !important;
-        max-height: 100vh !important;
+        height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
+        min-height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
+        max-height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
         background: rgba(0,0,0,0.45);
         z-index: 9999 !important;
         margin: 0 !important;
@@ -148,12 +148,12 @@
     #modalRemovedDetails .flyout-panel,
     #modalFilterRemoved .flyout-panel {
         position: fixed !important;
-        top: 0 !important;
+        top: var(--app-navbar-height, 4.8rem) !important;
         bottom: 0 !important;
         right: 0 !important;
-        height: 100vh !important;
-        min-height: 100vh !important;
-        max-height: 100vh !important;
+        height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
+        min-height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
+        max-height: calc(100vh - var(--app-navbar-height, 4.8rem)) !important;
         width: 42% !important;
         max-width: 700px !important;
         min-width: 420px !important;

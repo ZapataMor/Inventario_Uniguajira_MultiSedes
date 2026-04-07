@@ -1,5 +1,5 @@
-<div id="modalCrearBienInventario" class="modal">
-    <div class="modal-content modal-content-large scrollable-content">
+<div id="modalCrearBienInventario" class="modal flyout-modal">
+    <div class="flyout-panel">
         <span class="close" onclick="ocultarModal('#modalCrearBienInventario')">&times;</span>
         <h2>Nuevo Bien</h2>
         <form id="formCrearBienInventario" class="form-container" autocomplete="off" action="/api/goods-inventory/create" method="POST" enctype="multipart/form-data">

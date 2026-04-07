@@ -64,10 +64,6 @@ class TenantMigrate extends Command
                 $params['--force'] = true;
             }
 
-            if ($this->option('seed') && $this->option('fresh')) {
-                $params['--seed'] = true;
-            }
-
             $exitCode = Artisan::call($command, $params, $this->output);
 
             if ($exitCode !== 0) {
@@ -77,10 +73,10 @@ class TenantMigrate extends Command
                 return self::FAILURE;
             }
 
-            if ($this->option('seed') && ! $this->option('fresh')) {
+            if ($this->option('seed')) {
                 $seedParams = [
                     '--database' => 'tenant',
-                    '--class' => $this->option('class') ?: 'Database\\Seeders\\DatabaseSeeder',
+                    '--class' => $this->option('class') ?: 'Database\\Seeders\\TenantDatabaseSeeder',
                 ];
 
                 if ($this->option('force')) {

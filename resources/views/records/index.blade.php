@@ -38,12 +38,6 @@
                     <i class="fas fa-filter"></i>
                     Filtros
                 </button>
-                @if(! Auth::user()->isSuperAdmin())
-                    <a class="create-btn" id="reportBtn" href="{{ route('records.export', request()->query()) }}">
-                        <i class="fas fa-file-pdf"></i>
-                        Reporte
-                    </a>
-                @endif
             @endif
         </div>
 

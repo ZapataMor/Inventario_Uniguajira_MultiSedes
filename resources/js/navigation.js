@@ -1,5 +1,28 @@
+const AUTH_PATH_PREFIXES = [
+    '/login',
+    '/register',
+    '/password',
+    '/forgot-password',
+    '/reset-password',
+];
+
+function resolveUrlPath(url) {
+    const resolved = new URL(url, window.location.origin);
+    return `${resolved.pathname}${resolved.search}`;
+}
+
+function isAuthPath(url) {
+    const path = new URL(url, window.location.origin).pathname;
+    return AUTH_PATH_PREFIXES.some(prefix => path.startsWith(prefix));
+}
+
+function isFullHtmlDocument(html) {
+    const normalized = String(html ?? '').trimStart().toLowerCase();
+    return normalized.startsWith('<!doctype html') || normalized.startsWith('<html');
+}
+
 window.loadContent = async (url, options = {}) => {
-    url = url.replace(window.location.origin, '');
+    url = resolveUrlPath(url);
     console.log(`Cargando contenido desde: ${url}`);
 
     const {
@@ -10,11 +33,18 @@ window.loadContent = async (url, options = {}) => {
 
     try {
         const container = document.querySelector(containerSelector);
-        if (!container) throw new Error(`No se encontro el contenedor: ${containerSelector}`);
+        if (!container) {
+            window.location.assign(url);
+            return;
+        }
 
         container.classList.add('loading');
         const loader = document.getElementById('loader');
         if (loader) loader.style.display = 'block';
+        const stopLoadingState = () => {
+            container.classList.remove('loading');
+            if (loader) loader.style.display = 'none';
+        };
 
         const response = await fetch(url, {
             headers: {
@@ -22,14 +52,26 @@ window.loadContent = async (url, options = {}) => {
             }
         });
 
-        if (!response.ok) throw new Error('Error al cargar la vista');
+        const finalUrl = resolveUrlPath(response.url || url);
+        if (response.redirected && isAuthPath(finalUrl)) {
+            stopLoadingState();
+            window.location.replace(finalUrl);
+            return;
+        }
+
         const html = await response.text();
+        if (isFullHtmlDocument(html)) {
+            stopLoadingState();
+            window.location.assign(finalUrl);
+            return;
+        }
+
+        if (!response.ok) throw new Error('Error al cargar la vista');
 
         container.innerHTML = html;
 
         if (onSuccess) onSuccess();
-        container.classList.remove('loading');
-        if (loader) loader.style.display = 'none';
+        stopLoadingState();
 
         if (updateHistory) {
             window.history.pushState({ url }, '', url);
@@ -37,6 +79,8 @@ window.loadContent = async (url, options = {}) => {
     } catch (error) {
         console.error(error);
         alert('No se pudo cargar la pagina');
+        const container = document.querySelector(containerSelector);
+        if (container) container.classList.remove('loading');
         const loader = document.getElementById('loader');
         if (loader) loader.style.display = 'none';
     }
@@ -75,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = link.getAttribute('href');
 
             loadContent(url, { onSuccess: () => initializeScripts(url) });
-            window.history.pushState({ url }, '', url);
         });
     });
 

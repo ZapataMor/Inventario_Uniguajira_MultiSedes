@@ -157,6 +157,9 @@
                         <li onclick="mostrarModalReporte('#modalCrearReporteDadosDeBaja')">
                             <i class="fas fa-arrow-right"></i> reporte de dados de baja
                         </li>
+                        <li onclick="mostrarModalReporte('#modalCrearReporteHistorial')">
+                            <i class="fas fa-arrow-right"></i> reporte de historial
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -326,6 +329,28 @@
                 <div>
                     <label for="nombreReporteDeDadosDeBaja">Nombre del reporte:</label>
                     <input type="text" id="nombreReporteDeDadosDeBaja" name="nombreReporte" required />
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn submit-btn">Generar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modalCrearReporteHistorial" class="modal">
+        <div class="modal-content modal-content-medium">
+            <span class="close" onclick="ocultarModal('#modalCrearReporteHistorial')">&times;</span>
+            <h2>Reporte de historial</h2>
+
+            <form id="formReporteDeHistorial" action="{{ url('/api/reports/create') }}" method="POST" autocomplete="off">
+                @csrf
+                <input type="hidden" id="folderIdHistorial" name="folder_id" />
+                <input type="hidden" name="tipoReporte" value="historial" />
+
+                <div>
+                    <label for="nombreReporteDeHistorial">Nombre del reporte:</label>
+                    <input type="text" id="nombreReporteDeHistorial" name="nombreReporte" required />
                 </div>
 
                 <div class="form-actions">
