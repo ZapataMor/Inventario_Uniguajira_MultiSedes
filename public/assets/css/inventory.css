@@ -1,3 +1,16 @@
+/* ── Tabla de previsualización: carga por localización ─────────────────────── */
+
+/* Encabezados — color uniforme emerald en todas las columnas */
+#locPreviewTable thead th {
+    background-color: #065f46;
+}
+
+/* Tinte suave emerald en todas las celdas del cuerpo */
+#locPreviewTable tbody td {
+    background-color: rgba(6, 95, 70, 0.06);
+}
+
+
 /* Estilos para el encabezado de inventario */
 .inventory-header {
     display: flex;
@@ -218,3 +231,4 @@
         justify-content: space-between;
     }
 }
+

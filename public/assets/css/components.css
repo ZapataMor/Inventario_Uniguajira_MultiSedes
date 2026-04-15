@@ -85,6 +85,24 @@
     background-color: #8c2b32;
 }
 
+/* Botón de carga por localización */
+.btn-localizacion-excel {
+    background-color: #065f46;
+    color: white;
+    padding: 10px 5px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background 0.3s ease-in-out;
+    white-space: nowrap;
+}
+
+.btn-localizacion-excel:hover {
+    background-color: #047857;
+}
+
 /* Filtro activo: naranja cuando hay filtros aplicados */
 .create-btn.filter-active {
     background-color: #FF9800;
