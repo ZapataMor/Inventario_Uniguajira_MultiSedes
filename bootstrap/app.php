@@ -17,8 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // bloquea rutas de registro si accidentalmente quedan expuestas
         $middleware->prepend(\App\Http\Middleware\BlockRegistration::class);
 
-        // Resolver tenant al inicio de cada request web
-        $middleware->append(\App\Http\Middleware\ResolveTenant::class);
+        // Resolver tenant dentro del grupo web (despues de iniciar session)
+        $middleware->appendToGroup('web', \App\Http\Middleware\ResolveTenant::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\PreventHistoryCache::class);
 
         // Verificar acceso del usuario al tenant después de autenticación

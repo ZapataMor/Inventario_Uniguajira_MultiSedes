@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Central\Tenant;
 use App\Models\Central\UserTenant;
+use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -172,9 +173,40 @@ class UserSeeder extends Seeder
 
     protected function syncTenantMembership(User $user, string $role = 'administrador'): void
     {
+        // Prioridad 1: cuando el seeder corre desde tenant:migrate, el contexto
+        // ya trae el tenant activo y evita depender del nombre exacto de la DB.
+        $tenantFromContext = app(TenantContext::class)->get();
+
+        if ($tenantFromContext) {
+            UserTenant::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'tenant_id' => $tenantFromContext->id,
+                ],
+                [
+                    'role' => $role,
+                    'is_active' => true,
+                ]
+            );
+
+            return;
+        }
+
         $database = DB::connection()->getDatabaseName();
 
-        $tenant = Tenant::where('database', $database)->first();
+        // Fallback local: permitir alias de BD (inv_maicao / inventario_maicao).
+        $slug = $this->inferTenantSlugFromDatabase((string) $database);
+
+        $tenant = Tenant::query()
+            ->where(function ($query) use ($slug, $database) {
+                if ($slug) {
+                    $query->where('slug', $slug)
+                        ->orWhere('database', $database);
+                } else {
+                    $query->where('database', $database);
+                }
+            })
+            ->first();
 
         if (! $tenant) {
             return;
@@ -190,5 +222,16 @@ class UserSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+    }
+
+    protected function inferTenantSlugFromDatabase(string $database): ?string
+    {
+        foreach (['inventario_', 'inv_'] as $prefix) {
+            if (str_starts_with($database, $prefix)) {
+                return substr($database, strlen($prefix));
+            }
+        }
+
+        return null;
     }
 }
