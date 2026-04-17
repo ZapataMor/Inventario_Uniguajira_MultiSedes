@@ -66,7 +66,16 @@ class Tenant extends Model
      */
     public function getDatabaseAttribute(): string
     {
+        $slug = (string) ($this->attributes['slug'] ?? $this->slug ?? '');
+        $override = $slug !== ''
+            ? config("tenancy.tenant_credentials.{$slug}.database")
+            : null;
+
+        if (is_string($override) && $override !== '') {
+            return $override;
+        }
+
         return $this->attributes['database']
-            ?? config('tenancy.database_prefix') . $this->slug;
+            ?? config('tenancy.database_prefix') . $slug;
     }
 }

@@ -129,21 +129,22 @@ class UserSeeder extends Seeder
     protected function tenantAdminUser(): ?array
     {
         $database = DB::connection()->getDatabaseName();
+        $slug = $this->inferTenantSlugFromDatabase((string) $database);
 
-        return match ($database) {
-            'inventario_maicao' => [
+        return match ($slug) {
+            'maicao' => [
                 'name' => 'Administrador Maicao',
                 'username' => 'admin.maicao',
                 'email' => 'maicao@uniguajira.edu.co',
                 'password' => '1234',
             ],
-            'inventario_fonseca' => [
+            'fonseca' => [
                 'name' => 'Administrador Fonseca',
                 'username' => 'admin.fonseca',
                 'email' => 'fonseca@uniguajira.edu.co',
                 'password' => '1234',
             ],
-            'inventario_villanueva' => [
+            'villanueva' => [
                 'name' => 'Administrador Villanueva',
                 'username' => 'admin.villanueva',
                 'email' => 'villanueva@uniguajira.edu.co',
@@ -226,9 +227,34 @@ class UserSeeder extends Seeder
 
     protected function inferTenantSlugFromDatabase(string $database): ?string
     {
+        $database = mb_strtolower(trim($database));
+
+        if ($database === '') {
+            return null;
+        }
+
         foreach (['inventario_', 'inv_'] as $prefix) {
             if (str_starts_with($database, $prefix)) {
                 return substr($database, strlen($prefix));
+            }
+        }
+
+        // Compatibilidad con nombres personalizados, por ejemplo:
+        // u946584072_inv_maicao -> maicao
+        if (preg_match('/(?:^|[_-])inv[_-]([a-z0-9]+)$/', $database, $matches)) {
+            return $matches[1];
+        }
+
+        // Fallback: tomar el ultimo segmento y validarlo contra tenants.slug.
+        if (preg_match('/(?:^|[_-])([a-z0-9]+)$/', $database, $matches)) {
+            $candidate = $matches[1];
+
+            try {
+                if (Tenant::query()->where('slug', $candidate)->exists()) {
+                    return $candidate;
+                }
+            } catch (\Throwable $e) {
+                // Silencioso: en entornos donde central aun no existe.
             }
         }
 

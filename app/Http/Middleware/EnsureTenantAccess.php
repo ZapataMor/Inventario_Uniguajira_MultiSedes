@@ -6,13 +6,14 @@ use App\Models\Central\UserTenant;
 use App\Support\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Verifica que el usuario autenticado tiene acceso al tenant activo.
  *
  * Un super_administrador tiene acceso al portal y a todos los tenants.
- * Los demás usuarios solo acceden si tienen una membresía activa
+ * Los demas usuarios solo acceden si tienen una membresia activa
  * en el tenant resuelto.
  */
 class EnsureTenantAccess
@@ -26,7 +27,7 @@ class EnsureTenantAccess
         $user = $request->user();
         $tenant = $this->context->get();
 
-        // Si no hay usuario autenticado, dejar que el middleware auth lo maneje
+        // Si no hay usuario autenticado, dejar que auth lo maneje.
         if (! $user) {
             return $next($request);
         }
@@ -44,17 +45,17 @@ class EnsureTenantAccess
             return $next($request);
         }
 
-        // Permitir acceso a rutas del portal central
+        // Permitir acceso a rutas del portal central.
         if ($request->routeIs('portal.*')) {
             return $next($request);
         }
 
-        // Permitir rutas de autenticación (login, logout, register, password, etc.)
+        // Permitir rutas de autenticacion (login, logout, etc.).
         if ($request->routeIs('login', 'logout', 'register', 'password.*', 'verification.*', 'two-factor.*')) {
             return $next($request);
         }
 
-        // Permitir rutas de Fortify (login/logout/register/password) por path
+        // Permitir rutas de Fortify por path.
         $authPaths = ['login', 'logout', 'register', 'forgot-password', 'reset-password', 'email/verify', 'user/two-factor', 'two-factor-challenge'];
         foreach ($authPaths as $authPath) {
             if ($request->is($authPath . '*')) {
@@ -62,12 +63,23 @@ class EnsureTenantAccess
             }
         }
 
-        // Admin general tiene acceso a todos los tenants
+        // Admin general tiene acceso a todos los tenants.
         if ($this->isGlobalAdmin($user)) {
             return $next($request);
         }
 
-        // Verificar membresía del usuario en el tenant activo
+        // Evitar que una sesion iniciada en otra sede se reutilice aqui.
+        $sessionTenantId = $request->session()->get('auth_tenant_id');
+        if ($sessionTenantId && (int) $sessionTenantId !== (int) $tenant->id) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')
+                ->with('status', 'Tu sesion pertenecia a otra sede. Inicia sesion nuevamente.');
+        }
+
+        // Verificar membresia del usuario en el tenant activo.
         $membership = UserTenant::where('user_id', $user->id)
             ->where('tenant_id', $tenant->id)
             ->where('is_active', true)
@@ -77,8 +89,9 @@ class EnsureTenantAccess
             abort(403, 'No tienes acceso a esta sede.');
         }
 
-        // Inyectar el rol del usuario en el contexto del tenant
+        // Inyectar rol en el request y fijar sede de sesion autenticada.
         $request->attributes->set('tenant_role', $membership->role);
+        $request->session()->put('auth_tenant_id', (int) $tenant->id);
 
         return $next($request);
     }

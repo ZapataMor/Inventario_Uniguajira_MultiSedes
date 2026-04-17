@@ -14,15 +14,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // bloquea rutas de registro si accidentalmente quedan expuestas
+        // Bloquea rutas de registro si accidentalmente quedan expuestas.
         $middleware->prepend(\App\Http\Middleware\BlockRegistration::class);
 
-        // Resolver tenant dentro del grupo web (despues de iniciar session)
+        // Resolver tenant dentro de web (despues de iniciar sesion).
         $middleware->appendToGroup('web', \App\Http\Middleware\ResolveTenant::class);
         $middleware->appendToGroup('web', \App\Http\Middleware\PreventHistoryCache::class);
 
-        // Verificar acceso del usuario al tenant después de autenticación
+        // Verificar acceso al tenant.
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureTenantAccess::class);
+
+        // Asegurar que ResolveTenant corra antes de Authenticate.
+        $middleware->prependToPriorityList(
+            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            \App\Http\Middleware\ResolveTenant::class
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
