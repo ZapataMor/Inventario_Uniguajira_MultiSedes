@@ -141,6 +141,14 @@ Route::prefix('api/groups')->group(function () {
 });
 
 
+Route::get('/groups/localizacion-excel-upload', [GoodsInventoryController::class, 'localizacionExcelUploadView'])->middleware('auth')->name('groups.localizacion-excel-upload');
+
+Route::prefix('api/goods-inventory')->middleware('auth')->group(function () {
+    Route::post('/batchCreateByLocalizacion', [GoodsInventoryController::class, 'batchCreateByLocalizacion'])->name('goods-inventory.batchCreateByLocalizacion');
+    Route::get('/download-localizacion-template', [GoodsInventoryController::class, 'downloadLocalizacionTemplate'])->name('goods-inventory.download-localizacion-template');
+});
+
+
 /**
  * 6. Inventarios
  * ----------------------------------------------------------------------------

@@ -20,7 +20,13 @@
         placeholder="Buscar grupo..."
         modal="#modalCrearGrupo"
         canCreate="{{ $isPortalInventoryCatalog ? 'false' : 'true' }}"
-    />
+    >
+        @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
+            <button class="btn-localizacion-excel" onclick="abrirExcelLocalizacion()" title="Carga masiva por localización">
+                <i class="fas fa-file-excel"></i> Carga por localización
+            </button>
+        @endif
+    </x-generals.top-bar>
 
     {{-- Barra de control para selección múltiple --}}
     @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)

@@ -44,6 +44,27 @@ class CentralMigrate extends Command
             return self::FAILURE;
         }
 
+        // Tablas de soporte usadas por SESSION/CACHE/QUEUE cuando apuntan a central.
+        $supportMigrations = [
+            'database/migrations/0001_01_01_000001_create_cache_table.php',
+            'database/migrations/0001_01_01_000002_create_jobs_table.php',
+        ];
+
+        foreach ($supportMigrations as $migrationPath) {
+            $supportExitCode = Artisan::call('migrate', [
+                '--database' => 'central',
+                '--path' => $migrationPath,
+                '--realpath' => false,
+                '--force' => (bool) $this->option('force'),
+            ], $this->output);
+
+            if ($supportExitCode !== 0) {
+                $this->error("Error migrando tabla de soporte central: {$migrationPath}");
+
+                return self::FAILURE;
+            }
+        }
+
         if ($this->option('seed')) {
             $seedParams = [
                 '--database' => 'central',
