@@ -16,13 +16,16 @@ return new class extends Migration
     public function up(): void
     {
         $now = now();
+        $maicaoDatabase = config('tenancy.tenant_credentials.maicao.database', 'inventario_maicao');
+        $villanuevaDatabase = config('tenancy.tenant_credentials.villanueva.database', 'inventario_villanueva');
+        $fonsecaDatabase = config('tenancy.tenant_credentials.fonseca.database', 'inventario_fonseca');
 
         // Crear tenants
         DB::connection('central')->table('tenants')->insert([
             [
                 'name' => 'Sede Maicao',
                 'slug' => 'maicao',
-                'database' => 'inventario_maicao',
+                'database' => $maicaoDatabase,
                 'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -30,7 +33,7 @@ return new class extends Migration
             [
                 'name' => 'Sede Villanueva',
                 'slug' => 'villanueva',
-                'database' => 'inventario_villanueva',
+                'database' => $villanuevaDatabase,
                 'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
@@ -38,7 +41,7 @@ return new class extends Migration
             [
                 'name' => 'Sede Fonseca',
                 'slug' => 'fonseca',
-                'database' => 'inventario_fonseca',
+                'database' => $fonsecaDatabase,
                 'is_active' => true,
                 'created_at' => $now,
                 'updated_at' => $now,
