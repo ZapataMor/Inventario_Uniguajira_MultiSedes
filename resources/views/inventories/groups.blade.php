@@ -22,7 +22,11 @@
         canCreate="{{ $isPortalInventoryCatalog ? 'false' : 'true' }}"
     >
         @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
-            <button class="btn-localizacion-excel" onclick="abrirExcelLocalizacion()" title="Carga masiva por localización">
+            <button
+                type="button"
+                class="btn-localizacion-excel inline-flex items-center justify-center gap-2 rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                onclick="abrirExcelLocalizacion()"
+                title="Carga masiva por localización">
                 <i class="fas fa-file-excel"></i> Carga por localización
             </button>
         @endif
