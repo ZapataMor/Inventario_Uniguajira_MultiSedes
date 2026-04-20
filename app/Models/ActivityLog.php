@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Concerns\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ActivityLog extends Model
 {
@@ -41,7 +43,7 @@ class ActivityLog extends Model
      */
     public static function record(string $action, string $description, array $data = []): self
     {
-        return self::create([
+        $attributes = [
             'user_id'     => auth()->id(),
             'action'      => $action,
             'model'       => $data['model'] ?? null,
@@ -51,7 +53,23 @@ class ActivityLog extends Model
             'user_agent'  => request()->userAgent(),
             'old_values'  => $data['old_values'] ?? null,
             'new_values'  => $data['new_values'] ?? null,
-        ]);
+        ];
+
+        if (! tenant()) {
+            return new self($attributes);
+        }
+
+        try {
+            return self::create($attributes);
+        } catch (Throwable $e) {
+            Log::warning('No se pudo registrar la actividad.', [
+                'action' => $action,
+                'tenant_slug' => tenant('slug'),
+                'error' => $e->getMessage(),
+            ]);
+
+            return new self($attributes);
+        }
     }
 
     /**
