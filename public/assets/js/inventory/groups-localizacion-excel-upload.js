@@ -1,4 +1,4 @@
-// Carga masiva de bienes distribuidos por localización (nombre de inventario).
+// Carga masiva de bienes distribuidos por localizacion (nombre de inventario).
 
 const LOC_EXCEL_CONFIG = {
     validTypes: ['.xlsx', '.xls'],
@@ -9,18 +9,31 @@ const LOC_EXCEL_STATE = {
     preview: null,
 };
 
-// ── Helpers para reinyectar celdas cuando cambia el tipo ──────────────────────
+const LOC_ESTADO_OPTIONS = [
+    { value: 'activo', label: 'activo' },
+    { value: 'inactivo', label: 'inactivo' },
+];
+
+const LOC_CACHE_FIELDS = ['serial', 'cantidad', 'marca', 'modelo', 'estado'];
+
 const LOC_CELL = {
     editable(field, value = '') {
         return `<div class="excel-preview-edit-cell block min-w-[72px] w-full rounded-xl border border-transparent bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:bg-emerald-50/70 focus:ring-4 focus:ring-emerald-100" contenteditable="plaintext-only" data-field="${field}">${value}</div>`;
     },
-    placeholder() {
-        return `<span class="excel-preview-disabled inline-flex min-w-[72px] items-center rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium italic text-slate-400">-</span>`;
+    select(field, value, choices = []) {
+        const options = choices.map((choice) => {
+            const selected = String(choice.value) === String(value) ? 'selected' : '';
+            return `<option value="${choice.value}" ${selected}>${choice.label}</option>`;
+        }).join('');
+
+        return `<select class="excel-preview-edit-select w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" data-field="${field}">${options}</select>`;
+    },
+    hiddenPlaceholder() {
+        return '<span class="sr-only">No aplica para bienes de tipo cantidad</span>';
     },
 };
 
-// Índices de columna dentro de cada <tr> (0-based)
-const COL_INDEX = { serial: 2, cantidad: 3 };
+const COL_INDEX = { serial: 2, cantidad: 3, marca: 4, modelo: 5, estado: 6 };
 
 const LOC_EXCEL_COLUMNS = [
     { field: 'bien', type: 'text' },
@@ -37,31 +50,124 @@ const LOC_EXCEL_COLUMNS = [
         field: 'serial',
         render: ({ values, helpers }) => values.esSerial
             ? helpers.editable('serial', values.serial)
-            : helpers.placeholder('-'),
+            : LOC_CELL.hiddenPlaceholder(),
     },
     {
         field: 'cantidad',
         render: ({ values, helpers }) => values.esSerial
-            ? helpers.placeholder('-')
+            ? LOC_CELL.hiddenPlaceholder()
             : helpers.editable('cantidad', values.cantidad),
     },
-    { field: 'marca', type: 'text' },
-    { field: 'modelo', type: 'text' },
+    {
+        field: 'marca',
+        render: ({ values, helpers }) => values.esSerial
+            ? helpers.editable('marca', values.marca)
+            : LOC_CELL.hiddenPlaceholder(),
+    },
+    {
+        field: 'modelo',
+        render: ({ values, helpers }) => values.esSerial
+            ? helpers.editable('modelo', values.modelo)
+            : LOC_CELL.hiddenPlaceholder(),
+    },
     {
         field: 'estado',
-        type: 'select',
-        value: ({ values }) => values.estado,
-        options: [
-            { value: 'activo', label: 'activo' },
-            { value: 'inactivo', label: 'inactivo' },
-        ],
+        render: ({ values }) => values.esSerial
+            ? LOC_CELL.select('estado', values.estado, LOC_ESTADO_OPTIONS)
+            : LOC_CELL.hiddenPlaceholder(),
     },
     { field: 'localizacion', type: 'text' },
     { type: 'remove', align: 'center', padding: '4px 10px', title: 'Eliminar fila' },
 ];
 
+function locNormalizeTipo(value) {
+    return String(value ?? 'Serial').trim().toLowerCase() === 'cantidad' ? 'Cantidad' : 'Serial';
+}
+
+function locNormalizeEstado(value) {
+    return String(value ?? '').trim().toLowerCase() === 'inactivo' ? 'inactivo' : 'activo';
+}
+
+function locCacheKey(field) {
+    return `locCache${field.charAt(0).toUpperCase()}${field.slice(1)}`;
+}
+
+function locReadFieldValue(tr, field) {
+    const element = tr?.querySelector(`[data-field="${field}"]`);
+    if (!element) {
+        return tr?.dataset[locCacheKey(field)] ?? '';
+    }
+
+    if (element.tagName === 'SELECT') {
+        return element.value;
+    }
+
+    return ExcelUI.normalizeText(element.textContent);
+}
+
+function locWriteFieldCache(tr, field, value) {
+    if (!tr) return;
+    tr.dataset[locCacheKey(field)] = String(value ?? '');
+}
+
+function locCacheVisibleFields(tr) {
+    LOC_CACHE_FIELDS.forEach((field) => {
+        locWriteFieldCache(tr, field, locReadFieldValue(tr, field));
+    });
+}
+
+function locGetFieldCell(tr, field) {
+    const index = COL_INDEX[field];
+    return typeof index === 'number' ? tr?.querySelectorAll('td')[index] ?? null : null;
+}
+
+function locRenderTypeFields(tr, tipo) {
+    const esSerial = tipo === 'Serial';
+    const serialTd = locGetFieldCell(tr, 'serial');
+    const cantidadTd = locGetFieldCell(tr, 'cantidad');
+    const marcaTd = locGetFieldCell(tr, 'marca');
+    const modeloTd = locGetFieldCell(tr, 'modelo');
+    const estadoTd = locGetFieldCell(tr, 'estado');
+
+    if (!serialTd || !cantidadTd || !marcaTd || !modeloTd || !estadoTd) return;
+
+    if (esSerial) {
+        serialTd.innerHTML = LOC_CELL.editable('serial', tr.dataset[locCacheKey('serial')] ?? '');
+        cantidadTd.innerHTML = LOC_CELL.hiddenPlaceholder();
+        marcaTd.innerHTML = LOC_CELL.editable('marca', tr.dataset[locCacheKey('marca')] ?? '');
+        modeloTd.innerHTML = LOC_CELL.editable('modelo', tr.dataset[locCacheKey('modelo')] ?? '');
+        estadoTd.innerHTML = LOC_CELL.select(
+            'estado',
+            tr.dataset[locCacheKey('estado')] ?? 'activo',
+            LOC_ESTADO_OPTIONS,
+        );
+        return;
+    }
+
+    cantidadTd.innerHTML = LOC_CELL.editable('cantidad', tr.dataset[locCacheKey('cantidad')] ?? '1');
+    serialTd.innerHTML = LOC_CELL.hiddenPlaceholder();
+    marcaTd.innerHTML = LOC_CELL.hiddenPlaceholder();
+    modeloTd.innerHTML = LOC_CELL.hiddenPlaceholder();
+    estadoTd.innerHTML = LOC_CELL.hiddenPlaceholder();
+}
+
+function locSeedRowCaches(rows) {
+    const renderedRows = LOC_EXCEL_STATE.preview?.elements.tbody?.querySelectorAll('tr') ?? [];
+
+    rows.forEach((row, index) => {
+        const tr = renderedRows[index];
+        if (!tr) return;
+
+        locWriteFieldCache(tr, 'serial', String(row.serial ?? '').trim());
+        locWriteFieldCache(tr, 'cantidad', String(row.cantidad ?? '1').trim() || '1');
+        locWriteFieldCache(tr, 'marca', String(row.marca ?? '').trim());
+        locWriteFieldCache(tr, 'modelo', String(row.modelo ?? '').trim());
+        locWriteFieldCache(tr, 'estado', locNormalizeEstado(row.estado));
+    });
+}
+
 function locPrepareRow(row) {
-    const tipo = String(row.tipo ?? 'Serial').trim().toLowerCase() === 'cantidad' ? 'Cantidad' : 'Serial';
+    const tipo = locNormalizeTipo(row.tipo);
 
     return {
         bien: String(row.bien ?? '').trim(),
@@ -71,35 +177,37 @@ function locPrepareRow(row) {
         cantidad: String(row.cantidad ?? '1').trim() || '1',
         marca: String(row.marca ?? '').trim(),
         modelo: String(row.modelo ?? '').trim(),
-        estado: String(row.estado ?? '').trim() === 'inactivo' ? 'inactivo' : 'activo',
+        estado: locNormalizeEstado(row.estado),
         localizacion: String(row.localizacion ?? '').trim(),
     };
 }
 
-// ── Escucha cambios en el select "tipo" y actualiza las celdas serial/cantidad ─
 function bindTipoSelect(tbody) {
-    tbody.addEventListener('change', (event) => {
-        const select = event.target;
-        if (!select.matches('[data-field="tipo"]')) return;
+    if (!tbody || tbody.dataset.locTipoBound === '1') return;
 
-        const tr = select.closest('tr');
-        if (!tr) return;
+    tbody.addEventListener('input', (event) => {
+        const field = event.target?.dataset?.field;
+        if (!LOC_CACHE_FIELDS.includes(field)) return;
 
-        const tds = tr.querySelectorAll('td');
-        const serialTd = tds[COL_INDEX.serial];
-        const cantidadTd = tds[COL_INDEX.cantidad];
-        if (!serialTd || !cantidadTd) return;
-
-        const esSerial = select.value === 'Serial';
-
-        if (esSerial) {
-            serialTd.innerHTML = LOC_CELL.editable('serial', '');
-            cantidadTd.innerHTML = LOC_CELL.placeholder();
-        } else {
-            serialTd.innerHTML = LOC_CELL.placeholder();
-            cantidadTd.innerHTML = LOC_CELL.editable('cantidad', '1');
-        }
+        const tr = event.target.closest('tr');
+        locWriteFieldCache(tr, field, locReadFieldValue(tr, field));
     });
+
+    tbody.addEventListener('change', (event) => {
+        const field = event.target?.dataset?.field;
+        const tr = event.target.closest('tr');
+
+        if (LOC_CACHE_FIELDS.includes(field)) {
+            locWriteFieldCache(tr, field, locReadFieldValue(tr, field));
+        }
+
+        if (field !== 'tipo' || !tr) return;
+
+        locCacheVisibleFields(tr);
+        locRenderTypeFields(tr, event.target.value);
+    });
+
+    tbody.dataset.locTipoBound = '1';
 }
 
 function abrirExcelLocalizacion() {
@@ -125,7 +233,7 @@ function initLocalizacionExcelUploadView() {
         onSubmit: locEnviarDatos,
     });
 
-    if (tbody) bindTipoSelect(tbody);
+    bindTipoSelect(tbody);
 
     ExcelUI.initUploadArea({
         areaId: 'loc-excel-upload-area',
@@ -142,7 +250,7 @@ async function locHandleFile(file) {
     if (!file) return;
 
     if (!ExcelUI.hasValidExtension(file.name, LOC_EXCEL_CONFIG.validTypes)) {
-        showToast({ success: false, message: 'Formato inválido. Use .xlsx o .xls' });
+        showToast({ success: false, message: 'Formato invalido. Use .xlsx o .xls' });
         return;
     }
 
@@ -151,11 +259,12 @@ async function locHandleFile(file) {
         const rows = locParsearFilas(jsonData);
 
         if (!rows.length) {
-            showToast({ success: false, message: 'No se encontraron datos válidos.' });
+            showToast({ success: false, message: 'No se encontraron datos validos.' });
             return;
         }
 
         LOC_EXCEL_STATE.preview?.renderRows(rows);
+        locSeedRowCaches(rows);
         showToast({ success: true, message: `${rows.length} fila(s) lista(s) para enviar.` });
     } catch (error) {
         console.error(error);
@@ -178,18 +287,18 @@ function locParsearFilas(jsonData) {
     }
 
     const idx = {
-        bien:         ExcelUI.findColumnIndex(headers, ['bien']),
-        tipo:         ExcelUI.findColumnIndex(headers, ['tipo']),
-        serial:       ExcelUI.findColumnIndex(headers, ['serial']),
-        cantidad:     ExcelUI.findColumnIndex(headers, ['cantidad']),
-        marca:        ExcelUI.findColumnIndex(headers, ['marca']),
-        modelo:       ExcelUI.findColumnIndex(headers, ['modelo']),
-        descripcion:  ExcelUI.findColumnIndex(headers, ['descripcion']),
-        estado:       ExcelUI.findColumnIndex(headers, ['estado']),
-        color:        ExcelUI.findColumnIndex(headers, ['color']),
-        condiciones:  ExcelUI.findColumnIndex(headers, ['condiciones']),
-        fecha:        ExcelUI.findColumnIndex(headers, ['fecha ingreso', 'fecha_ingreso']),
-        localizacion: ExcelUI.findColumnIndex(headers, ['localizacion', 'localización']),
+        bien: ExcelUI.findColumnIndex(headers, ['bien']),
+        tipo: ExcelUI.findColumnIndex(headers, ['tipo']),
+        serial: ExcelUI.findColumnIndex(headers, ['serial']),
+        cantidad: ExcelUI.findColumnIndex(headers, ['cantidad']),
+        marca: ExcelUI.findColumnIndex(headers, ['marca']),
+        modelo: ExcelUI.findColumnIndex(headers, ['modelo']),
+        descripcion: ExcelUI.findColumnIndex(headers, ['descripcion']),
+        estado: ExcelUI.findColumnIndex(headers, ['estado']),
+        color: ExcelUI.findColumnIndex(headers, ['color']),
+        condiciones: ExcelUI.findColumnIndex(headers, ['condiciones']),
+        fecha: ExcelUI.findColumnIndex(headers, ['fecha ingreso', 'fecha_ingreso']),
+        localizacion: ExcelUI.findColumnIndex(headers, ['localizacion', 'localizacion']),
     };
 
     const rows = [];
@@ -197,22 +306,21 @@ function locParsearFilas(jsonData) {
     jsonData.slice(1).forEach((row, index) => {
         const bien = String(row[idx.bien] ?? '').trim();
 
-        // Ignorar filas vacías, marcadas como n/a o notas de la plantilla (inician con *)
         if (!bien || bien.toLowerCase() === 'n/a' || bien.startsWith('*')) return;
 
         rows.push({
             bien,
-            tipo:         idx.tipo >= 0         ? String(row[idx.tipo] ?? 'Serial').trim()   : 'Serial',
-            serial:       idx.serial >= 0        ? String(row[idx.serial] ?? '').trim()       : '',
-            cantidad:     idx.cantidad >= 0      ? String(row[idx.cantidad] ?? '1').trim()    : '1',
-            marca:        idx.marca >= 0         ? String(row[idx.marca] ?? '').trim()        : '',
-            modelo:       idx.modelo >= 0        ? String(row[idx.modelo] ?? '').trim()       : '',
-            descripcion:  idx.descripcion >= 0   ? String(row[idx.descripcion] ?? '').trim()  : '',
-            estado:       idx.estado >= 0        ? String(row[idx.estado] ?? 'activo').trim() : 'activo',
-            color:        idx.color >= 0         ? String(row[idx.color] ?? '').trim()        : '',
-            condiciones:  idx.condiciones >= 0   ? String(row[idx.condiciones] ?? '').trim()  : '',
-            fecha_ingreso:idx.fecha >= 0         ? String(row[idx.fecha] ?? '').trim()        : '',
-            localizacion: idx.localizacion >= 0  ? String(row[idx.localizacion] ?? '').trim() : '',
+            tipo: idx.tipo >= 0 ? String(row[idx.tipo] ?? 'Serial').trim() : 'Serial',
+            serial: idx.serial >= 0 ? String(row[idx.serial] ?? '').trim() : '',
+            cantidad: idx.cantidad >= 0 ? String(row[idx.cantidad] ?? '1').trim() : '1',
+            marca: idx.marca >= 0 ? String(row[idx.marca] ?? '').trim() : '',
+            modelo: idx.modelo >= 0 ? String(row[idx.modelo] ?? '').trim() : '',
+            descripcion: idx.descripcion >= 0 ? String(row[idx.descripcion] ?? '').trim() : '',
+            estado: idx.estado >= 0 ? String(row[idx.estado] ?? 'activo').trim() : 'activo',
+            color: idx.color >= 0 ? String(row[idx.color] ?? '').trim() : '',
+            condiciones: idx.condiciones >= 0 ? String(row[idx.condiciones] ?? '').trim() : '',
+            fecha_ingreso: idx.fecha >= 0 ? String(row[idx.fecha] ?? '').trim() : '',
+            localizacion: idx.localizacion >= 0 ? String(row[idx.localizacion] ?? '').trim() : '',
             _rowNum: index + 2,
         });
     });
@@ -221,19 +329,19 @@ function locParsearFilas(jsonData) {
 }
 
 function locLeerFilasDeDOM() {
-    return LOC_EXCEL_STATE.preview?.readRows((row) => {
+    return LOC_EXCEL_STATE.preview?.readRows((row, tr) => {
         if (!row.bien) return null;
 
         const esSerial = row.tipo === 'Serial';
 
         return {
-            bien:         row.bien,
-            tipo:         row.tipo,
-            serial:       esSerial ? (row.serial ?? '') : null,
-            cantidad:     esSerial ? null : (row.cantidad || '1'),
-            marca:        row.marca ?? '',
-            modelo:       row.modelo ?? '',
-            estado:       row.estado ?? 'activo',
+            bien: row.bien,
+            tipo: row.tipo,
+            serial: esSerial ? (row.serial ?? tr?.dataset[locCacheKey('serial')] ?? '') : null,
+            cantidad: esSerial ? null : (row.cantidad || tr?.dataset[locCacheKey('cantidad')] || '1'),
+            marca: esSerial ? (row.marca ?? tr?.dataset[locCacheKey('marca')] ?? '') : null,
+            modelo: esSerial ? (row.modelo ?? tr?.dataset[locCacheKey('modelo')] ?? '') : null,
+            estado: esSerial ? (row.estado ?? tr?.dataset[locCacheKey('estado')] ?? 'activo') : null,
             localizacion: row.localizacion ?? '',
         };
     }) || [];
@@ -278,7 +386,7 @@ async function locEnviarDatos() {
         }
     } catch (error) {
         console.error(error);
-        showToast({ success: false, message: 'Error de conexión.' });
+        showToast({ success: false, message: 'Error de conexion.' });
     } finally {
         if (button) {
             button.disabled = false;

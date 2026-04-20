@@ -1095,10 +1095,10 @@ class GoodsInventoryController extends Controller
                     $nombre = trim($r['bien'] ?? '');
                     if ($nombre === '' || str_starts_with($nombre, '*')) continue;
 
-                    $tipo = trim($r['tipo'] ?? 'Serial');
-                    $assetDefinitions[$nombre] ??= strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
+                    $tipo = strtolower(trim($r['tipo'] ?? 'Serial')) === 'cantidad' ? 'Cantidad' : 'Serial';
+                    $assetDefinitions[$nombre] ??= $tipo;
 
-                    $serial = trim($r['serial'] ?? '');
+                    $serial = $tipo === 'Serial' ? trim($r['serial'] ?? '') : '';
                     if ($serial !== '') {
                         $serials[] = $serial;
                     }
@@ -1123,12 +1123,8 @@ class GoodsInventoryController extends Controller
                     $rowNum    = $item['index'];
                     $nombre    = trim($r['bien'] ?? '');
                     $tipo      = trim($r['tipo'] ?? 'Serial');
-                    $serial    = trim($r['serial'] ?? '');
                     $cantidad  = intval($r['cantidad'] ?? 1);
-                    $marca     = trim($r['marca'] ?? '');
-                    $modelo    = trim($r['modelo'] ?? '');
                     $desc      = trim($r['descripcion'] ?? '');
-                    $estado    = trim($r['estado'] ?? 'activo');
                     $color     = trim($r['color'] ?? '');
                     $condicion = trim($r['condiciones'] ?? '');
                     $fecha     = trim($r['fecha_ingreso'] ?? '');
@@ -1139,6 +1135,10 @@ class GoodsInventoryController extends Controller
                     }
 
                     $tipoNorm = strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
+                    $serial   = $tipoNorm === 'Serial' ? trim($r['serial'] ?? '') : '';
+                    $marca    = $tipoNorm === 'Serial' ? trim($r['marca'] ?? '') : '';
+                    $modelo   = $tipoNorm === 'Serial' ? trim($r['modelo'] ?? '') : '';
+                    $estado   = $tipoNorm === 'Serial' ? trim($r['estado'] ?? 'activo') : '';
                     $asset    = $assetsByName[$nombre] ?? null;
 
                     if (!$asset) {
