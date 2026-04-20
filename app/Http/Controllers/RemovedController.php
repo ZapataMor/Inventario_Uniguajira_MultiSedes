@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use App\Models\AssetRemoved;
 use App\Helpers\ActivityLogger;
+use App\Models\AssetRemoved;
+use Carbon\Carbon;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class RemovedController extends Controller
 {
@@ -15,67 +21,16 @@ class RemovedController extends Controller
      */
     public function index(Request $request)
     {
-        // 1) Bienes removidos por CANTIDAD
-        $removedByQuantity = DB::table('assets_removed as ar')
-            ->join('inventories as i', 'ar.inventory_id', '=', 'i.id')
-            ->join('groups as g', 'i.group_id', '=', 'g.id')
-            ->leftJoin('users as u', 'ar.user_id', '=', 'u.id')
-            ->select(
-                'ar.id',
-                DB::raw("'cantidad' as source"),
-                'ar.name as asset_name',
-                'ar.type',
-                'ar.image',
-                'ar.quantity',
-                DB::raw("NULL as serial"),
-                'ar.reason',
-                'ar.created_at as removed_at',
-                'ar.asset_id as original_asset_id',
-                'i.id as inventory_id',
-                'i.name as inventory_name',
-                'g.id as group_id',
-                'g.name as group_name',
-                'u.name as removed_by_user'
-            );
+        $removedAssets = $this->getRemovedAssets();
 
-        // 2) Bienes removidos por SERIAL (asset_equipments_removed)
-        $removedBySerial = DB::table('asset_equipments_removed as aer')
-            ->join('inventories as i', 'aer.inventory_id', '=', 'i.id')
-            ->join('groups as g', 'i.group_id', '=', 'g.id')
-            ->leftJoin('users as u', 'aer.user_id', '=', 'u.id')
-            ->select(
-                'aer.id',
-                DB::raw("'serial' as source"),
-                'aer.name as asset_name',
-                DB::raw("'Serial' as type"),
-                'aer.image',
-                DB::raw("1 as quantity"),
-                'aer.serial',
-                'aer.reason',
-                'aer.created_at as removed_at',
-                'aer.asset_id as original_asset_id',
-                'i.id as inventory_id',
-                'i.name as inventory_name',
-                'g.id as group_id',
-                'g.name as group_name',
-                'u.name as removed_by_user'
-            );
-
-        // 3) Unir ambos
-        $removedAssets = $removedByQuantity
-            ->unionAll($removedBySerial)
-            ->orderBy('removed_at', 'desc')
-            ->get();
-
-        // Agrupar estadísticas
         $stats = [
-            'total_removed'   => $removedAssets->count(),
-            'total_quantity'  => $removedAssets->sum('quantity'),
-            'by_type'         => [
+            'total_removed' => $removedAssets->count(),
+            'total_quantity' => $removedAssets->sum('quantity'),
+            'by_type' => [
                 'cantidad' => $removedAssets->where('type', 'Cantidad')->count(),
-                'serial'   => $removedAssets->where('type', 'Serial')->count(),
+                'serial' => $removedAssets->where('type', 'Serial')->count(),
             ],
-            'recent_count'    => $removedAssets->where('removed_at', '>=', now()->subDays(30))->count(),
+            'recent_count' => $this->countRecentRemovedAssets($removedAssets),
         ];
 
         if ($request->ajax()) {
@@ -95,23 +50,32 @@ class RemovedController extends Controller
         $source = $request->query('source', 'cantidad');
 
         if ($source === 'serial') {
-            $removedAsset = DB::table('asset_equipments_removed as aer')
-                ->join('inventories as i', 'aer.inventory_id', '=', 'i.id')
-                ->join('groups as g', 'i.group_id', '=', 'g.id')
-                ->leftJoin('users as u', 'aer.user_id', '=', 'u.id')
-                ->select(
-                    'aer.*',
-                    'aer.asset_id as original_asset_id',
-                    'i.name as inventory_name',
-                    'i.responsible as inventory_responsible',
-                    'g.name as group_name',
-                    'u.name as removed_by_user',
-                    'u.email as user_email',
-                    DB::raw("'Serial' as type"),
-                    DB::raw("1 as quantity")
-                )
-                ->where('aer.id', $id)
-                ->first();
+            if (! $this->canQueryRemovedSerials()) {
+                abort(404, 'Registro de baja no encontrado');
+            }
+
+            try {
+                $removedAsset = DB::table('asset_equipments_removed as aer')
+                    ->join('inventories as i', 'aer.inventory_id', '=', 'i.id')
+                    ->join('groups as g', 'i.group_id', '=', 'g.id')
+                    ->leftJoin('users as u', 'aer.user_id', '=', 'u.id')
+                    ->select(
+                        'aer.*',
+                        'aer.asset_id as original_asset_id',
+                        'i.name as inventory_name',
+                        'i.responsible as inventory_responsible',
+                        'g.name as group_name',
+                        'u.name as removed_by_user',
+                        'u.email as user_email',
+                        DB::raw("'Serial' as type"),
+                        DB::raw('1 as quantity')
+                    )
+                    ->where('aer.id', $id)
+                    ->first();
+            } catch (QueryException $exception) {
+                $this->reportRemovedSerialQueryFailure($exception, 'show');
+                abort(404, 'Registro de baja no encontrado');
+            }
         } else {
             $removedAsset = DB::table('assets_removed as ar')
                 ->join('assets as a', 'ar.asset_id', '=', 'a.id')
@@ -131,7 +95,7 @@ class RemovedController extends Controller
                 ->first();
         }
 
-        if (!$removedAsset) {
+        if (! $removedAsset) {
             abort(404, 'Registro de baja no encontrado');
         }
 
@@ -144,51 +108,9 @@ class RemovedController extends Controller
      */
     public function filter(Request $request)
     {
-        $queryQuantity = DB::table('assets_removed as ar')
-            ->join('inventories as i', 'ar.inventory_id', '=', 'i.id')
-            ->join('groups as g', 'i.group_id', '=', 'g.id')
-            ->leftJoin('users as u', 'ar.user_id', '=', 'u.id')
-            ->select(
-                'ar.id',
-                DB::raw("'cantidad' as source"),
-                'ar.name as asset_name',
-                'ar.type',
-                'ar.image',
-                'ar.quantity',
-                DB::raw("NULL as serial"),
-                'ar.reason',
-                'ar.created_at as removed_at',
-                'ar.asset_id as original_asset_id',
-                'i.id as inventory_id',
-                'i.name as inventory_name',
-                'g.id as group_id',
-                'g.name as group_name',
-                'u.name as removed_by_user'
-            );
+        $queryQuantity = $this->removedByQuantityQuery();
+        $querySerial = $this->canQueryRemovedSerials() ? $this->removedBySerialQuery() : null;
 
-        $querySerial = DB::table('asset_equipments_removed as aer')
-            ->join('inventories as i', 'aer.inventory_id', '=', 'i.id')
-            ->join('groups as g', 'i.group_id', '=', 'g.id')
-            ->leftJoin('users as u', 'aer.user_id', '=', 'u.id')
-            ->select(
-                'aer.id',
-                DB::raw("'serial' as source"),
-                'aer.name as asset_name',
-                DB::raw("'Serial' as type"),
-                'aer.image',
-                DB::raw("1 as quantity"),
-                'aer.serial',
-                'aer.reason',
-                'aer.created_at as removed_at',
-                'aer.asset_id as original_asset_id',
-                'i.id as inventory_id',
-                'i.name as inventory_name',
-                'g.id as group_id',
-                'g.name as group_name',
-                'u.name as removed_by_user'
-            );
-
-        // Filtro por tipo
         if ($request->has('type') && $request->type != 'all') {
             if ($request->type == 'Cantidad') {
                 $querySerial = null;
@@ -197,56 +119,69 @@ class RemovedController extends Controller
             }
         }
 
-        // Filtro por grupo
         if ($request->has('group_id') && $request->group_id != '') {
             $queryQuantity?->where('g.id', $request->group_id);
             $querySerial?->where('g.id', $request->group_id);
         }
 
-        // Filtro por inventario
         if ($request->has('inventory_id') && $request->inventory_id != '') {
             $queryQuantity?->where('i.id', $request->inventory_id);
             $querySerial?->where('i.id', $request->inventory_id);
         }
 
-        // Filtro por fechas
         if ($request->has('date_from') && $request->date_from != '') {
             $queryQuantity?->where('ar.created_at', '>=', $request->date_from);
             $querySerial?->where('aer.created_at', '>=', $request->date_from);
         }
 
         if ($request->has('date_to') && $request->date_to != '') {
-            $queryQuantity?->where('ar.created_at', '<=', $request->date_to . ' 23:59:59');
-            $querySerial?->where('aer.created_at', '<=', $request->date_to . ' 23:59:59');
+            $queryQuantity?->where('ar.created_at', '<=', $request->date_to.' 23:59:59');
+            $querySerial?->where('aer.created_at', '<=', $request->date_to.' 23:59:59');
         }
 
-        // Búsqueda por nombre
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
-            $queryQuantity?->where(function ($q) use ($search) {
-                $q->where('ar.name', 'like', "%{$search}%")
-                  ->orWhere('ar.reason', 'like', "%{$search}%");
+
+            $queryQuantity?->where(function ($query) use ($search) {
+                $query->where('ar.name', 'like', "%{$search}%")
+                    ->orWhere('ar.reason', 'like', "%{$search}%");
             });
-            $querySerial?->where(function ($q) use ($search) {
-                $q->where('aer.name', 'like', "%{$search}%")
-                  ->orWhere('aer.reason', 'like', "%{$search}%");
+
+            $querySerial?->where(function ($query) use ($search) {
+                $query->where('aer.name', 'like', "%{$search}%")
+                    ->orWhere('aer.reason', 'like', "%{$search}%");
             });
         }
 
         if ($queryQuantity && $querySerial) {
-            $removedAssets = $queryQuantity->unionAll($querySerial)->orderBy('removed_at', 'desc')->get();
+            $quantityOnly = clone $queryQuantity;
+
+            try {
+                $removedAssets = $queryQuantity
+                    ->unionAll($querySerial)
+                    ->orderBy('removed_at', 'desc')
+                    ->get();
+            } catch (QueryException $exception) {
+                $this->reportRemovedSerialQueryFailure($exception, 'filter');
+                $removedAssets = $quantityOnly->orderBy('ar.created_at', 'desc')->get();
+            }
         } elseif ($queryQuantity) {
             $removedAssets = $queryQuantity->orderBy('ar.created_at', 'desc')->get();
         } elseif ($querySerial) {
-            $removedAssets = $querySerial->orderBy('aer.created_at', 'desc')->get();
+            try {
+                $removedAssets = $querySerial->orderBy('aer.created_at', 'desc')->get();
+            } catch (QueryException $exception) {
+                $this->reportRemovedSerialQueryFailure($exception, 'filter-serial-only');
+                $removedAssets = collect();
+            }
         } else {
             $removedAssets = collect();
         }
 
         return response()->json([
             'success' => true,
-            'data'    => $removedAssets,
-            'count'   => $removedAssets->count(),
+            'data' => $removedAssets,
+            'count' => $removedAssets->count(),
         ]);
     }
 
@@ -266,9 +201,9 @@ class RemovedController extends Controller
             ->get();
 
         return response()->json([
-            'success'      => true,
-            'groups'       => $groups,
-            'inventories'  => $inventories,
+            'success' => true,
+            'groups' => $groups,
+            'inventories' => $inventories,
         ]);
     }
 
@@ -284,23 +219,28 @@ class RemovedController extends Controller
             ->join('groups as g', 'i.group_id', '=', 'g.id')
             ->leftJoin('users as u', 'ar.user_id', '=', 'u.id')
             ->select(
-                'ar.name as Bien', 'ar.type as Tipo', 'ar.quantity as Cantidad',
-                'ar.reason as Motivo', 'g.name as Grupo', 'i.name as Inventario',
-                'u.name as Usuario', 'ar.created_at as Fecha_Baja'
+                'ar.name as Bien',
+                'ar.type as Tipo',
+                'ar.quantity as Cantidad',
+                'ar.reason as Motivo',
+                'g.name as Grupo',
+                'i.name as Inventario',
+                'u.name as Usuario',
+                'ar.created_at as Fecha_Baja'
             )
             ->orderBy('ar.created_at', 'desc')
             ->get();
 
-        $filename = 'bienes_dados_de_baja_' . now()->format('Y-m-d_His') . '.csv';
+        $filename = 'bienes_dados_de_baja_'.now()->format('Y-m-d_His').'.csv';
 
         $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
         $callback = function () use ($removedAssets) {
             $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             fputcsv($file, ['Bien', 'Tipo', 'Cantidad', 'Motivo', 'Grupo', 'Inventario', 'Usuario', 'Fecha de Baja']);
 
             foreach ($removedAssets as $asset) {
@@ -332,7 +272,7 @@ class RemovedController extends Controller
 
         $removed = AssetRemoved::find($id);
 
-        if (!$removed) {
+        if (! $removed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Registro no encontrado.',
@@ -358,13 +298,13 @@ class RemovedController extends Controller
     public function stats()
     {
         $stats = [
-            'total_removed'  => AssetRemoved::count(),
+            'total_removed' => AssetRemoved::count(),
             'total_quantity' => AssetRemoved::sum('quantity'),
-            'by_type'        => [
+            'by_type' => [
                 'cantidad' => AssetRemoved::where('type', 'Cantidad')->count(),
-                'serial'   => AssetRemoved::where('type', 'Serial')->count(),
+                'serial' => AssetRemoved::where('type', 'Serial')->count(),
             ],
-            'by_month'       => DB::table('assets_removed')
+            'by_month' => DB::table('assets_removed')
                 ->select(
                     DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
                     DB::raw('COUNT(*) as count'),
@@ -375,7 +315,7 @@ class RemovedController extends Controller
                 ->orderBy('month', 'desc')
                 ->get(),
             'recent_30_days' => AssetRemoved::where('created_at', '>=', now()->subDays(30))->count(),
-            'top_reasons'    => DB::table('assets_removed')
+            'top_reasons' => DB::table('assets_removed')
                 ->select('reason', DB::raw('COUNT(*) as count'))
                 ->whereNotNull('reason')
                 ->where('reason', '!=', '')
@@ -387,7 +327,110 @@ class RemovedController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $stats,
+            'data' => $stats,
+        ]);
+    }
+
+    private function getRemovedAssets(): Collection
+    {
+        $removedByQuantity = $this->removedByQuantityQuery();
+
+        if (! $this->canQueryRemovedSerials()) {
+            return $removedByQuantity->orderBy('ar.created_at', 'desc')->get();
+        }
+
+        try {
+            return $removedByQuantity
+                ->unionAll($this->removedBySerialQuery())
+                ->orderBy('removed_at', 'desc')
+                ->get();
+        } catch (QueryException $exception) {
+            $this->reportRemovedSerialQueryFailure($exception, 'index');
+
+            return $this->removedByQuantityQuery()
+                ->orderBy('ar.created_at', 'desc')
+                ->get();
+        }
+    }
+
+    private function removedByQuantityQuery(): Builder
+    {
+        return DB::table('assets_removed as ar')
+            ->join('inventories as i', 'ar.inventory_id', '=', 'i.id')
+            ->join('groups as g', 'i.group_id', '=', 'g.id')
+            ->leftJoin('users as u', 'ar.user_id', '=', 'u.id')
+            ->select(
+                'ar.id',
+                DB::raw("'cantidad' as source"),
+                'ar.name as asset_name',
+                'ar.type',
+                'ar.image',
+                'ar.quantity',
+                DB::raw('NULL as serial'),
+                'ar.reason',
+                'ar.created_at as removed_at',
+                'ar.asset_id as original_asset_id',
+                'i.id as inventory_id',
+                'i.name as inventory_name',
+                'g.id as group_id',
+                'g.name as group_name',
+                'u.name as removed_by_user'
+            );
+    }
+
+    private function removedBySerialQuery(): Builder
+    {
+        return DB::table('asset_equipments_removed as aer')
+            ->join('inventories as i', 'aer.inventory_id', '=', 'i.id')
+            ->join('groups as g', 'i.group_id', '=', 'g.id')
+            ->leftJoin('users as u', 'aer.user_id', '=', 'u.id')
+            ->select(
+                'aer.id',
+                DB::raw("'serial' as source"),
+                'aer.name as asset_name',
+                DB::raw("'Serial' as type"),
+                'aer.image',
+                DB::raw('1 as quantity'),
+                'aer.serial',
+                'aer.reason',
+                'aer.created_at as removed_at',
+                'aer.asset_id as original_asset_id',
+                'i.id as inventory_id',
+                'i.name as inventory_name',
+                'g.id as group_id',
+                'g.name as group_name',
+                'u.name as removed_by_user'
+            );
+    }
+
+    private function canQueryRemovedSerials(): bool
+    {
+        return Schema::hasTable('asset_equipments_removed');
+    }
+
+    private function countRecentRemovedAssets(Collection $removedAssets): int
+    {
+        $threshold = now()->subDays(30);
+
+        return $removedAssets->filter(function (object $removedAsset) use ($threshold): bool {
+            if (empty($removedAsset->removed_at)) {
+                return false;
+            }
+
+            try {
+                return Carbon::parse($removedAsset->removed_at)->greaterThanOrEqualTo($threshold);
+            } catch (\Throwable) {
+                return false;
+            }
+        })->count();
+    }
+
+    private function reportRemovedSerialQueryFailure(QueryException $exception, string $context): void
+    {
+        Log::warning('No se pudieron consultar los bienes dados de baja por serial.', [
+            'context' => $context,
+            'message' => $exception->getMessage(),
+            'connection' => DB::getDefaultConnection(),
         ]);
     }
 }

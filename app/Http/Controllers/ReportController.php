@@ -5,11 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use App\Models\ReportFolder;
 use App\Services\Reports\SimplePdfService;
-use App\Support\Tenancy\TenantContext;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +31,7 @@ class ReportController extends Controller
         if ($request->ajax()) {
             /** @var \Illuminate\View\View $view */
             $view = view('reports.folders.index', compact('folders'));
+
             return $view->renderSections()['content'];
         }
 
@@ -67,7 +69,7 @@ class ReportController extends Controller
                 $safeName = 'reporte';
             }
 
-            $relativePath = tenant_asset('reports/' . now()->format('Y/m') . '/' . $safeName . '_' . now()->format('Ymd_His') . '.pdf');
+            $relativePath = tenant_asset('reports/'.now()->format('Y/m').'/'.$safeName.'_'.now()->format('Ymd_His').'.pdf');
 
             $pdfContent = $this->pdfService->buildHtml(
                 $html,
@@ -134,7 +136,7 @@ class ReportController extends Controller
             } else {
                 $possible = [
                     public_path($report->path ?? ''),
-                    storage_path('app/' . ($report->path ?? '')),
+                    storage_path('app/'.($report->path ?? '')),
                     base_path($report->path ?? ''),
                     $report->path ?? '',
                 ];
@@ -175,7 +177,7 @@ class ReportController extends Controller
         $report = Report::findOrFail((int) $request->input('report_id'));
         $filePath = $report->path;
 
-        if (!$filePath) {
+        if (! $filePath) {
             return response()->json([
                 'success' => false,
                 'message' => 'Ruta de reporte no disponible.',
@@ -183,18 +185,18 @@ class ReportController extends Controller
         }
 
         if (Storage::exists($filePath)) {
-            return Storage::download($filePath, $this->sanitizeFileName($report->name) . '.pdf');
+            return Storage::download($filePath, $this->sanitizeFileName($report->name).'.pdf');
         }
 
         $publicPath = public_path($filePath);
         if (file_exists($publicPath)) {
-            return response()->download($publicPath, $this->sanitizeFileName($report->name) . '.pdf', [
+            return response()->download($publicPath, $this->sanitizeFileName($report->name).'.pdf', [
                 'Content-Type' => 'application/pdf',
             ]);
         }
 
         if (file_exists($filePath)) {
-            return response()->download($filePath, $this->sanitizeFileName($report->name) . '.pdf', [
+            return response()->download($filePath, $this->sanitizeFileName($report->name).'.pdf', [
                 'Content-Type' => 'application/pdf',
             ]);
         }
@@ -286,7 +288,7 @@ class ReportController extends Controller
             ->where('i.id', $inventoryId)
             ->first();
 
-        if (!$inventory || (int) $inventory->group_id !== $groupId) {
+        if (! $inventory || (int) $inventory->group_id !== $groupId) {
             throw ValidationException::withMessages([
                 'inventario_id' => 'El inventario no pertenece al grupo seleccionado.',
             ]);
@@ -313,7 +315,7 @@ class ReportController extends Controller
             ->where('id', $groupId)
             ->first();
 
-        if (!$group) {
+        if (! $group) {
             throw ValidationException::withMessages([
                 'grupo_id' => 'El grupo seleccionado no existe.',
             ]);
@@ -331,6 +333,7 @@ class ReportController extends Controller
                     ->select('asset as bien', 'type as tipo', 'quantity as cantidad')
                     ->orderBy('asset')
                     ->get();
+
                 return $inventory;
             });
 
@@ -362,8 +365,10 @@ class ReportController extends Controller
                             ->select('asset as bien', 'type as tipo', 'quantity as cantidad')
                             ->orderBy('asset')
                             ->get();
+
                         return $inventory;
                     });
+
                 return $group;
             });
 
@@ -452,26 +457,39 @@ class ReportController extends Controller
             ->orderByDesc('ar.created_at')
             ->get();
 
-        $removedBySerial = DB::table('asset_equipments_removed as aer')
-            ->join('inventories as i', 'i.id', '=', 'aer.inventory_id')
-            ->join('groups as g', 'g.id', '=', 'i.group_id')
-            ->leftJoin('users as u', 'u.id', '=', 'aer.user_id')
-            ->select(
-                'aer.name as bien',
-                DB::raw("'Serial' as tipo"),
-                DB::raw('1 as cantidad'),
-                'aer.serial',
-                'aer.brand as marca',
-                'aer.model as modelo',
-                'aer.status as estado',
-                'aer.reason as motivo',
-                'g.name as grupo',
-                'i.name as inventario',
-                'u.name as usuario',
-                'aer.created_at as fecha_baja'
-            )
-            ->orderByDesc('aer.created_at')
-            ->get();
+        if (! Schema::hasTable('asset_equipments_removed')) {
+            $removedBySerial = collect();
+        } else {
+            try {
+                $removedBySerial = DB::table('asset_equipments_removed as aer')
+                    ->join('inventories as i', 'i.id', '=', 'aer.inventory_id')
+                    ->join('groups as g', 'g.id', '=', 'i.group_id')
+                    ->leftJoin('users as u', 'u.id', '=', 'aer.user_id')
+                    ->select(
+                        'aer.name as bien',
+                        DB::raw("'Serial' as tipo"),
+                        DB::raw('1 as cantidad'),
+                        'aer.serial',
+                        'aer.brand as marca',
+                        'aer.model as modelo',
+                        'aer.status as estado',
+                        'aer.reason as motivo',
+                        'g.name as grupo',
+                        'i.name as inventario',
+                        'u.name as usuario',
+                        'aer.created_at as fecha_baja'
+                    )
+                    ->orderByDesc('aer.created_at')
+                    ->get();
+            } catch (QueryException $exception) {
+                Log::warning('No se pudieron consultar las bajas por serial para reportes.', [
+                    'message' => $exception->getMessage(),
+                    'connection' => DB::getDefaultConnection(),
+                ]);
+
+                $removedBySerial = collect();
+            }
+        }
 
         $totalRemoved = $removedByQuantity->count() + $removedBySerial->count();
         $totalRemovedUnits = (int) $removedByQuantity->sum('cantidad') + $removedBySerial->count();
@@ -508,7 +526,7 @@ class ReportController extends Controller
         $logoPath = $branding?->logo_report ?? 'assets/images/logoUniguajira.png';
         $path = public_path($logoPath);
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return null;
         }
 
@@ -522,7 +540,7 @@ class ReportController extends Controller
             ? 'image/jpeg'
             : ($extension === 'webp' ? 'image/webp' : 'image/png');
 
-        return 'data:' . $mime . ';base64,' . base64_encode($imageData);
+        return 'data:'.$mime.';base64,'.base64_encode($imageData);
     }
 
     private function mapConservationStatus(string $status): string
@@ -541,6 +559,6 @@ class ReportController extends Controller
         $name = preg_replace('/\s+/', '_', (string) $name);
         $name = trim((string) $name, '_');
 
-        return $name !== '' ? $name : 'reporte_' . now()->format('Y-m-d_H-i-s');
+        return $name !== '' ? $name : 'reporte_'.now()->format('Y-m-d_H-i-s');
     }
 }
