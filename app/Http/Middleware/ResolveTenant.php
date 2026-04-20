@@ -39,6 +39,7 @@ class ResolveTenant
             view()->share('branding', $branding);
         } else {
             // Portal central: marcar como resuelto sin tenant
+            $this->context->setCentral();
             view()->share('tenant', null);
             view()->share('branding', null);
         }

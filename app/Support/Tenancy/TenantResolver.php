@@ -17,11 +17,16 @@ class TenantResolver
     /**
      * Resuelve el tenant desde el request actual.
      *
-     * @return Tenant|null  null si estamos en el portal central
+     * @return Tenant|null null si estamos en el portal central
+     *
      * @throws \RuntimeException si no se puede resolver el tenant
      */
     public function resolve(Request $request): ?Tenant
     {
+        if ($tenant = $this->resolveByFullDomain($request->getHost(), $request, false)) {
+            return $tenant;
+        }
+
         $strategy = config('tenancy.resolution_strategy', 'subdomain');
 
         return match ($strategy) {
@@ -47,7 +52,7 @@ class TenantResolver
         }
 
         // Extraer subdominio
-        $subdomain = str_replace('.' . $baseDomain, '', $host);
+        $subdomain = str_replace('.'.$baseDomain, '', $host);
 
         if (empty($subdomain) || $subdomain === $host) {
             // No se encontró subdominio, intentar por dominio completo
@@ -56,7 +61,7 @@ class TenantResolver
 
         // Verificar si es el portal central
         $centralDomain = config('tenancy.central_domain');
-        if ($centralDomain && $subdomain === $centralDomain) {
+        if ($centralDomain && $this->hostsMatch($host, $centralDomain)) {
             return null; // Portal central
         }
 
@@ -90,6 +95,7 @@ class TenantResolver
 
         if (! $tenant) {
             $request->session()->forget('tenant_id');
+
             return $this->resolveCentralOrDefault($request);
         }
 
@@ -122,7 +128,7 @@ class TenantResolver
     /**
      * Busca un tenant por el dominio completo del host.
      */
-    protected function resolveByFullDomain(string $host, Request $request): ?Tenant
+    protected function resolveByFullDomain(string $host, Request $request, bool $allowFallback = true): ?Tenant
     {
         $domain = Domain::where('domain', $host)
             ->where('is_active', true)
@@ -133,7 +139,9 @@ class TenantResolver
             return $domain->tenant;
         }
 
-        return $this->resolveCentralOrDefault($request);
+        return $allowFallback
+            ? $this->resolveCentralOrDefault($request)
+            : null;
     }
 
     /**
@@ -144,7 +152,7 @@ class TenantResolver
         $centralDomain = config('tenancy.central_domain');
 
         // Si hay un dominio central configurado y el host coincide
-        if ($centralDomain && str_contains($request->getHost(), $centralDomain)) {
+        if ($centralDomain && $this->hostsMatch($request->getHost(), $centralDomain)) {
             return null; // Portal central
         }
 
@@ -158,5 +166,15 @@ class TenantResolver
         }
 
         return null;
+    }
+
+    protected function hostsMatch(string $left, string $right): bool
+    {
+        return $this->normalizeHost($left) === $this->normalizeHost($right);
+    }
+
+    protected function normalizeHost(string $host): string
+    {
+        return rtrim(mb_strtolower(trim($host)), '.');
     }
 }

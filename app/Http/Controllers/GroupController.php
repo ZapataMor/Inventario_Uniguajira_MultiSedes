@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ActivityLogger;
 use App\Models\Central\Tenant;
+use App\Models\Group;
+use App\Support\Tenancy\TenantConnectionManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
-use App\Models\Group;
-use App\Helpers\ActivityLogger;
 
 class GroupController extends Controller
 {
@@ -76,7 +75,7 @@ class GroupController extends Controller
         if (Group::where('name', $nombre)->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Ya existe un grupo con ese nombre.'
+                'message' => 'Ya existe un grupo con ese nombre.',
             ], 409);
         }
 
@@ -111,10 +110,10 @@ class GroupController extends Controller
         $newName = $request->nombre;
 
         $group = Group::find($id);
-        if (!$group) {
+        if (! $group) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se pudo actualizar el grupo. El grupo con ID especificado no existe.'
+                'message' => 'No se pudo actualizar el grupo. El grupo con ID especificado no existe.',
             ], 404);
         }
 
@@ -123,7 +122,7 @@ class GroupController extends Controller
         if ($exists) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se pudo actualizar el grupo. El nombre ya existe.'
+                'message' => 'No se pudo actualizar el grupo. El nombre ya existe.',
             ], 400);
         }
 
@@ -133,10 +132,10 @@ class GroupController extends Controller
         $group->name = $newName;
         $saved = $group->save();
 
-        if (!$saved) {
+        if (! $saved) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se pudo actualizar el grupo por un error desconocido.'
+                'message' => 'No se pudo actualizar el grupo por un error desconocido.',
             ], 400);
         }
 
@@ -170,7 +169,7 @@ class GroupController extends Controller
         }
 
         $group = Group::find($id);
-        if (!$group) {
+        if (! $group) {
             return response()->json(['success' => false, 'message' => 'Grupo no encontrado'], 404);
         }
 
@@ -205,14 +204,10 @@ class GroupController extends Controller
             ->orderBy('id')
             ->get();
 
-        $originalTenantDatabase = config('database.connections.tenant.database');
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            return $tenants->map(function (Tenant $tenant) {
-                Config::set('database.connections.tenant.database', $tenant->database);
-                DB::purge('tenant');
-                DB::reconnect('tenant');
-
+        return $tenants->map(function (Tenant $tenant) use ($tenantConnections) {
+            return $tenantConnections->runForTenant($tenant, function (Tenant $tenant) {
                 $groups = Group::withCount('inventories')
                     ->orderBy('name')
                     ->get();
@@ -227,11 +222,7 @@ class GroupController extends Controller
                     'groups' => $groups,
                 ];
             });
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-        }
+        });
     }
 
     private function resolveSedeName(Tenant $tenant): string

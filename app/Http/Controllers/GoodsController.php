@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Central\Tenant;
-use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
+use App\Helpers\ActivityLogger;
 use App\Models\Asset;
 use App\Models\AssetInventory;
+use App\Models\Central\Tenant;
 use App\Models\Inventory;
-use Illuminate\Support\Facades\Storage;
-use App\Helpers\ActivityLogger;
 use App\Services\GoodsInventoryService;
+use App\Support\Tenancy\TenantConnectionManager;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -50,6 +50,7 @@ class GoodsController extends Controller
             // Si la petición es AJAX, se renderiza únicamente la sección 'content' de la vista para una actualización parcial de la página.
             /** @var \Illuminate\View\View $view */
             $view = view('goods.index', compact('dataGoods', 'goodsBySede', 'isPortalCatalog'));
+
             return $view->renderSections()['content'];
         }
 
@@ -82,8 +83,8 @@ class GoodsController extends Controller
 
         $request->validate([
             'nombre' => 'required|string|max:255|unique:assets,name',
-            'tipo'   => 'required|integer|in:1,2',
-            'imagen' => 'nullable|image|max:2048' // 2 MB
+            'tipo' => 'required|integer|in:1,2',
+            'imagen' => 'nullable|image|max:2048', // 2 MB
         ]);
 
         // Se guarda la imagen en el disco 'public' si se ha proporcionado una en la petición.
@@ -93,9 +94,9 @@ class GoodsController extends Controller
         }
 
         $asset = Asset::create([
-            'name'  => $request->nombre,
-            'type'  => $request->tipo == 1 ? 'Cantidad' : 'Serial',
-            'image' => $path
+            'name' => $request->nombre,
+            'type' => $request->tipo == 1 ? 'Cantidad' : 'Serial',
+            'image' => $path,
         ]);
 
         // Se registra la creación del bien para mantener una traza de auditoría.
@@ -104,7 +105,7 @@ class GoodsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Bien creado exitosamente.',
-            'assetId' => $asset->id
+            'assetId' => $asset->id,
         ]);
     }
 
@@ -121,9 +122,9 @@ class GoodsController extends Controller
         $asset = Asset::findOrFail($request->id);
 
         $request->validate([
-            'id'     => 'required|integer|exists:assets,id',
-            'nombre' => 'required|string|max:255|unique:assets,name,' . $asset->id,
-            'imagen' => 'nullable|image|max:2048'
+            'id' => 'required|integer|exists:assets,id',
+            'nombre' => 'required|string|max:255|unique:assets,name,'.$asset->id,
+            'imagen' => 'nullable|image|max:2048',
         ]);
 
         // Se capturan los valores actuales antes de la modificación para poder registrar qué cambió exactamente.
@@ -162,7 +163,7 @@ class GoodsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Bien actualizado correctamente.'
+            'message' => 'Bien actualizado correctamente.',
         ]);
     }
 
@@ -178,10 +179,10 @@ class GoodsController extends Controller
 
         $asset = Asset::find($id);
 
-        if (!$asset) {
+        if (! $asset) {
             return response()->json([
                 'success' => false,
-                'message' => 'Bien no encontrado.'
+                'message' => 'Bien no encontrado.',
             ], 404);
         }
 
@@ -189,16 +190,16 @@ class GoodsController extends Controller
         $total = AssetInventory::where('asset_id', $id)
             ->leftJoin('asset_quantities', 'asset_inventory.id', '=', 'asset_quantities.asset_inventory_id')
             ->leftJoin('asset_equipments', 'asset_inventory.id', '=', 'asset_equipments.asset_inventory_id')
-            ->selectRaw("
+            ->selectRaw('
                 COALESCE(SUM(asset_quantities.quantity), 0) +
                 COALESCE(COUNT(asset_equipments.id), 0) AS total
-            ")
+            ')
             ->value('total');
 
         if ($total > 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'No se puede eliminar el bien porque su cantidad es mayor a 0.'
+                'message' => 'No se puede eliminar el bien porque su cantidad es mayor a 0.',
             ], 400);
         }
 
@@ -216,7 +217,7 @@ class GoodsController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Bien eliminado correctamente.'
+            'message' => 'Bien eliminado correctamente.',
         ]);
     }
 
@@ -237,7 +238,7 @@ class GoodsController extends Controller
             if (empty($goods)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No se recibieron datos válidos.'
+                    'message' => 'No se recibieron datos válidos.',
                 ], 400);
             }
 
@@ -256,14 +257,15 @@ class GoodsController extends Controller
                         'tipo' => $normalizedGood['tipo'],
                     ], [
                         'nombre' => 'required|string|max:255|unique:assets,name',
-                        'tipo' => 'required|in:Cantidad,Serial'
+                        'tipo' => 'required|in:Cantidad,Serial',
                     ], [
                         'tipo.required' => 'El campo tipo es obligatorio.',
                         'tipo.in' => 'El tipo debe ser Cantidad o Serial.',
                     ]);
 
                     if ($validator->fails()) {
-                        $errors[] = "Fila {$rowNumber}: " . $validator->errors()->first();
+                        $errors[] = "Fila {$rowNumber}: ".$validator->errors()->first();
+
                         continue;
                     }
 
@@ -275,11 +277,12 @@ class GoodsController extends Controller
                         $image = $request->file($imageKey);
 
                         $validator = validator(['imagen' => $image], [
-                            'imagen' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048'
+                            'imagen' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                         ]);
 
                         if ($validator->fails()) {
-                            $errors[] = "Fila {$rowNumber}: " . $validator->errors()->first();
+                            $errors[] = "Fila {$rowNumber}: ".$validator->errors()->first();
+
                             continue;
                         }
 
@@ -290,7 +293,7 @@ class GoodsController extends Controller
                     $asset = Asset::create([
                         'name' => $normalizedGood['nombre'],
                         'type' => $normalizedGood['tipo'],
-                        'image' => $imagePath
+                        'image' => $imagePath,
                     ]);
 
                     $createdAssets[] = $asset->name;
@@ -306,7 +309,7 @@ class GoodsController extends Controller
             if ($created > 0) {
                 ActivityLogger::custom(
                     'batch_create',
-                    "Creó {$created} bien(es) mediante carga masiva: " . implode(', ', array_slice($createdAssets, 0, 5)) . ($created > 5 ? '...' : ''),
+                    "Creó {$created} bien(es) mediante carga masiva: ".implode(', ', array_slice($createdAssets, 0, 5)).($created > 5 ? '...' : ''),
                     [
                         'model' => 'Asset',
                         'count' => $created,
@@ -316,22 +319,22 @@ class GoodsController extends Controller
             }
 
             $message = "Se crearon {$created} bien(es) exitosamente.";
-            if (!empty($errors)) {
-                $message .= " " . count($errors) . " error(es).";
+            if (! empty($errors)) {
+                $message .= ' '.count($errors).' error(es).';
             }
 
             return response()->json([
                 'success' => $created > 0,
                 'message' => $message,
                 'created' => $created,
-                'errors' => $errors
+                'errors' => $errors,
             ]);
 
         } catch (\Exception $e) {
             // Error general del proceso de carga masiva, como problemas con la petición misma.
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
+                'message' => 'Error: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -342,7 +345,7 @@ class GoodsController extends Controller
      */
     public function downloadTemplate()
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Plantilla');
 
@@ -378,7 +381,7 @@ class GoodsController extends Controller
         ];
 
         foreach ($examples as $rowIndex => $example) {
-            $sheet->fromArray($example, null, 'A' . ($rowIndex + 2));
+            $sheet->fromArray($example, null, 'A'.($rowIndex + 2));
         }
 
         $sheet->setCellValue('A5', '* Campos obligatorios. Tipo: Cantidad o Serial. Mayusculas y minusculas no importan.');
@@ -451,29 +454,30 @@ class GoodsController extends Controller
             ], 400);
         }
 
-        $created        = 0;
-        $assigned       = 0;
-        $errors         = [];
-        $createdAssets  = [];
+        $created = 0;
+        $assigned = 0;
+        $errors = [];
+        $createdAssets = [];
 
         DB::beginTransaction();
         try {
             foreach ($rows as $i => $row) {
-                $nombre       = trim($row['bien']          ?? '');
-                $tipo         = trim($row['tipo']          ?? 'Serial');
-                $localizacion = trim($row['localizacion']  ?? '');
-                $serial       = trim($row['serial']        ?? '');
-                $cantidad     = max(1, intval($row['cantidad'] ?? 1));
-                $marca        = trim($row['marca']         ?? '');
-                $modelo       = trim($row['modelo']        ?? '');
-                $desc         = trim($row['descripcion']   ?? '');
-                $estado       = trim($row['estado']        ?? 'activo');
-                $color        = trim($row['color']         ?? '');
-                $condicion    = trim($row['condiciones']   ?? '');
-                $fecha        = trim($row['fecha_ingreso'] ?? '');
+                $nombre = trim($row['bien'] ?? '');
+                $tipo = trim($row['tipo'] ?? 'Serial');
+                $localizacion = trim($row['localizacion'] ?? '');
+                $serial = trim($row['serial'] ?? '');
+                $cantidad = max(1, intval($row['cantidad'] ?? 1));
+                $marca = trim($row['marca'] ?? '');
+                $modelo = trim($row['modelo'] ?? '');
+                $desc = trim($row['descripcion'] ?? '');
+                $estado = trim($row['estado'] ?? 'activo');
+                $color = trim($row['color'] ?? '');
+                $condicion = trim($row['condiciones'] ?? '');
+                $fecha = trim($row['fecha_ingreso'] ?? '');
 
                 if ($nombre === '') {
                     $errors[] = "Fila {$i}: nombre de bien vacío.";
+
                     continue;
                 }
 
@@ -495,11 +499,11 @@ class GoodsController extends Controller
                         [mb_strtolower(trim($localizacion))]
                     )->first();
 
-                    if (!$inventory) {
+                    if (! $inventory) {
                         $errors[] = "Fila {$i}: inventario '{$localizacion}' no encontrado (bien '{$nombre}' creado en catálogo).";
                     } else {
                         $validEstados = ['activo', 'inactivo', 'en_mantenimiento'];
-                        $estadoFinal  = in_array($estado, $validEstados) ? $estado : 'activo';
+                        $estadoFinal = in_array($estado, $validEstados) ? $estado : 'activo';
 
                         if ($tipoNorm === 'Serial') {
                             if ($serial === '') {
@@ -509,18 +513,18 @@ class GoodsController extends Controller
                                     $inventory->id,
                                     $asset->id,
                                     [
-                                        'serial'               => $serial,
-                                        'brand'                => $marca,
-                                        'model'                => $modelo,
-                                        'description'          => $desc,
-                                        'state'                => $estadoFinal,
-                                        'color'                => $color,
+                                        'serial' => $serial,
+                                        'brand' => $marca,
+                                        'model' => $modelo,
+                                        'description' => $desc,
+                                        'state' => $estadoFinal,
+                                        'color' => $color,
                                         'technical_conditions' => $condicion,
-                                        'entry_date'           => $fecha ?: now()->toDateString(),
+                                        'entry_date' => $fecha ?: now()->toDateString(),
                                     ]
                                 );
 
-                                if (!$result) {
+                                if (! $result) {
                                     $errors[] = "Fila {$i}: serial '{$serial}' ya existe.";
                                 } else {
                                     $assigned++;
@@ -538,9 +542,10 @@ class GoodsController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error interno: ' . $e->getMessage(),
+                'message' => 'Error interno: '.$e->getMessage(),
             ], 500);
         }
 
@@ -553,16 +558,16 @@ class GoodsController extends Controller
         }
 
         $message = "Se procesaron {$created} bien(es): {$assigned} asignado(s) a inventario.";
-        if (!empty($errors)) {
-            $message .= ' ' . count($errors) . ' advertencia(s).';
+        if (! empty($errors)) {
+            $message .= ' '.count($errors).' advertencia(s).';
         }
 
         return response()->json([
-            'success'  => $created > 0,
-            'created'  => $created,
+            'success' => $created > 0,
+            'created' => $created,
             'assigned' => $assigned,
-            'errors'   => $errors,
-            'message'  => $message,
+            'errors' => $errors,
+            'message' => $message,
         ]);
     }
 
@@ -627,12 +632,12 @@ class GoodsController extends Controller
                 $nombre = trim($row['bien'] ?? '');
                 $localizacion = trim($row['localizacion'] ?? '');
 
-                if ($nombre === '' || $localizacion === '' || !isset($assetsByName[$nombre])) {
+                if ($nombre === '' || $localizacion === '' || ! isset($assetsByName[$nombre])) {
                     continue;
                 }
 
                 $inventory = $inventoriesByName[mb_strtolower($localizacion)] ?? null;
-                if (!$inventory) {
+                if (! $inventory) {
                     continue;
                 }
 
@@ -650,29 +655,31 @@ class GoodsController extends Controller
             $now = now();
 
             foreach ($rows as $i => $row) {
-                $nombre       = trim($row['bien'] ?? '');
-                $tipo         = trim($row['tipo'] ?? 'Serial');
+                $nombre = trim($row['bien'] ?? '');
+                $tipo = trim($row['tipo'] ?? 'Serial');
                 $localizacion = trim($row['localizacion'] ?? '');
-                $serial       = trim($row['serial'] ?? '');
-                $cantidad     = max(1, intval($row['cantidad'] ?? 1));
-                $marca        = trim($row['marca'] ?? '');
-                $modelo       = trim($row['modelo'] ?? '');
-                $desc         = trim($row['descripcion'] ?? '');
-                $estado       = trim($row['estado'] ?? 'activo');
-                $color        = trim($row['color'] ?? '');
-                $condicion    = trim($row['condiciones'] ?? '');
-                $fecha        = trim($row['fecha_ingreso'] ?? '');
+                $serial = trim($row['serial'] ?? '');
+                $cantidad = max(1, intval($row['cantidad'] ?? 1));
+                $marca = trim($row['marca'] ?? '');
+                $modelo = trim($row['modelo'] ?? '');
+                $desc = trim($row['descripcion'] ?? '');
+                $estado = trim($row['estado'] ?? 'activo');
+                $color = trim($row['color'] ?? '');
+                $condicion = trim($row['condiciones'] ?? '');
+                $fecha = trim($row['fecha_ingreso'] ?? '');
 
                 if ($nombre === '') {
                     $errors[] = "Fila {$i}: nombre de bien vacÃ­o.";
+
                     continue;
                 }
 
                 $tipoNorm = strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
                 $asset = $assetsByName[$nombre] ?? null;
 
-                if (!$asset) {
+                if (! $asset) {
                     $errors[] = "Fila {$i}: no se pudo resolver el bien '{$nombre}'.";
+
                     continue;
                 }
 
@@ -683,29 +690,33 @@ class GoodsController extends Controller
                 }
 
                 $inventory = $inventoriesByName[mb_strtolower($localizacion)] ?? null;
-                if (!$inventory) {
+                if (! $inventory) {
                     $errors[] = "Fila {$i}: inventario '{$localizacion}' no encontrado (bien '{$nombre}' creado en catÃ¡logo).";
+
                     continue;
                 }
 
-                $relationId = $relations[$inventory->id . ':' . $asset->id] ?? null;
-                if (!$relationId) {
+                $relationId = $relations[$inventory->id.':'.$asset->id] ?? null;
+                if (! $relationId) {
                     $errors[] = "Fila {$i}: no se pudo preparar la relaciÃ³n inventario-bien para '{$nombre}'.";
+
                     continue;
                 }
 
                 $validEstados = ['activo', 'inactivo', 'en_mantenimiento'];
-                $estadoFinal  = in_array($estado, $validEstados) ? $estado : 'activo';
+                $estadoFinal = in_array($estado, $validEstados) ? $estado : 'activo';
 
                 if ($tipoNorm === 'Serial') {
                     if ($serial === '') {
                         $errors[] = "Fila {$i}: serial vacÃ­o para '{$nombre}' (bien creado en catÃ¡logo sin asignar).";
+
                         continue;
                     }
 
                     $serialKey = $this->inventoryService->serialKey($serial);
                     if (isset($existingSerials[$serialKey]) || isset($newSerials[$serialKey])) {
                         $errors[] = "Fila {$i}: serial '{$serial}' ya existe.";
+
                         continue;
                     }
 
@@ -724,6 +735,7 @@ class GoodsController extends Controller
                         'updated_at' => $now,
                     ];
                     $assigned++;
+
                     continue;
                 }
 
@@ -738,9 +750,10 @@ class GoodsController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error interno: ' . $e->getMessage(),
+                'message' => 'Error interno: '.$e->getMessage(),
             ], 500);
         }
 
@@ -753,16 +766,16 @@ class GoodsController extends Controller
         }
 
         $message = "Se procesaron {$created} bien(es): {$assigned} asignado(s) a inventario.";
-        if (!empty($errors)) {
-            $message .= ' ' . count($errors) . ' advertencia(s).';
+        if (! empty($errors)) {
+            $message .= ' '.count($errors).' advertencia(s).';
         }
 
         return response()->json([
-            'success'  => $created > 0,
-            'created'  => $created,
+            'success' => $created > 0,
+            'created' => $created,
             'assigned' => $assigned,
-            'errors'   => $errors,
-            'message'  => $message,
+            'errors' => $errors,
+            'message' => $message,
         ]);
     }
 
@@ -796,14 +809,10 @@ class GoodsController extends Controller
             ->orderBy('id')
             ->get();
 
-        $originalTenantDatabase = config('database.connections.tenant.database');
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            return $tenants->map(function (Tenant $tenant) {
-                Config::set('database.connections.tenant.database', $tenant->database);
-                DB::purge('tenant');
-                DB::reconnect('tenant');
-
+        return $tenants->map(function (Tenant $tenant) use ($tenantConnections) {
+            return $tenantConnections->runForTenant($tenant, function (Tenant $tenant) {
                 $goods = DB::connection('tenant')
                     ->table('assets_summary_view')
                     ->orderBy('name')
@@ -819,11 +828,7 @@ class GoodsController extends Controller
                     'goods' => $goods,
                 ];
             });
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-        }
+        });
     }
 
     private function resolveSedeName(Tenant $tenant): string

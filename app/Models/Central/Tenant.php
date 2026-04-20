@@ -21,12 +21,22 @@ class Tenant extends Model
         'name',
         'slug',
         'database',
+        'host',
+        'port',
+        'username',
+        'password',
         'is_active',
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 
     protected function casts(): array
     {
         return [
+            'port' => 'integer',
+            'password' => 'encrypted',
             'is_active' => 'boolean',
         ];
     }
@@ -67,6 +77,12 @@ class Tenant extends Model
     public function getDatabaseAttribute(): string
     {
         $slug = (string) ($this->attributes['slug'] ?? $this->slug ?? '');
+        $database = $this->attributes['database'] ?? null;
+
+        if (is_string($database) && $database !== '') {
+            return $database;
+        }
+
         $override = $slug !== ''
             ? config("tenancy.tenant_credentials.{$slug}.database")
             : null;
@@ -75,7 +91,98 @@ class Tenant extends Model
             return $override;
         }
 
-        return $this->attributes['database']
-            ?? config('tenancy.database_prefix') . $slug;
+        return config('tenancy.database_prefix').$slug;
+    }
+
+    /**
+     * Configuracion efectiva de conexion para este tenant.
+     *
+     * Prioridad:
+     * 1. columnas del tenant en la BD central
+     * 2. overrides legacy por slug en config/tenancy.php
+     * 3. plantilla base de la conexion tenant
+     *
+     * @return array<string, mixed>
+     */
+    public function tenantConnectionAttributes(array $baseConnection = []): array
+    {
+        $legacy = $this->legacyConnectionOverrides();
+        $password = $this->getAttribute('password');
+
+        return [
+            'host' => $this->firstNonEmptyValue(
+                $this->attributes['host'] ?? null,
+                $legacy['host'] ?? null,
+                config('tenancy.tenant_db_host'),
+                $baseConnection['host'] ?? null,
+            ),
+            'port' => $this->firstNonEmptyValue(
+                $this->attributes['port'] ?? null,
+                $legacy['port'] ?? null,
+                config('tenancy.tenant_db_port'),
+                $baseConnection['port'] ?? null,
+            ),
+            'database' => $this->database,
+            'username' => $this->firstNonEmptyValue(
+                $this->attributes['username'] ?? null,
+                $legacy['username'] ?? null,
+                config('tenancy.tenant_db_username'),
+                $baseConnection['username'] ?? null,
+            ),
+            'password' => $password !== null
+                ? $password
+                : $this->legacyPasswordOrFallback($legacy, $baseConnection),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function legacyConnectionOverrides(): array
+    {
+        $slug = (string) ($this->attributes['slug'] ?? $this->slug ?? '');
+
+        if ($slug === '') {
+            return [];
+        }
+
+        $legacy = (array) config("tenancy.tenant_credentials.{$slug}", []);
+
+        return array_filter(
+            $legacy,
+            static fn ($value): bool => $value !== null && $value !== ''
+        );
+    }
+
+    protected function legacyPasswordOrFallback(array $legacy, array $baseConnection): mixed
+    {
+        if (array_key_exists('password', $legacy)) {
+            return $legacy['password'];
+        }
+
+        if (config('tenancy.tenant_db_password') !== null) {
+            return config('tenancy.tenant_db_password');
+        }
+
+        return $baseConnection['password'] ?? null;
+    }
+
+    protected function firstNonEmptyValue(mixed ...$values): mixed
+    {
+        foreach ($values as $value) {
+            if (is_string($value)) {
+                if (trim($value) !== '') {
+                    return $value;
+                }
+
+                continue;
+            }
+
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 }

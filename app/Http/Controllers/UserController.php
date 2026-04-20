@@ -6,10 +6,9 @@ use App\Helpers\ActivityLogger;
 use App\Models\Central\Tenant;
 use App\Models\Central\UserTenant;
 use App\Models\User;
+use App\Support\Tenancy\TenantConnectionManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -368,55 +367,57 @@ class UserController extends Controller
             ], 422);
         }
 
-        $originalTenantDatabase = config('database.connections.tenant.database');
         $created = 0;
         $updated = 0;
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            $this->syncCentralSuperAdminIfAvailable($validated);
+        $this->syncCentralSuperAdminIfAvailable($validated);
 
-            foreach ($tenants as $tenantData) {
-                Config::set('database.connections.tenant.database', $tenantData['database']);
-                DB::purge('tenant');
-                DB::reconnect('tenant');
-                $supportsGlobalRole = $this->userTableSupportsGlobalRole('tenant');
+        foreach ($tenants as $tenantData) {
+            $result = $tenantConnections->runForTenant(
+                $tenantData['tenant'],
+                function (Tenant $tenant) use ($tenantData, $validated, &$created, &$updated) {
+                    $supportsGlobalRole = $this->userTableSupportsGlobalRole('tenant');
 
-                $existingByUsername = User::on('tenant')
-                    ->where('username', $validated['username'])
-                    ->first();
+                    $existingByUsername = User::on('tenant')
+                        ->where('username', $validated['username'])
+                        ->first();
 
-                if ($existingByUsername && $existingByUsername->email !== $validated['email']) {
-                    return response()->json([
-                        'success' => false,
-                        'type' => 'error',
-                        'message' => "El nombre de usuario ya existe en la sede {$tenantData['name']}.",
-                    ], 422);
+                    if ($existingByUsername && $existingByUsername->email !== $validated['email']) {
+                        return response()->json([
+                            'success' => false,
+                            'type' => 'error',
+                            'message' => "El nombre de usuario ya existe en la sede {$tenantData['name']}.",
+                        ], 422);
+                    }
+
+                    $existing = User::on('tenant')
+                        ->where('email', $validated['email'])
+                        ->first();
+
+                    $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole);
+
+                    if ($existing) {
+                        $existing->fill($payload);
+                        $existing->save();
+                        $user = $existing;
+                        $updated++;
+                    } else {
+                        $user = User::on('tenant')->create(array_merge($payload, [
+                            'email' => $validated['email'],
+                        ]));
+                        $created++;
+                    }
+
+                    $this->syncTenantMembership($tenantData['id'], $user->id, 'consultor');
+
+                    return null;
                 }
+            );
 
-                $existing = User::on('tenant')
-                    ->where('email', $validated['email'])
-                    ->first();
-
-                $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole);
-
-                if ($existing) {
-                    $existing->fill($payload);
-                    $existing->save();
-                    $user = $existing;
-                    $updated++;
-                } else {
-                    $user = User::on('tenant')->create(array_merge($payload, [
-                        'email' => $validated['email'],
-                    ]));
-                    $created++;
-                }
-
-                $this->syncTenantMembership($tenantData['id'], $user->id, 'consultor');
+            if ($result !== null) {
+                return $result;
             }
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
         }
 
         return response()->json([
@@ -433,12 +434,9 @@ class UserController extends Controller
      */
     private function storeTenantUserFromPortal(Tenant $tenant, array $validated, string $role)
     {
-        $originalTenantDatabase = config('database.connections.tenant.database');
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            Config::set('database.connections.tenant.database', $tenant->database);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
+        return $tenantConnections->runForTenant($tenant, function (Tenant $tenant) use ($validated, $role) {
             $supportsGlobalRole = $this->userTableSupportsGlobalRole('tenant');
 
             $existsByEmail = User::on('tenant')->where('email', $validated['email'])->exists();
@@ -467,17 +465,13 @@ class UserController extends Controller
             $this->syncTenantMembership($tenant->id, $user->id, $role);
 
             ActivityLogger::created(User::class, $user->id, $user->name);
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-        }
 
-        return response()->json([
-            'success' => true,
-            'type' => 'success',
-            'message' => "Usuario creado correctamente para la sede {$this->resolveSedeName($tenant)}.",
-        ]);
+            return response()->json([
+                'success' => true,
+                'type' => 'success',
+                'message' => "Usuario creado correctamente para la sede {$this->resolveSedeName($tenant)}.",
+            ]);
+        });
     }
 
     /**
@@ -485,14 +479,10 @@ class UserController extends Controller
      */
     private function getUsersByScopeForPortal(Collection $tenants): Collection
     {
-        $originalTenantDatabase = config('database.connections.tenant.database');
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            $tenantScopes = $tenants->map(function (array $tenantData): array {
-                Config::set('database.connections.tenant.database', $tenantData['database']);
-                DB::purge('tenant');
-                DB::reconnect('tenant');
-
+        $tenantScopes = $tenants->map(function (array $tenantData) use ($tenantConnections): array {
+            return $tenantConnections->runForTenant($tenantData['tenant'], function (Tenant $tenant) use ($tenantData): array {
                 try {
                     $users = User::on('tenant')->orderBy('id', 'desc')->get();
                 } catch (\Throwable $e) {
@@ -508,11 +498,7 @@ class UserController extends Controller
                     'users' => $users,
                 ];
             });
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-        }
+        });
 
         $portalUsers = $this->getCentralPortalUsers();
 
@@ -550,6 +536,7 @@ class UserController extends Controller
             ->map(function (Tenant $tenant): array {
                 return [
                     'id' => $tenant->id,
+                    'tenant' => $tenant,
                     'slug' => $tenant->slug,
                     'database' => $tenant->database,
                     'name' => $this->resolveSedeName($tenant),
@@ -605,6 +592,7 @@ class UserController extends Controller
         if ($existing) {
             $existing->fill($payload);
             $existing->save();
+
             return;
         }
 

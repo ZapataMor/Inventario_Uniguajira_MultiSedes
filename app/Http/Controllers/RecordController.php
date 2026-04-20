@@ -6,12 +6,11 @@ use App\Models\ActivityLog;
 use App\Models\Central\Tenant;
 use App\Models\User;
 use App\Services\Reports\SimplePdfService;
+use App\Support\Tenancy\TenantConnectionManager;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 
 class RecordController extends Controller
 {
@@ -61,6 +60,7 @@ class RecordController extends Controller
                 'logsBySede',
                 'isPortalRecordsCatalog'
             ));
+
             return $view->renderSections()['content'];
         }
 
@@ -155,17 +155,17 @@ class RecordController extends Controller
         ])->render();
 
         $pdf = $this->pdfService->buildHtml($html, 'A4', 'landscape');
-        $filename = $this->sanitizeFileName('reporte_historial_' . now()->format('Y-m-d_H-i-s')) . '.pdf';
+        $filename = $this->sanitizeFileName('reporte_historial_'.now()->format('Y-m-d_H-i-s')).'.pdf';
 
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 
     private function exportCsv(Collection $logs)
     {
-        $filename = 'historial_' . date('Y-m-d_His') . '.csv';
+        $filename = 'historial_'.date('Y-m-d_His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -220,7 +220,7 @@ class RecordController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('description', 'like', '%' . $request->search . '%');
+            $query->where('description', 'like', '%'.$request->search.'%');
         }
 
         return $query;
@@ -237,14 +237,10 @@ class RecordController extends Controller
             ->orderBy('id')
             ->get();
 
-        $originalTenantDatabase = config('database.connections.tenant.database');
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            return $tenants->map(function (Tenant $tenant): array {
-                Config::set('database.connections.tenant.database', $tenant->database);
-                DB::purge('tenant');
-                DB::reconnect('tenant');
-
+        return $tenants->map(function (Tenant $tenant) use ($tenantConnections): array {
+            return $tenantConnections->runForTenant($tenant, function (Tenant $tenant): array {
                 try {
                     $logs = ActivityLog::on('tenant')
                         ->with('user')
@@ -269,11 +265,7 @@ class RecordController extends Controller
                     'logs' => $logs,
                 ];
             });
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-        }
+        });
     }
 
     private function resolveSedeName(Tenant $tenant): string
@@ -289,7 +281,7 @@ class RecordController extends Controller
         $logoPath = $branding?->logo_report ?? 'assets/images/logoUniguajira.png';
         $path = public_path($logoPath);
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return null;
         }
 
@@ -303,7 +295,7 @@ class RecordController extends Controller
             ? 'image/jpeg'
             : ($extension === 'webp' ? 'image/webp' : 'image/png');
 
-        return 'data:' . $mime . ';base64,' . base64_encode($imageData);
+        return 'data:'.$mime.';base64,'.base64_encode($imageData);
     }
 
     private function sanitizeFileName(string $name): string
@@ -312,6 +304,6 @@ class RecordController extends Controller
         $name = preg_replace('/\s+/', '_', (string) $name);
         $name = trim((string) $name, '_');
 
-        return $name !== '' ? $name : 'reporte_' . now()->format('Y-m-d_H-i-s');
+        return $name !== '' ? $name : 'reporte_'.now()->format('Y-m-d_H-i-s');
     }
 }

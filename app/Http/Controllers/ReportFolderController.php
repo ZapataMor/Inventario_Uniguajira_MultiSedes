@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Central\Tenant;
-use Illuminate\Http\Request;
 use App\Models\ReportFolder;
+use App\Support\Tenancy\TenantConnectionManager;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 
 class ReportFolderController extends Controller
 {
@@ -36,6 +35,7 @@ class ReportFolderController extends Controller
         if ($request->ajax()) {
             /** @var \Illuminate\View\View $view */
             $view = view('reports.folders.index', compact('folders', 'foldersBySede', 'isPortalReportsCatalog'));
+
             return $view->renderSections()['content'];
         }
 
@@ -47,17 +47,17 @@ class ReportFolderController extends Controller
         abort_if(! auth()->user()?->isAdministrator(), 403);
 
         $request->validate([
-            'nombreCarpeta' => 'required|string|max:255|unique:report_folders,name'
+            'nombreCarpeta' => 'required|string|max:255|unique:report_folders,name',
         ]);
 
         $folder = ReportFolder::create([
-            'name' => trim($request->nombreCarpeta)
+            'name' => trim($request->nombreCarpeta),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Carpeta creada exitosamente.',
-            'folder' => $folder
+            'folder' => $folder,
         ]);
     }
 
@@ -67,7 +67,7 @@ class ReportFolderController extends Controller
 
         $request->validate([
             'folder_id' => 'required|exists:report_folders,id',
-            'nombre'    => 'required|string|max:255'
+            'nombre' => 'required|string|max:255',
         ]);
 
         ReportFolder::findOrFail($request->folder_id)
@@ -88,7 +88,7 @@ class ReportFolderController extends Controller
         if ($folder->reports()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'La carpeta contiene reportes.'
+                'message' => 'La carpeta contiene reportes.',
             ], 400);
         }
 
@@ -122,14 +122,10 @@ class ReportFolderController extends Controller
             ->orderBy('id')
             ->get();
 
-        $originalTenantDatabase = config('database.connections.tenant.database');
+        $tenantConnections = app(TenantConnectionManager::class);
 
-        try {
-            return $tenants->map(function (Tenant $tenant): array {
-                Config::set('database.connections.tenant.database', $tenant->database);
-                DB::purge('tenant');
-                DB::reconnect('tenant');
-
+        return $tenants->map(function (Tenant $tenant) use ($tenantConnections): array {
+            return $tenantConnections->runForTenant($tenant, function (Tenant $tenant): array {
                 try {
                     $folders = ReportFolder::on('tenant')
                         ->withCount('reports')
@@ -149,11 +145,7 @@ class ReportFolderController extends Controller
                     'folders' => $folders,
                 ];
             });
-        } finally {
-            Config::set('database.connections.tenant.database', $originalTenantDatabase);
-            DB::purge('tenant');
-            DB::reconnect('tenant');
-        }
+        });
     }
 
     private function resolveSedeName(Tenant $tenant): string
@@ -163,5 +155,4 @@ class ReportFolderController extends Controller
 
         return $normalized ?: ucfirst($tenant->slug);
     }
-
 }

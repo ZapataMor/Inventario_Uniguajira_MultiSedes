@@ -50,6 +50,8 @@ return [
 
     'tenant_db_host' => env('TENANT_DB_HOST', env('DB_HOST', '127.0.0.1')),
     'tenant_db_port' => env('TENANT_DB_PORT', env('DB_PORT', '3306')),
+    'tenant_db_username' => env('TENANT_DB_USERNAME'),
+    'tenant_db_password' => env('TENANT_DB_PASSWORD'),
 
     'tenant_credentials' => [
         'maicao' => [
@@ -86,7 +88,7 @@ return [
     |
     */
 
-    'default_tenant' => env('TENANCY_DEFAULT_TENANT', 'maicao'),
+    'default_tenant' => env('TENANCY_DEFAULT_TENANT'),
 
     /*
     |--------------------------------------------------------------------------

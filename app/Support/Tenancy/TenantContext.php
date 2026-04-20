@@ -3,8 +3,6 @@
 namespace App\Support\Tenancy;
 
 use App\Models\Central\Tenant;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Singleton que mantiene el estado del tenant activo durante el request.
@@ -15,19 +13,18 @@ use Illuminate\Support\Facades\DB;
  */
 class TenantContext
 {
+    public function __construct(
+        protected TenantConnectionManager $connections,
+    ) {}
+
     protected ?Tenant $tenant = null;
 
     protected bool $resolved = false;
 
     /**
-     * Configuración base de la conexión tenant (según .env).
+     * Snapshot inicial de la conexion tenant y de la conexion por defecto.
      */
-    protected array $baseTenantConnection = [];
-
-    /**
-     * Conexión por defecto antes de aplicar tenancy.
-     */
-    protected ?string $baseDefaultConnection = null;
+    protected ?array $baseSnapshot = null;
 
     /**
      * Establece el tenant activo y configura la conexión dinámica.
@@ -37,15 +34,26 @@ class TenantContext
         $this->tenant = $tenant;
         $this->resolved = true;
 
-        if (empty($this->baseTenantConnection)) {
-            $this->baseTenantConnection = config('database.connections.tenant', []);
+        if ($this->baseSnapshot === null) {
+            $this->baseSnapshot = $this->connections->snapshot();
         }
 
-        if ($this->baseDefaultConnection === null) {
-            $this->baseDefaultConnection = config('database.default');
+        $this->connections->activate($tenant);
+    }
+
+    /**
+     * Marca el request actual como portal central.
+     */
+    public function setCentral(): void
+    {
+        if ($this->baseSnapshot === null) {
+            $this->baseSnapshot = $this->connections->snapshot();
         }
 
-        $this->configureTenantConnection($tenant);
+        $this->tenant = null;
+        $this->resolved = true;
+
+        $this->connections->useCentralConnectionAsDefault();
     }
 
     /**
@@ -104,68 +112,8 @@ class TenantContext
         $this->tenant = null;
         $this->resolved = false;
 
-        // Restaurar conexión tenant al default inicial
-        if (! empty($this->baseTenantConnection)) {
-            foreach ($this->baseTenantConnection as $key => $value) {
-                Config::set("database.connections.tenant.{$key}", $value);
-            }
+        if ($this->baseSnapshot !== null) {
+            $this->connections->restore($this->baseSnapshot);
         }
-
-        if ($this->baseDefaultConnection !== null) {
-            Config::set('database.default', $this->baseDefaultConnection);
-        }
-
-        DB::purge('tenant');
-    }
-
-    /**
-     * Configura dinámicamente la conexión 'tenant' para apuntar
-     * a la base de datos del tenant resuelto.
-     *
-     * También establece 'tenant' como conexión por defecto para que
-     * las llamadas a DB::table() y modelos sin conexión explícita
-     * usen automáticamente la base del tenant activo.
-     */
-    protected function configureTenantConnection(Tenant $tenant): void
-    {
-        $overrides = config('tenancy.tenant_credentials.' . $tenant->slug, []);
-        $base = $this->baseTenantConnection ?: config('database.connections.tenant', []);
-
-        $databaseName = $overrides['database'] ?? $tenant->database ?? ($base['database'] ?? null);
-
-        if ($databaseName) {
-            Config::set('database.connections.tenant.database', $databaseName);
-        }
-
-        $host = $overrides['host'] ?? config('tenancy.tenant_db_host', $base['host'] ?? null);
-        if ($host !== null) {
-            Config::set('database.connections.tenant.host', $host);
-        }
-
-        $port = $overrides['port'] ?? config('tenancy.tenant_db_port', $base['port'] ?? null);
-        if ($port !== null) {
-            Config::set('database.connections.tenant.port', $port);
-        }
-
-        $username = $overrides['username'] ?? ($base['username'] ?? null);
-        if ($username !== null) {
-            Config::set('database.connections.tenant.username', $username);
-        }
-
-        if (array_key_exists('password', $overrides)) {
-            Config::set('database.connections.tenant.password', $overrides['password']);
-        } elseif (array_key_exists('password', $base)) {
-            Config::set('database.connections.tenant.password', $base['password']);
-        }
-
-        // Purgar conexión existente para forzar reconexión
-        DB::purge('tenant');
-
-        // Reconectar con la nueva configuración
-        DB::reconnect('tenant');
-
-        // Establecer 'tenant' como conexión por defecto
-        // para que DB::table() use la base del tenant activo
-        Config::set('database.default', 'tenant');
     }
 }
