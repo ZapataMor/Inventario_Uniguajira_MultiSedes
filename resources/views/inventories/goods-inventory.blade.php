@@ -105,22 +105,25 @@
 
             {{-- cambio de inventario --}}
             <button class="control-btn"
+                    type="button"
                     title="Cambiar inventario"
-                    onclick="btnCambiarInventario()">
+                    data-action="cambiar-inventario">
                 <i class="fas fa-exchange-alt"></i>
             </button>
 
             {{-- Dar de baja --}}
             <button class="control-btn"
+                    type="button"
                     title="Dar de baja"
-                    onclick="btnDarDeBajaBienCantidad()">
+                    data-action="dar-baja-cantidad">
                 <i class="fas fa-trash"></i>
             </button>
 
             {{-- Cambiar cantidad --}}
             <button class="control-btn"
+                    type="button"
                     title="Cambiar cantidad"
-                    onclick="btnEditarBienCantidad()">
+                    data-action="editar-cantidad">
                 <i class="fas fa-sort-numeric-up"></i>
             </button>
 
@@ -134,8 +137,9 @@
 
             {{-- Eliminar --}}
             <button class="control-btn"
+                    type="button"
                     title="Eliminar"
-                    onclick="btnEliminarBienCantidad()">
+                    data-action="eliminar-cantidad">
                 <i class="fas fa-trash"></i>
             </button>
 

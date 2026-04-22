@@ -80,7 +80,20 @@ function initGoodsSerialsInventoryFunctions() {
     // Inicializar la búsqueda de inventarios
     iniciarBusqueda('searchGoodsSerialsInventory');
 
+    bindGoodsSerialInventoryControl('[data-action="cambiar-inventario-serial"]', btnCambiarInventarioSerial);
+    bindGoodsSerialInventoryControl('[data-action="dar-baja-serial"]', btnDarDeBajaBienSerial);
+    bindGoodsSerialInventoryControl('[data-action="editar-serial"]', btnEditarBienSerial);
+    bindGoodsSerialInventoryControl('[data-action="eliminar-serial"]', btnEliminarBienSerial);
+
     console.log('Funciones de bienes seriales del inventario inicializadas');
+}
+
+function bindGoodsSerialInventoryControl(selector, handler) {
+    const element = document.querySelector(selector);
+    if (element && !element.dataset.listenerBound) {
+        element.dataset.listenerBound = '1';
+        element.addEventListener('click', handler);
+    }
 }
 
 

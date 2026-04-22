@@ -123,7 +123,20 @@ function initGoodsInventoryFunctions() {
     // Inicializa la búsqueda de bienes en el inventario
     iniciarBusqueda('searchGoodInventory');
 
+    bindGoodsInventoryControl('[data-action="cambiar-inventario"]', btnCambiarInventario);
+    bindGoodsInventoryControl('[data-action="dar-baja-cantidad"]', btnDarDeBajaBienCantidad);
+    bindGoodsInventoryControl('[data-action="editar-cantidad"]', btnEditarBienCantidad);
+    bindGoodsInventoryControl('[data-action="eliminar-cantidad"]', btnEliminarBienCantidad);
+
     console.log("Funciones de bienes del inventario inicializadas");
+}
+
+function bindGoodsInventoryControl(selector, handler) {
+    const element = document.querySelector(selector);
+    if (element && !element.dataset.listenerBound) {
+        element.dataset.listenerBound = '1';
+        element.addEventListener('click', handler);
+    }
 }
 
 
