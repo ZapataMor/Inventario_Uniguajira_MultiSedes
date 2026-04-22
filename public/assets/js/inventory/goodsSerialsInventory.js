@@ -207,3 +207,12 @@ function btnDarDeBajaBienSerial() {
 
     mostrarModal('#modalDarDeBajaBienSerial');
 }
+
+// Los onclick inline de la vista necesitan handlers disponibles en window.
+Object.assign(window, {
+    initGoodsSerialsInventoryFunctions,
+    btnEditarBienSerial,
+    btnEliminarBienSerial,
+    btnCambiarInventarioSerial,
+    btnDarDeBajaBienSerial,
+});
