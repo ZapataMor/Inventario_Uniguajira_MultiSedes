@@ -62,11 +62,11 @@
     <script src="{{ asset('assets/js/profile.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}?v=3"></script>
+    <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}?v=5"></script>
     @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=6"></script>
     @endif
-    <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}?v=3"></script>
+    <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}?v=5"></script>
     <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}"></script>
     <script src="{{ asset('assets/js/reports/folders.js') }}"></script>
     <script src="{{ asset('assets/js/reports/reports.js') }}"></script>

@@ -123,22 +123,8 @@ function initGoodsInventoryFunctions() {
     // Inicializa la búsqueda de bienes en el inventario
     iniciarBusqueda('searchGoodInventory');
 
-    bindGoodsInventoryControl('[data-action="cambiar-inventario"]', btnCambiarInventario);
-    bindGoodsInventoryControl('[data-action="dar-baja-cantidad"]', btnDarDeBajaBienCantidad);
-    bindGoodsInventoryControl('[data-action="editar-cantidad"]', btnEditarBienCantidad);
-    bindGoodsInventoryControl('[data-action="eliminar-cantidad"]', btnEliminarBienCantidad);
-
     console.log("Funciones de bienes del inventario inicializadas");
 }
-
-function bindGoodsInventoryControl(selector, handler) {
-    const element = document.querySelector(selector);
-    if (element && !element.dataset.listenerBound) {
-        element.dataset.listenerBound = '1';
-        element.addEventListener('click', handler);
-    }
-}
-
 
 function btnAbrirModalCrearBien() {
     const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
@@ -153,6 +139,11 @@ function btnAbrirModalCrearBien() {
 
 
 function btnEliminarBienCantidad() {
+    if (!selectedItem || selectedItem.type !== 'good') {
+        showToast({ success: false, message: 'No se ha seleccionado un bien.' });
+        return;
+    }
+
     const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
     const idBien = selectedItem.id;
 
@@ -173,6 +164,11 @@ function btnEliminarBienCantidad() {
 
 
 function btnEditarBienCantidad() {
+    if (!selectedItem || selectedItem.type !== 'good') {
+        showToast({ success: false, message: 'No se ha seleccionado un bien.' });
+        return;
+    }
+
     const card = selectedItem.element;
     const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
 
@@ -189,6 +185,11 @@ function btnEditarBienCantidad() {
 // ------------------------------------------------------------
 
 function btnCambiarInventario() {
+    if (!selectedItem || selectedItem.type !== 'good') {
+        showToast({ success: false, message: 'No se ha seleccionado un bien.' });
+        return;
+    }
+
     const card = selectedItem.element;
     const idBien = selectedItem.id;
     const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
@@ -244,17 +245,23 @@ function btnCambiarInventario() {
 // ------------------------------------------------------------
 
 function btnDarDeBajaBienCantidad() {
+    if (!selectedItem || selectedItem.type !== 'good') {
+        showToast({ success: false, message: 'No se ha seleccionado un bien.' });
+        return;
+    }
+
     const idBien = selectedItem.id;
     const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
+    const cantidadDisponible = selectedItem.element.dataset.cantidad;
 
     // Establecer los valores en el formulario
     document.getElementById('darDeBajaBienId').value = idBien;
     document.getElementById('darDeBajaInventarioId').value = idInventario;
     document.getElementById('darDeBajaNombreBienCantidad').value = selectedItem.name;
-    document.getElementById('darDeBajaCantidadDisponible').value = selectedItem.element.dataset.cantidad;
+    document.getElementById('darDeBajaCantidadDisponible').value = cantidadDisponible;
     
     // Establecer el máximo permitido
-    document.getElementById('darDeBajaCantidadBien').setAttribute('max', selectedItem.cantidad);
+    document.getElementById('darDeBajaCantidadBien').setAttribute('max', cantidadDisponible);
     document.getElementById('darDeBajaCantidadBien').value = 1; // Valor por defecto
 
     mostrarModal('#modalDarDeBajaBienCantidad');
@@ -271,3 +278,34 @@ Object.assign(window, {
     btnCambiarInventario,
     btnDarDeBajaBienCantidad,
 });
+
+(function installGoodsInventoryControlActions() {
+    if (window.goodsInventoryControlActionsBound) {
+        return;
+    }
+
+    window.goodsInventoryControlActionsBound = true;
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-action]');
+        if (!button) {
+            return;
+        }
+
+        const actions = {
+            'cambiar-inventario': btnCambiarInventario,
+            'dar-baja-cantidad': btnDarDeBajaBienCantidad,
+            'editar-cantidad': btnEditarBienCantidad,
+            'eliminar-cantidad': btnEliminarBienCantidad,
+        };
+
+        const handler = actions[button.dataset.action];
+        if (!handler) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        handler();
+    });
+})();

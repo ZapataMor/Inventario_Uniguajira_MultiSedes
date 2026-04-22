@@ -80,22 +80,8 @@ function initGoodsSerialsInventoryFunctions() {
     // Inicializar la búsqueda de inventarios
     iniciarBusqueda('searchGoodsSerialsInventory');
 
-    bindGoodsSerialInventoryControl('[data-action="cambiar-inventario-serial"]', btnCambiarInventarioSerial);
-    bindGoodsSerialInventoryControl('[data-action="dar-baja-serial"]', btnDarDeBajaBienSerial);
-    bindGoodsSerialInventoryControl('[data-action="editar-serial"]', btnEditarBienSerial);
-    bindGoodsSerialInventoryControl('[data-action="eliminar-serial"]', btnEliminarBienSerial);
-
     console.log('Funciones de bienes seriales del inventario inicializadas');
 }
-
-function bindGoodsSerialInventoryControl(selector, handler) {
-    const element = document.querySelector(selector);
-    if (element && !element.dataset.listenerBound) {
-        element.dataset.listenerBound = '1';
-        element.addEventListener('click', handler);
-    }
-}
-
 
 // Editar bien seleccionado
 function btnEditarBienSerial() {
@@ -125,6 +111,11 @@ function btnEditarBienSerial() {
 
 
 function btnEliminarBienSerial() {
+    if (!selectedItem || selectedItem.type !== 'serial-good') {
+        showToast({ success: false, message: 'No se ha seleccionado un bien serial' });
+        return;
+    }
+
     const idBienSerial = selectedItem.id;
 
     eliminarRegistro({
@@ -229,3 +220,34 @@ Object.assign(window, {
     btnCambiarInventarioSerial,
     btnDarDeBajaBienSerial,
 });
+
+(function installGoodsSerialInventoryControlActions() {
+    if (window.goodsSerialInventoryControlActionsBound) {
+        return;
+    }
+
+    window.goodsSerialInventoryControlActionsBound = true;
+
+    document.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-action]');
+        if (!button) {
+            return;
+        }
+
+        const actions = {
+            'cambiar-inventario-serial': btnCambiarInventarioSerial,
+            'dar-baja-serial': btnDarDeBajaBienSerial,
+            'editar-serial': btnEditarBienSerial,
+            'eliminar-serial': btnEliminarBienSerial,
+        };
+
+        const handler = actions[button.dataset.action];
+        if (!handler) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        handler();
+    });
+})();
