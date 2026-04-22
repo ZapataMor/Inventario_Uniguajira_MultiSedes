@@ -103,6 +103,13 @@
 
         <div class="control-actions">
 
+            {{-- cambio de inventario --}}
+            <button class="control-btn"
+                    title="Cambiar inventario"
+                    onclick="btnCambiarInventario()">
+                <i class="fas fa-exchange-alt"></i>
+            </button>
+
             {{-- Dar de baja --}}
             <button class="control-btn"
                     title="Dar de baja"
@@ -150,6 +157,7 @@
                         data-id="{{ $asset->asset_id }}"
                         data-name="{{ $asset->asset }}"
                         data-cantidad="{{ $asset->quantity }}"
+                        data-asset-type="{{ $asset->type }}"
                         data-type="good"
                 
                         @if ($asset->type === 'Cantidad')
@@ -194,6 +202,7 @@
     <x-modal.inventory.good-inventory-create />
     <x-modal.inventory.good-inventory-edit-quantity />
     <x-modal.inventory.good-inventory-remove />
+    <x-modal.inventory.good-inventory-move />
     <x-modal.inventory.inventory-responsible />
 
     @once

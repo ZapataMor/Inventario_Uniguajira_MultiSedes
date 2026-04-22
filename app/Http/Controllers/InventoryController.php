@@ -19,7 +19,7 @@ class InventoryController extends Controller
         $inventories = Inventory::query()
             ->where('group_id', $groupId)
             ->select('id', 'name')
-            ->orderBy('name')
+            ->orderByRaw('name * 1 = 0, name * 1, name')
             ->get()
             ->map(static fn (Inventory $inventory): array => [
                 'id' => $inventory->id,
