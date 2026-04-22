@@ -248,3 +248,13 @@ function btnDarDeBajaBienCantidad() {
 }
 
 // ------------------------------------------------------------
+
+// Los onclick inline de la vista necesitan handlers disponibles en window.
+Object.assign(window, {
+    initGoodsInventoryFunctions,
+    btnAbrirModalCrearBien,
+    btnEliminarBienCantidad,
+    btnEditarBienCantidad,
+    btnCambiarInventario,
+    btnDarDeBajaBienCantidad,
+});
