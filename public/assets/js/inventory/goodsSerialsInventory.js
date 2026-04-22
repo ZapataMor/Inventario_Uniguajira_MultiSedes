@@ -31,6 +31,52 @@ function initGoodsSerialsInventoryFunctions() {
 
     // ------------------------------------------------------------
 
+    // Inicializa el formulario para cambiar un serial de inventario
+    // ruta: /api/goods-inventory/move-serial
+    inicializarFormularioAjax('#formCambiarInventarioSerial', {
+        closeModalOnSuccess: true,
+        resetOnSuccess: true,
+        onSuccess: (response) => {
+            showToast(response);
+
+            const url = document.getElementById('good-serial-inventory-name').getAttribute('data-url');
+            loadContent(url, { onSuccess: () => initGoodsSerialsInventoryFunctions() });
+        }
+    });
+
+    // Listener de cambio de grupo para el modal de seriales (una sola vez)
+    const selectGrupoSerialEl = document.getElementById('moverSerialGrupoDestino');
+    if (selectGrupoSerialEl && !selectGrupoSerialEl.dataset.listenerBound) {
+        selectGrupoSerialEl.dataset.listenerBound = '1';
+        selectGrupoSerialEl.addEventListener('change', function () {
+            const grupoId = this.value;
+            const selectInventario = document.getElementById('moverSerialInventarioDestino');
+            const inventarioActualId = document.querySelector('[data-url]')?.getAttribute('data-url')?.match(/inventory\/(\d+)/)?.[1];
+
+            selectInventario.innerHTML = '<option value="">Seleccionar inventario...</option>';
+            selectInventario.disabled = true;
+
+            if (!grupoId) return;
+
+            fetch(`/api/inventories/getByGroupId/${grupoId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                const inventarios = Array.isArray(data) ? data : (data.inventories ?? []);
+                inventarios.forEach(inv => {
+                    if (inventarioActualId && String(inv.id) === String(inventarioActualId)) return;
+                    const opt = document.createElement('option');
+                    opt.value = inv.id;
+                    opt.textContent = inv.nombre;
+                    selectInventario.appendChild(opt);
+                });
+                selectInventario.disabled = false;
+            })
+            .catch(() => showToast({ success: false, message: 'Error al cargar inventarios.' }));
+        });
+    }
+
     // Inicializar la búsqueda de inventarios
     iniciarBusqueda('searchGoodsSerialsInventory');
 
@@ -79,6 +125,47 @@ function btnEliminarBienSerial() {
             );
         }
     });
+}
+
+
+// Cambiar serial de inventario
+function btnCambiarInventarioSerial() {
+    if (!selectedItem || selectedItem.type !== 'serial-good') {
+        showToast({ success: false, message: 'No se ha seleccionado un bien serial.' });
+        return;
+    }
+
+    const card = selectedItem.element;
+
+    document.getElementById('moverSerialEquipoId').value = card.dataset.id;
+    document.getElementById('moverSerialNombreBien').value = card.dataset.name;
+    document.getElementById('moverSerialSerial').value = card.dataset.serial || '';
+    document.getElementById('moverSerialMarca').value = card.dataset.brand || '';
+
+    // Resetear selectores
+    const selectGrupo = document.getElementById('moverSerialGrupoDestino');
+    const selectInventario = document.getElementById('moverSerialInventarioDestino');
+    selectGrupo.innerHTML = '<option value="">Seleccionar grupo...</option>';
+    selectInventario.innerHTML = '<option value="">Seleccionar inventario...</option>';
+    selectInventario.disabled = true;
+
+    // Cargar grupos
+    fetch('/api/groups/getAll', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const grupos = Array.isArray(data) ? data : (data.groups ?? []);
+        grupos.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = g.nombre;
+            selectGrupo.appendChild(opt);
+        });
+    })
+    .catch(() => showToast({ success: false, message: 'Error al cargar grupos.' }));
+
+    mostrarModal('#modalCambiarInventarioSerial');
 }
 
 
