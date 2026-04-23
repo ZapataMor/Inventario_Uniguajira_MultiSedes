@@ -39,6 +39,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 
+    @php
+        $assetVersion = static function (string $path): int {
+            $fullPath = public_path($path);
+            $modifiedAt = is_file($fullPath) ? filemtime($fullPath) : false;
+
+            return $modifiedAt ?: time();
+        };
+    @endphp
+
     <script src="{{ asset('assets/js/sidebar.js') }}"></script>
     <script src="{{ asset('assets/js/navbar.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/submitForm.js') }}"></script>
@@ -62,11 +71,11 @@
     <script src="{{ asset('assets/js/profile.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}?v=5"></script>
+    <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}?v={{ $assetVersion('assets/js/inventory/goodsInventory.js') }}"></script>
     @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=6"></script>
     @endif
-    <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}?v=5"></script>
+    <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}?v={{ $assetVersion('assets/js/inventory/goodsSerialsInventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}"></script>
     <script src="{{ asset('assets/js/reports/folders.js') }}"></script>
     <script src="{{ asset('assets/js/reports/reports.js') }}"></script>
