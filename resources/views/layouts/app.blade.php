@@ -7,11 +7,20 @@
     <title>@yield('title', $branding?->app_name ?? config('app.name', 'Inventario Uniguajira'))</title>
     <link rel="icon" href="{{ asset($branding?->favicon ?? 'assets/images/favicon-uniguajira-32x32.webp') }}" type="image/png">
 
+    @php
+        $assetVersion = static function (string $path): int {
+            $fullPath = public_path($path);
+            $modifiedAt = is_file($fullPath) ? filemtime($fullPath) : false;
+
+            return $modifiedAt ?: time();
+        };
+    @endphp
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="{{ asset('assets/css/get.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/components/get.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/responsive/get.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/get.css') }}?v={{ $assetVersion('assets/css/get.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/components/get.css') }}?v={{ $assetVersion('assets/css/components/get.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/responsive/get.css') }}?v={{ $assetVersion('assets/css/responsive/get.css') }}">
     @stack('styles')
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -38,15 +47,6 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-
-    @php
-        $assetVersion = static function (string $path): int {
-            $fullPath = public_path($path);
-            $modifiedAt = is_file($fullPath) ? filemtime($fullPath) : false;
-
-            return $modifiedAt ?: time();
-        };
-    @endphp
 
     <script src="{{ asset('assets/js/sidebar.js') }}"></script>
     <script src="{{ asset('assets/js/navbar.js') }}"></script>
