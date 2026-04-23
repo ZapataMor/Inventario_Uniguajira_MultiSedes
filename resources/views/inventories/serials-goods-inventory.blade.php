@@ -23,6 +23,7 @@
                         'inventoryId' => $inventory->id,
                         'assetId' => $serials[0]->asset_id
                     ]) }}"
+                    data-inventory-id="{{ $inventory->id }}"
                     class="location">
                     Detalles - {{ $serials[0]->asset }}
                 </span>
@@ -52,7 +53,7 @@
         <div id="control-bar-serial-good" class="control-bar">
             <div class="selected-name">1 seleccionado</div>
             <div class="control-actions">
-                <button class="control-btn" type="button" title="Cambiar inventario" onclick="event.stopPropagation(); if (typeof btnCambiarInventarioSerial === 'function') btnCambiarInventarioSerial();">
+                <button class="control-btn" type="button" title="Cambiar inventario" onclick="event.stopPropagation(); if (typeof btnCambiarInventarioSerial === 'function') { btnCambiarInventarioSerial(); } else if (typeof window.openSerialMoveFallback === 'function') { window.openSerialMoveFallback(); }">
                     <i class="fas fa-exchange-alt"></i>
                 </button>
                 <button class="control-btn" type="button" title="Dar de baja" onclick="event.stopPropagation(); if (typeof btnDarDeBajaBienSerial === 'function') btnDarDeBajaBienSerial();">

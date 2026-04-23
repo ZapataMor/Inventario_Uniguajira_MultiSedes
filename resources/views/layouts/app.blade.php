@@ -172,6 +172,85 @@
                 mostrarModal('#modalCambiarInventarioBien');
             };
 
+            const getSerialInventoryContext = () => {
+                const serialInventoryName = document.getElementById('good-serial-inventory-name');
+                const currentUrl = serialInventoryName?.getAttribute('data-url') || '';
+                const inventoryId = serialInventoryName?.dataset.inventoryId
+                    || currentUrl.match(/inventory\/(\d+)/)?.[1]
+                    || '';
+
+                return { serialInventoryName, currentUrl, inventoryId };
+            };
+
+            const openSerialMoveFallback = () => {
+                if (typeof selectedItem === 'undefined' || !selectedItem || selectedItem.type !== 'serial-good') {
+                    showToast({ success: false, message: 'No se ha seleccionado un bien serial.' });
+                    return;
+                }
+
+                const card = selectedItem.element;
+                const { inventoryId } = getSerialInventoryContext();
+
+                document.getElementById('moverSerialEquipoId').value = card.dataset.id;
+                document.getElementById('moverSerialNombreBien').value = card.dataset.name || selectedItem.name || '';
+                document.getElementById('moverSerialSerial').value = card.dataset.serial || '';
+                document.getElementById('moverSerialMarca').value = card.dataset.brand || '';
+
+                const selectGrupo = document.getElementById('moverSerialGrupoDestino');
+                const selectInventario = document.getElementById('moverSerialInventarioDestino');
+
+                selectGrupo.value = '';
+                selectGrupo.innerHTML = '<option value="">Seleccionar grupo...</option>';
+                selectInventario.innerHTML = '<option value="">Seleccionar inventario...</option>';
+                selectInventario.disabled = true;
+                selectGrupo.onchange = function () {
+                    const grupoId = this.value;
+                    selectInventario.innerHTML = '<option value="">Seleccionar inventario...</option>';
+                    selectInventario.disabled = true;
+
+                    if (!grupoId) return;
+
+                    fetch('/api/inventories/getByGroupId/' + grupoId, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            const inventarios = Array.isArray(data) ? data : (data.inventories ?? []);
+
+                            inventarios.forEach(inventory => {
+                                if (inventoryId && String(inventory.id) === String(inventoryId)) return;
+                                const option = document.createElement('option');
+                                option.value = inventory.id;
+                                option.textContent = inventory.nombre;
+                                selectInventario.appendChild(option);
+                            });
+
+                            selectInventario.disabled = false;
+                        })
+                        .catch(() => showToast({ success: false, message: 'Error al cargar inventarios.' }));
+                };
+
+                fetch('/api/groups/getAll', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const grupos = Array.isArray(data) ? data : (data.groups ?? []);
+
+                        grupos.forEach(group => {
+                            const option = document.createElement('option');
+                            option.value = group.id;
+                            option.textContent = group.nombre;
+                            selectGrupo.appendChild(option);
+                        });
+                    })
+                    .catch(() => showToast({ success: false, message: 'Error al cargar grupos.' }));
+
+                mostrarModal('#modalCambiarInventarioSerial');
+            };
+
+            window.openSerialMoveFallback = openSerialMoveFallback;
+
             const actions = {
                 'cambiar-inventario': () => {
                     if (typeof window.btnCambiarInventario === 'function') {
@@ -184,7 +263,14 @@
                 'dar-baja-cantidad': () => window.btnDarDeBajaBienCantidad?.(),
                 'editar-cantidad': () => window.btnEditarBienCantidad?.(),
                 'eliminar-cantidad': () => window.btnEliminarBienCantidad?.(),
-                'cambiar-inventario-serial': () => window.btnCambiarInventarioSerial?.(),
+                'cambiar-inventario-serial': () => {
+                    if (typeof window.btnCambiarInventarioSerial === 'function') {
+                        window.btnCambiarInventarioSerial();
+                        return;
+                    }
+
+                    openSerialMoveFallback();
+                },
                 'dar-baja-serial': () => window.btnDarDeBajaBienSerial?.(),
                 'editar-serial': () => window.btnEditarBienSerial?.(),
                 'eliminar-serial': () => window.btnEliminarBienSerial?.(),
@@ -204,7 +290,9 @@
             }, true);
 
             document.addEventListener('submit', (event) => {
-                const form = event.target.closest('#formCambiarInventarioBien');
+                const quantityForm = event.target.closest('#formCambiarInventarioBien');
+                const serialForm = event.target.closest('#formCambiarInventarioSerial');
+                const form = quantityForm || serialForm;
 
                 if (!form) {
                     return;
@@ -237,17 +325,34 @@
                             return;
                         }
 
-                        ocultarModal('#modalCambiarInventarioBien');
+                        if (quantityForm) {
+                            ocultarModal('#modalCambiarInventarioBien');
 
-                        const inventoryName = document.getElementById('inventory-name');
-                        const groupId = inventoryName.getAttribute('data-group-id');
-                        const inventoryId = inventoryName.getAttribute('data-id');
+                            const inventoryName = document.getElementById('inventory-name');
+                            const groupId = inventoryName.getAttribute('data-group-id');
+                            const inventoryId = inventoryName.getAttribute('data-id');
 
-                        loadContent('/group/' + groupId + '/inventory/' + inventoryId, {
-                            onSuccess: () => initGoodsInventoryFunctions()
+                            loadContent('/group/' + groupId + '/inventory/' + inventoryId, {
+                                onSuccess: () => initGoodsInventoryFunctions()
+                            });
+                            return;
+                        }
+
+                        ocultarModal('#modalCambiarInventarioSerial');
+
+                        const { currentUrl } = getSerialInventoryContext();
+                        if (!currentUrl) {
+                            return;
+                        }
+
+                        loadContent(currentUrl, {
+                            onSuccess: () => window.initGoodsSerialsInventoryFunctions?.()
                         });
                     })
-                    .catch(() => showToast({ success: false, message: 'Error al cambiar el inventario.' }))
+                    .catch(() => showToast({
+                        success: false,
+                        message: serialForm ? 'Error al cambiar el serial de inventario.' : 'Error al cambiar el inventario.'
+                    }))
                     .finally(() => {
                         if (submitButton) {
                             submitButton.disabled = false;
