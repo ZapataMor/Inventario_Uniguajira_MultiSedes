@@ -19,7 +19,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="{{ asset('assets/css/get.css') }}?v={{ $assetVersion('assets/css/get.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/components.css') }}?v={{ $assetVersion('assets/css/components.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/components/get.css') }}?v={{ $assetVersion('assets/css/components/get.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/responsive/get.css') }}?v={{ $assetVersion('assets/css/responsive/get.css') }}">
     @stack('styles')

@@ -3,5 +3,6 @@
 @import 'goods.css';
 @import 'inventory.css';
 @import 'user.css';
+@import url('/assets/css/components.css?v=btn-localizacion-excel-3');
 @import 'record.css';
 @import 'reports.css';
