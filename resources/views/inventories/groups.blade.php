@@ -24,7 +24,7 @@
         @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
             <button
                 type="button"
-                class="btn-localizacion-excel"
+                class="excel-btn btn-localizacion-excel"
                 onclick="abrirExcelLocalizacion()"
                 title="Carga masiva por localización">
                 <i class="fas fa-file-excel"></i> Carga por localización

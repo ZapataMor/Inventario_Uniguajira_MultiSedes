@@ -100,6 +100,12 @@
     white-space: nowrap;
 }
 
+.excel-btn.btn-localizacion-excel {
+    display: inline-block;
+    min-width: auto;
+    height: auto;
+}
+
 .top-bar .action-buttons .btn-localizacion-excel:hover,
 .btn-localizacion-excel:hover {
     background-color: #047857;
