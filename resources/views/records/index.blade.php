@@ -148,11 +148,11 @@
                 <table class="tabla w-full table-auto record-table">
                     <thead>
                         <tr class="bg-gray-50 border-b border-gray-200">
-                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">N�</th>
+                            <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">NO.</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-14">Tipo</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Usuario</th>
-                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide min-w-0 w-full">Descripci�n</th>
-                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-35">M�dulo</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide min-w-0 w-full">Descripción</th>
+                            <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-35">Módulo</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-36">Fecha / Hora</th>
                         </tr>
                     </thead>

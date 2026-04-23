@@ -12,7 +12,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable
 {
     private const SUPER_ADMIN_EMAILS = [
-        'admin@example.edu.co',
+        'recursosfisicos@uniguajira.edu.co',
     ];
 
     /** @use HasFactory<\Database\Factories\UserFactory> */
