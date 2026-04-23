@@ -23,6 +23,7 @@
     $avatarSeed = (string) ($currentUser?->email ?: $profileName ?: 'user');
     $avatarIndex = (int) (sprintf('%u', crc32($avatarSeed)) % count($avatarPalette));
     $avatarColorClass = $avatarPalette[$avatarIndex];
+    $portalQuery = $currentUser?->isSuperAdmin() ? ['portal' => 1] : [];
 @endphp
 
 <div class="sidebar" id="sidebar">
@@ -36,14 +37,14 @@
             </li>
 
             <li>
-                <a id="goods" href="{{ route('goods.index') }}" data-nav>
+                <a id="goods" href="{{ route('goods.index', $portalQuery) }}" data-nav>
                     <img src="{{ asset('assets/icons/bienes.svg') }}" alt="">
                     <span>Bienes</span>
                 </a>
             </li>
 
             <li>
-                <a id="inventories" href="{{ route('inventory.groups') }}" data-nav>
+                <a id="inventories" href="{{ route('inventory.groups', $portalQuery) }}" data-nav>
                     <img src="{{ asset('assets/icons/inventario.svg') }}" alt="">
                     <span>Inventarios</span>
                 </a>
@@ -57,7 +58,7 @@
             </li>
 
             <li>
-                <a id="reports" href="{{ route('reports.index') }}" data-nav>
+                <a id="reports" href="{{ route('reports.index', $portalQuery) }}" data-nav>
                     <img src="{{ asset('assets/icons/reportes.svg') }}" alt="">
                     <span>Reportes</span>
                 </a>
@@ -65,14 +66,14 @@
 
             @if(auth()->user()->isAdministrator() || auth()->user()->isSuperAdmin())
                 <li>
-                    <a id="users" href="{{ route('users.index') }}" data-nav>
+                    <a id="users" href="{{ route('users.index', $portalQuery) }}" data-nav>
                         <img src="{{ asset('assets/icons/usuarios.svg') }}" alt="">
                         <span>Usuarios</span>
                     </a>
                 </li>
 
                 <li>
-                    <a id="records" href="{{ route('records.index') }}" data-nav>
+                    <a id="records" href="{{ route('records.index', $portalQuery) }}" data-nav>
                         <img src="{{ asset('assets/icons/historial.svg') }}" alt="">
                         <span>Historial</span>
                     </a>

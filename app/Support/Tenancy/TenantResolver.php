@@ -23,8 +23,18 @@ class TenantResolver
      */
     public function resolve(Request $request): ?Tenant
     {
+        if ($this->isPortalRoute($request) || $request->boolean('portal')) {
+            $request->session()->forget('tenant_id');
+
+            return null;
+        }
+
         if ($tenant = $this->resolveByFullDomain($request->getHost(), $request, false)) {
             return $tenant;
+        }
+
+        if ($request->session()->has('tenant_id')) {
+            return $this->resolveBySession($request);
         }
 
         $strategy = config('tenancy.resolution_strategy', 'subdomain');
@@ -176,5 +186,12 @@ class TenantResolver
     protected function normalizeHost(string $host): string
     {
         return rtrim(mb_strtolower(trim($host)), '.');
+    }
+
+    protected function isPortalRoute(Request $request): bool
+    {
+        return $request->routeIs('portal.*')
+            || $request->is('portal')
+            || $request->is('portal/*');
     }
 }

@@ -4,6 +4,11 @@
 @section('title', 'Inventarios del grupo')
 
 @section('content')
+@php
+    $groupsBackUrl = auth()->user()?->isSuperAdmin()
+        ? route('inventory.groups', ['portal' => 1])
+        : route('inventory.groups');
+@endphp
 <div class="content">
 
     <div class="inventory-header">
@@ -14,7 +19,7 @@
     <div class="back-and-title">
         <span id="group-name" class="location" data-id="{{ $group->id }}">{{ $group->name }}</span>
 
-        <button class="btn-back" onclick="loadContent( '{{ route('inventory.groups') }}', { onSuccess: () => initGroupFunctions() } )">
+        <button class="btn-back" onclick="loadContent( '{{ $groupsBackUrl }}', { onSuccess: () => initGroupFunctions() } )">
             <i class="fas fa-arrow-left me-2"></i>
             <span>Volver</span>
         </button>
