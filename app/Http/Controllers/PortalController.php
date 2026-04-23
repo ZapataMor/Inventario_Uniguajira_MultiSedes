@@ -28,6 +28,7 @@ class PortalController extends Controller
         if ($request->ajax()) {
             /** @var \Illuminate\View\View $view */
             $view = view('portal.index', compact('tenants'));
+
             return $view->renderSections()['content'];
         }
 
@@ -55,11 +56,16 @@ class PortalController extends Controller
             ?? '/home';
         $inplace = $request->boolean('inplace');
 
+        if ($inplace) {
+            $redirectPath = $this->appendQueryParameter($redirectPath, 'from_portal', '1');
+        }
+
         $primaryDomain = $tenant->primaryDomain();
         if ($primaryDomain && ! $inplace) {
             $scheme = $request->isSecure() ? 'https' : 'http';
             $port = $request->getPort();
             $portSuffix = ($port && ! in_array($port, [80, 443])) ? ":{$port}" : '';
+
             return redirect("{$scheme}://{$primaryDomain}{$portSuffix}{$redirectPath}");
         }
 
@@ -78,7 +84,7 @@ class PortalController extends Controller
         }
 
         if (! str_starts_with($path, '/')) {
-            $path = '/' . ltrim($path, '/');
+            $path = '/'.ltrim($path, '/');
         }
 
         if (str_contains($path, '..') || preg_match('/[\r\n]/', $path)) {
@@ -86,5 +92,12 @@ class PortalController extends Controller
         }
 
         return $path;
+    }
+
+    private function appendQueryParameter(string $path, string $key, string $value): string
+    {
+        $separator = str_contains($path, '?') ? '&' : '?';
+
+        return $path.$separator.urlencode($key).'='.urlencode($value);
     }
 }

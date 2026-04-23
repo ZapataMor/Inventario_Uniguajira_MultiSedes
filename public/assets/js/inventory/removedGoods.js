@@ -19,6 +19,15 @@ function initRemovedGoodsFunctions() {
     // Inicializar búsqueda usando la función helper existente
     iniciarBusqueda('searchRemovedGoods');
 
+    const root = document.getElementById('goods-removed');
+    const isPortalCatalog = root?.dataset.portalCatalog === '1';
+
+    if (isPortalCatalog) {
+        initPortalRemovedDropdowns();
+        console.log("Funciones de bienes dados de baja inicializadas");
+        return;
+    }
+
     // Cargar opciones de filtrado
     loadFilterOptions();
 
@@ -30,8 +39,15 @@ function initRemovedGoodsFunctions() {
  * @param {number} id  - ID del registro en su tabla correspondiente
  * @param {string} source - 'cantidad' o 'serial'
  */
-function btnViewRemovedDetails(id, source = 'cantidad') {
-    fetch(`/removed/${id}?source=${source}`, {
+function btnViewRemovedDetails(id, source = 'cantidad', tenantSlug = '') {
+    const params = new URLSearchParams({ source });
+
+    if (tenantSlug) {
+        params.set('tenant', tenantSlug);
+        params.set('portal', '1');
+    }
+
+    fetch(`/removed/${id}?${params.toString()}`, {
         method: 'GET',
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
@@ -55,6 +71,63 @@ function btnViewRemovedDetails(id, source = 'cantidad') {
             message: 'Error al cargar los detalles del bien'
         });
     });
+}
+
+function initPortalRemovedDropdowns() {
+    const dropdowns = document.querySelectorAll('[data-sede-dropdown]');
+    const searchInput = document.getElementById('searchRemovedGoods');
+
+    if (!dropdowns.length || !searchInput) {
+        return;
+    }
+
+    const controllers = Array.from(dropdowns).map((dropdown) => ({
+        dropdown,
+        controller: getRemovedSedeDropdownController(dropdown, '.inventory-sede-body'),
+    }));
+
+    const updateDropdownState = () => {
+        const hasFilter = searchInput.value.trim().length > 0;
+
+        controllers.forEach(({ dropdown, controller }) => {
+            const cards = dropdown.querySelectorAll('.card-item');
+            const visibleCards = Array.from(cards).filter((card) => card.style.display !== 'none');
+            const visibleCountBadge = dropdown.querySelector('[data-visible-count]');
+            const emptyByFilterMessage = dropdown.querySelector('[data-sede-empty]');
+
+            if (visibleCountBadge) {
+                visibleCountBadge.textContent = String(visibleCards.length);
+            }
+
+            if (emptyByFilterMessage) {
+                emptyByFilterMessage.classList.toggle('hidden', visibleCards.length > 0);
+            }
+
+            if (hasFilter) {
+                controller.setOpen(visibleCards.length > 0, true);
+            } else {
+                controller.setOpen(false, true);
+            }
+        });
+    };
+
+    ['keyup', 'input', 'search'].forEach((eventName) => {
+        searchInput.addEventListener(eventName, updateDropdownState);
+    });
+
+    updateDropdownState();
+}
+
+function getRemovedSedeDropdownController(dropdown, bodySelector) {
+    if (typeof createSedeDropdownController === 'function') {
+        return createSedeDropdownController(dropdown, bodySelector);
+    }
+
+    return {
+        setOpen: (shouldOpen) => {
+            dropdown.open = shouldOpen;
+        }
+    };
 }
 
 /**

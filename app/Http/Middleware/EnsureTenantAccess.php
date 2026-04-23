@@ -58,7 +58,7 @@ class EnsureTenantAccess
         // Permitir rutas de Fortify por path.
         $authPaths = ['login', 'logout', 'register', 'forgot-password', 'reset-password', 'email/verify', 'user/two-factor', 'two-factor-challenge'];
         foreach ($authPaths as $authPath) {
-            if ($request->is($authPath . '*')) {
+            if ($request->is($authPath.'*')) {
                 return $next($request);
             }
         }
@@ -86,7 +86,16 @@ class EnsureTenantAccess
             ->first();
 
         if (! $membership) {
-            abort(403, 'No tienes acceso a esta sede.');
+            $tenantRoles = config('tenancy.tenant_roles', ['administrador', 'consultor']);
+
+            if (! in_array($user->role, $tenantRoles, true)) {
+                abort(403, 'No tienes acceso a esta sede.');
+            }
+
+            $request->attributes->set('tenant_role', $user->role);
+            $request->session()->put('auth_tenant_id', (int) $tenant->id);
+
+            return $next($request);
         }
 
         // Inyectar rol en el request y fijar sede de sesion autenticada.

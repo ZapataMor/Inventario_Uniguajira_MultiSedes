@@ -51,7 +51,7 @@
             </li>
 
             <li>
-                <a id="removed" href="{{ route('removed.index') }}" data-nav>
+                <a id="removed" href="{{ route('removed.index', $portalQuery) }}" data-nav>
                     <img src="{{ asset('assets/icons/basura.svg') }}" alt="">
                     <span>Dados de Baja</span>
                 </a>

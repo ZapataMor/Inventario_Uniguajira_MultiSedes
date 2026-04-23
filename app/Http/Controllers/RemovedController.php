@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogger;
 use App\Models\AssetRemoved;
+use App\Models\Central\Tenant;
+use App\Support\Tenancy\TenantConnectionManager;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Database\QueryException;
@@ -21,24 +23,36 @@ class RemovedController extends Controller
      */
     public function index(Request $request)
     {
-        $removedAssets = $this->getRemovedAssets();
+        $isPortalRemovedCatalog = ! tenant() && $request->user()?->isGlobalAdmin();
+        $removedAssetsBySede = collect();
 
-        $stats = [
-            'total_removed' => $removedAssets->count(),
-            'total_quantity' => $removedAssets->sum('quantity'),
-            'by_type' => [
-                'cantidad' => $removedAssets->where('type', 'Cantidad')->count(),
-                'serial' => $removedAssets->where('type', 'Serial')->count(),
-            ],
-            'recent_count' => $this->countRecentRemovedAssets($removedAssets),
-        ];
+        if ($isPortalRemovedCatalog) {
+            $removedAssetsBySede = $this->getRemovedAssetsBySedeForPortal();
+            $removedAssets = $removedAssetsBySede
+                ->flatMap(fn (array $sedeData) => $sedeData['removed_assets'])
+                ->values();
+        } else {
+            $removedAssets = $this->getRemovedAssets();
+        }
+
+        $stats = $this->buildStats($removedAssets);
 
         if ($request->ajax()) {
-            return view('removed.goods-removed', compact('removedAssets', 'stats'))
+            return view('removed.goods-removed', compact(
+                'removedAssets',
+                'removedAssetsBySede',
+                'isPortalRemovedCatalog',
+                'stats'
+            ))
                 ->renderSections()['content'];
         }
 
-        return view('removed.goods-removed', compact('removedAssets', 'stats'));
+        return view('removed.goods-removed', compact(
+            'removedAssets',
+            'removedAssetsBySede',
+            'isPortalRemovedCatalog',
+            'stats'
+        ));
     }
 
     /**
@@ -46,6 +60,21 @@ class RemovedController extends Controller
      * GET /removed/{id}?source=cantidad|serial
      */
     public function show(Request $request, $id)
+    {
+        if ($request->filled('tenant') && $request->user()?->isGlobalAdmin()) {
+            $tenant = Tenant::query()
+                ->where('slug', $request->query('tenant'))
+                ->where('is_active', true)
+                ->firstOrFail();
+
+            return app(TenantConnectionManager::class)
+                ->runForTenant($tenant, fn () => $this->showForCurrentTenant($request, $id));
+        }
+
+        return $this->showForCurrentTenant($request, $id);
+    }
+
+    private function showForCurrentTenant(Request $request, $id)
     {
         $source = $request->query('source', 'cantidad');
 
@@ -353,6 +382,56 @@ class RemovedController extends Controller
         }
     }
 
+    private function getRemovedAssetsBySedeForPortal(): Collection
+    {
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with('branding')
+            ->orderBy('id')
+            ->get();
+
+        $tenantConnections = app(TenantConnectionManager::class);
+
+        return $tenants->map(function (Tenant $tenant) use ($tenantConnections): array {
+            return $tenantConnections->runForTenant($tenant, function (Tenant $tenant): array {
+                try {
+                    $removedAssets = $this->getRemovedAssets();
+                } catch (QueryException $exception) {
+                    Log::warning('No se pudieron consultar los bienes dados de baja de la sede.', [
+                        'tenant' => $tenant->slug,
+                        'message' => $exception->getMessage(),
+                    ]);
+
+                    $removedAssets = collect();
+                }
+
+                $sedeName = $this->resolveSedeName($tenant);
+
+                return [
+                    'tenant_id' => $tenant->id,
+                    'tenant_slug' => $tenant->slug,
+                    'sede_name' => $sedeName,
+                    'dropdown_label' => "Dados de baja sede {$sedeName}",
+                    'removed_assets' => $removedAssets,
+                    'stats' => $this->buildStats($removedAssets),
+                ];
+            });
+        });
+    }
+
+    private function buildStats(Collection $removedAssets): array
+    {
+        return [
+            'total_removed' => $removedAssets->count(),
+            'total_quantity' => $removedAssets->sum('quantity'),
+            'by_type' => [
+                'cantidad' => $removedAssets->where('type', 'Cantidad')->count(),
+                'serial' => $removedAssets->where('type', 'Serial')->count(),
+            ],
+            'recent_count' => $this->countRecentRemovedAssets($removedAssets),
+        ];
+    }
+
     private function removedByQuantityQuery(): Builder
     {
         return DB::table('assets_removed as ar')
@@ -432,5 +511,13 @@ class RemovedController extends Controller
             'message' => $exception->getMessage(),
             'connection' => DB::getDefaultConnection(),
         ]);
+    }
+
+    private function resolveSedeName(Tenant $tenant): string
+    {
+        $rawName = trim((string) ($tenant->branding?->sede_name ?: $tenant->name ?: $tenant->slug));
+        $normalized = preg_replace('/^sede\s+/iu', '', $rawName);
+
+        return $normalized ?: ucfirst($tenant->slug);
     }
 }

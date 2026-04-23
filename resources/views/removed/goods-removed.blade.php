@@ -3,21 +3,27 @@
 @section('title', 'Bienes Dados de Baja')
 
 @section('content')
-<div id="goods-removed" class="content">
+@php
+    $isPortalRemovedCatalog = $isPortalRemovedCatalog ?? false;
+    $removedAssetsBySede = $removedAssetsBySede ?? collect();
+@endphp
+<div id="goods-removed" class="content" data-portal-catalog="{{ $isPortalRemovedCatalog ? '1' : '0' }}">
 
     <div class="inventory-header">
         <h1>Bienes Dados de Baja</h1>
     </div>
 
-    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 20px;">
-        <div style="flex: 1;">
+    <div class="mb-5 flex items-center gap-2.5">
+        <div class="flex-1">
             <x-generals.top-bar
                 id="searchRemovedGoods"
                 placeholder="Buscar por nombre o motivo..."
                 :canCreate="false"
             />
         </div>
-        <div style="margin-bottom: 20px">
+
+        @if(! $isPortalRemovedCatalog)
+        <div class="mb-5">
             <button
                 id="btnOpenFilter"
                 class="create-btn"
@@ -28,16 +34,76 @@
 
             <button
                 id="btnClearFilter"
-                class="create-btn btn-clear-filter"
+                class="create-btn btn-clear-filter hidden"
                 onclick="clearFilters()"
-                title="Limpiar filtros"
-                style="display: none;">
+                title="Limpiar filtros">
                 <i class="fas fa-times"></i>
             </button>
         </div>
+        @endif
     </div>
 
-    @if($removedAssets->isEmpty())
+    @if($isPortalRemovedCatalog)
+        <div class="inventory-sede-list">
+            @foreach ($removedAssetsBySede as $sedeData)
+                <details class="inventory-sede-dropdown" data-sede-dropdown>
+                    <summary class="inventory-sede-summary">
+                        <span class="inventory-sede-title">{{ $sedeData['dropdown_label'] }}</span>
+                        <span class="inventory-sede-count">
+                            <span data-visible-count>{{ $sedeData['removed_assets']->count() }}</span> bienes
+                        </span>
+                    </summary>
+
+                    <div class="inventory-sede-body">
+                        @if($sedeData['removed_assets']->isEmpty())
+                            <p class="inventory-sede-empty">No hay bienes dados de baja en esta sede.</p>
+                        @else
+                            <div class="bienes-grid">
+                                @foreach($sedeData['removed_assets'] as $asset)
+                                    <div class="bien-card card-item cursor-pointer"
+                                        data-search="{{ strtolower($asset->asset_name . ' ' . $asset->reason) }}"
+                                        onclick="btnViewRemovedDetails({{ $asset->id }}, '{{ $asset->source }}', '{{ $sedeData['tenant_slug'] }}')">
+
+                                        <img
+                                            src="{{ !empty($asset->image) ? route('assets.image', ['path' => $asset->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                                            class="bien-image"
+                                            onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
+                                        />
+
+                                        <div class="bien-info">
+                                            <h3 class="name-item">
+                                                {{ $asset->asset_name }}
+                                                <img
+                                                    src="{{ asset('assets/icons/' . ($asset->type === 'Cantidad' ? 'bienCantidad.svg' : 'bienSerial.svg')) }}"
+                                                    class="bien-icon"
+                                                />
+                                            </h3>
+
+                                            @if($asset->type === 'Cantidad')
+                                                <p><b>Cantidad:</b> {{ $asset->quantity }}</p>
+                                            @else
+                                                <p><b>Serial:</b> {{ $asset->serial ?? 'N/A' }}</p>
+                                            @endif
+
+                                            <p><b>Inventario:</b> {{ $asset->inventory_name }}</p>
+                                            <p><b>Grupo:</b> {{ $asset->group_name }}</p>
+                                            <p><b>Motivo:</b> {{ Str::limit($asset->reason, 50) }}</p>
+                                            <p><b>Usuario:</b> {{ $asset->removed_by_user ?? 'N/A' }}</p>
+                                            <p><b>Fecha:</b> {{ \Carbon\Carbon::parse($asset->removed_at)->format('d/m/Y H:i') }}</p>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <p class="inventory-sede-filter-empty hidden" data-sede-empty>
+                                No hay resultados para esta sede con el filtro actual.
+                            </p>
+                        @endif
+                    </div>
+                </details>
+            @endforeach
+        </div>
+    @elseif($removedAssets->isEmpty())
         <div class="empty-state">
             <i class="fas fa-check-circle fa-3x"></i>
             <p>No hay bienes dados de baja</p>
@@ -45,10 +111,9 @@
     @else
         <div class="bienes-grid">
             @foreach($removedAssets as $asset)
-                <div class="bien-card card-item"
+                <div class="bien-card card-item cursor-pointer"
                     data-search="{{ strtolower($asset->asset_name . ' ' . $asset->reason) }}"
-                    onclick="btnViewRemovedDetails({{ $asset->id }}, '{{ $asset->source }}')"
-                    style="cursor: pointer;">
+                    onclick="btnViewRemovedDetails({{ $asset->id }}, '{{ $asset->source }}')">
 
                     {{-- Imagen --}}
                     <img
@@ -97,6 +162,7 @@
 </div>
 
 {{-- Modal de Filtros --}}
+@if(! $isPortalRemovedCatalog)
 <div id="modalFilterRemoved" class="modal">
     <div class="modal-content flyout-panel">
         <span class="close" onclick="ocultarModal('#modalFilterRemoved')">&times;</span>
@@ -107,6 +173,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Estilos del flyout (solo comportamiento, no botones) --}}
 @once

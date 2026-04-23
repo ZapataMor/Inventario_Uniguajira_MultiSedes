@@ -5,7 +5,7 @@
 
 @section('content')
 @php
-    $groupsBackUrl = auth()->user()?->isSuperAdmin()
+    $groupsBackUrl = request()->boolean('from_portal') || auth()->user()?->isSuperAdmin()
         ? route('inventory.groups', ['portal' => 1])
         : route('inventory.groups');
 @endphp

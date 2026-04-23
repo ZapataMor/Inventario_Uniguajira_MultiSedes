@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $reportsBackUrl = auth()->user()?->isSuperAdmin()
+    $reportsBackUrl = request()->boolean('from_portal') || auth()->user()?->isSuperAdmin()
         ? route('reports.index', ['portal' => 1])
         : route('reports.index');
 @endphp
