@@ -52,16 +52,16 @@
         <div id="control-bar-serial-good" class="control-bar">
             <div class="selected-name">1 seleccionado</div>
             <div class="control-actions">
-                <button class="control-btn" type="button" title="Cambiar inventario" data-action="cambiar-inventario-serial">
+                <button class="control-btn" type="button" title="Cambiar inventario" onclick="event.stopPropagation(); if (typeof btnCambiarInventarioSerial === 'function') btnCambiarInventarioSerial();">
                     <i class="fas fa-exchange-alt"></i>
                 </button>
-                <button class="control-btn" type="button" title="Dar de baja" data-action="dar-baja-serial">
+                <button class="control-btn" type="button" title="Dar de baja" onclick="event.stopPropagation(); if (typeof btnDarDeBajaBienSerial === 'function') btnDarDeBajaBienSerial();">
                     <i class="fas fa-trash"></i>
                 </button>
-                <button class="control-btn" type="button" title="Editar" data-action="editar-serial">
+                <button class="control-btn" type="button" title="Editar" onclick="event.stopPropagation(); if (typeof btnEditarBienSerial === 'function') btnEditarBienSerial();">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="control-btn" type="button" title="Eliminar" data-action="eliminar-serial">
+                <button class="control-btn" type="button" title="Eliminar" onclick="event.stopPropagation(); if (typeof btnEliminarBienSerial === 'function') btnEliminarBienSerial();">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>

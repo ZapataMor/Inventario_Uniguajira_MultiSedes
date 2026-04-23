@@ -81,6 +81,181 @@
     <script src="{{ asset('assets/js/reports/reports.js') }}"></script>
     <script src="{{ asset('assets/js/records/historial.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/removedGoods.js') }}"></script>  {{-- ✅ AGREGADO --}}
+    <script>
+        (() => {
+            if (window.inventoryControlCompatibilityBound) {
+                return;
+            }
+
+            window.inventoryControlCompatibilityBound = true;
+
+            const openQuantityMoveFallback = () => {
+                if (typeof selectedItem === 'undefined' || !selectedItem || selectedItem.type !== 'good') {
+                    showToast({ success: false, message: 'No se ha seleccionado un bien.' });
+                    return;
+                }
+
+                const card = selectedItem.element;
+                const idInventario = document.getElementById('inventory-name').getAttribute('data-id');
+                const assetType = card.dataset.assetType;
+
+                document.getElementById('moverBienId').value = selectedItem.id;
+                document.getElementById('moverInventarioOrigenId').value = idInventario;
+                document.getElementById('moverNombreBien').value = selectedItem.name;
+
+                const cantidadSection = document.getElementById('moverCantidadSection');
+                const cantidadInput = document.getElementById('moverCantidad');
+
+                if (assetType === 'Cantidad') {
+                    cantidadSection.style.display = '';
+                    document.getElementById('moverCantidadDisponible').value = card.dataset.cantidad;
+                    cantidadInput.setAttribute('max', card.dataset.cantidad);
+                    cantidadInput.value = 1;
+                    cantidadInput.required = true;
+                } else {
+                    cantidadSection.style.display = 'none';
+                    cantidadInput.required = false;
+                    cantidadInput.value = '';
+                }
+
+                const selectGrupo = document.getElementById('moverGrupoDestino');
+                const selectInventario = document.getElementById('moverInventarioDestino');
+
+                selectGrupo.value = '';
+                selectGrupo.innerHTML = '<option value="">Seleccionar grupo...</option>';
+                selectInventario.innerHTML = '<option value="">Seleccionar inventario...</option>';
+                selectInventario.disabled = true;
+                selectGrupo.onchange = function () {
+                    const grupoId = this.value;
+                    selectInventario.innerHTML = '<option value="">Seleccionar inventario...</option>';
+                    selectInventario.disabled = true;
+
+                    if (!grupoId) return;
+
+                    fetch('/api/inventories/getByGroupId/' + grupoId, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            const inventarios = Array.isArray(data) ? data : (data.inventories ?? []);
+
+                            inventarios.forEach(inventory => {
+                                if (String(inventory.id) === String(idInventario)) return;
+                                const option = document.createElement('option');
+                                option.value = inventory.id;
+                                option.textContent = inventory.nombre;
+                                selectInventario.appendChild(option);
+                            });
+
+                            selectInventario.disabled = false;
+                        })
+                        .catch(() => showToast({ success: false, message: 'Error al cargar inventarios.' }));
+                };
+
+                fetch('/api/groups/getAll', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        const grupos = Array.isArray(data) ? data : (data.groups ?? []);
+
+                        grupos.forEach(group => {
+                            const option = document.createElement('option');
+                            option.value = group.id;
+                            option.textContent = group.nombre;
+                            selectGrupo.appendChild(option);
+                        });
+                    })
+                    .catch(() => showToast({ success: false, message: 'Error al cargar grupos.' }));
+
+                mostrarModal('#modalCambiarInventarioBien');
+            };
+
+            const actions = {
+                'cambiar-inventario': () => {
+                    if (typeof window.btnCambiarInventario === 'function') {
+                        window.btnCambiarInventario();
+                        return;
+                    }
+
+                    openQuantityMoveFallback();
+                },
+                'dar-baja-cantidad': () => window.btnDarDeBajaBienCantidad?.(),
+                'editar-cantidad': () => window.btnEditarBienCantidad?.(),
+                'eliminar-cantidad': () => window.btnEliminarBienCantidad?.(),
+                'cambiar-inventario-serial': () => window.btnCambiarInventarioSerial?.(),
+                'dar-baja-serial': () => window.btnDarDeBajaBienSerial?.(),
+                'editar-serial': () => window.btnEditarBienSerial?.(),
+                'eliminar-serial': () => window.btnEliminarBienSerial?.(),
+            };
+
+            document.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-action]');
+                const action = button ? actions[button.dataset.action] : null;
+
+                if (!action) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                action();
+            }, true);
+
+            document.addEventListener('submit', (event) => {
+                const form = event.target.closest('#formCambiarInventarioBien');
+
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const submitButton = form.querySelector('button[type="submit"]');
+                const originalText = submitButton ? submitButton.innerHTML : '';
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+                }
+
+                fetch(form.getAttribute('action'), {
+                    method: form.getAttribute('method') || 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    },
+                    body: new FormData(form),
+                })
+                    .then(response => response.json())
+                    .then(response => {
+                        showToast(response);
+
+                        if (!response.success) {
+                            return;
+                        }
+
+                        ocultarModal('#modalCambiarInventarioBien');
+
+                        const inventoryName = document.getElementById('inventory-name');
+                        const groupId = inventoryName.getAttribute('data-group-id');
+                        const inventoryId = inventoryName.getAttribute('data-id');
+
+                        loadContent('/group/' + groupId + '/inventory/' + inventoryId, {
+                            onSuccess: () => initGoodsInventoryFunctions()
+                        });
+                    })
+                    .catch(() => showToast({ success: false, message: 'Error al cambiar el inventario.' }))
+                    .finally(() => {
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                            submitButton.innerHTML = originalText;
+                        }
+                    });
+            }, true);
+        })();
+    </script>
     {{-- <script src="{{ asset('assets/js/onLoaded.js') }}"></script> --}}
     @stack('scripts')
 </body>
