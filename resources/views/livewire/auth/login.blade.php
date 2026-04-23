@@ -1,4 +1,4 @@
-<x-layouts.auth>
+<x-layouts.auth.login>
     <div class="flex flex-col gap-6">
         <x-auth-header :title="__('Iniciar sesión en tu cuenta')" :description="__('Ingresa tu correo electrónico y contraseña para iniciar sesión')" />
 
@@ -50,4 +50,4 @@
 
         <!-- Registro público deshabilitado -->
     </div>
-</x-layouts.auth>
+</x-layouts.auth.login>
