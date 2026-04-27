@@ -1,4 +1,4 @@
-<div class="flex items-center gap-4 mt-3">
+<div class="flex items-center gap-4 mt-3 mb-6">
     <!-- Total registros -->
     <div class="flex flex-col items-center gap-1">
         <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50">
