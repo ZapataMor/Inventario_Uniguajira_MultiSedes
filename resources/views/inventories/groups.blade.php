@@ -40,7 +40,7 @@
         searchName="search"
         searchValue="{{ $groupSearchTerm }}"
         searchForm="groupSearchForm"
-        searchOnInput="clearTimeout(this.form.groupSearchTimer); this.form.groupSearchTimer = setTimeout(() => window.submitGroupSearchAjax ? window.submitGroupSearchAjax(this.form, true) : this.form.requestSubmit(), 450)"
+        searchOnInput="clearTimeout(this.form.groupSearchTimer); this.form.groupSearchTimer = setTimeout(() => window.handleGroupSearchTyping ? window.handleGroupSearchTyping(this.form) : false, 250)"
         modal="#modalCrearGrupo"
         canCreate="{{ $isPortalInventoryCatalog ? 'false' : 'true' }}"
     >
