@@ -111,6 +111,7 @@ Route::prefix('api/goods')->group(function () {
     Route::post('update', [GoodsController::class, 'update'])->name('goods.update');
     Route::delete('delete/{id}', [GoodsController::class, 'destroy'])->name('goods.destroy');
     Route::get('get/json', [GoodsController::class, 'getJson']);
+    Route::get('{id}/locations', [GoodsController::class, 'getLocations']);
 });
 
 

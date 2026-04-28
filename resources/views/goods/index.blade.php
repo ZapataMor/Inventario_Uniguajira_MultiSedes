@@ -126,6 +126,11 @@
                         {{-- Acciones de edición y eliminación visibles solo para administradores --}}
                         @if(Auth::user()->isAdministrator())
                             <div class="actions">
+
+                                <a class="btn-detalles"
+                                    onclick="btnDetallesBien({{ $bien->id }})">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                                 <a class="btn-editar"
                                     onclick="btnEditarBien({{ $bien->id }}, '{{ $bien->name }}')">
                                     <i class="fas fa-edit"></i>
@@ -148,6 +153,9 @@
         <x-modal.goods.good mode="create" />
         <x-modal.goods.good mode="edit" />
     @endif
+
+    {{-- Modal para ver ubicaciones del bien --}}
+    <x-modal.goods.show-locations />
 
     {{-- Inicializa la lógica de los formularios cuando el DOM termina de cargarse --}}
     @once
