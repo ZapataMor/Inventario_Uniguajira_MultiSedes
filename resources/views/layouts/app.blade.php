@@ -362,6 +362,166 @@
             }, true);
         })();
     </script>
+    <script>
+        (() => {
+            if (window.groupSearchAjaxBound) {
+                return;
+            }
+
+            window.groupSearchAjaxBound = true;
+            let activeGroupSearchRequest = null;
+
+            const buildGroupSearchUrl = (form) => {
+                const url = new URL(form.getAttribute('action'), window.location.origin);
+                const params = new URLSearchParams(new FormData(form));
+
+                params.forEach((value, key) => {
+                    if (String(value).trim() === '') {
+                        params.delete(key);
+                    }
+                });
+
+                url.search = params.toString();
+                return `${url.pathname}${url.search}`;
+            };
+
+            const applyLocalGroupFilter = (form) => {
+                const input = form.querySelector('[name="search"]') || document.getElementById('searchGroup');
+                const filter = (input?.value || '').toLowerCase().trim();
+
+                document.querySelectorAll('[data-group-card]').forEach((card) => {
+                    const name = card.querySelector('.name-item');
+                    const text = (name ? name.textContent : '').toLowerCase();
+                    card.style.display = text.includes(filter) ? '' : 'none';
+                });
+
+                const results = document.querySelector('[data-group-search-results]');
+                const listing = document.querySelector('[data-group-listing]');
+
+                if (results) {
+                    results.innerHTML = '';
+                    results.classList.add('hidden');
+                }
+
+                if (listing) {
+                    listing.classList.remove('hidden');
+                }
+
+                document.querySelectorAll('[data-sede-dropdown]').forEach((dropdown) => {
+                    const visibleCards = Array.from(dropdown.querySelectorAll('.card-item'))
+                        .filter((card) => card.style.display !== 'none');
+                    const count = dropdown.querySelector('[data-visible-count]');
+                    const empty = dropdown.querySelector('[data-sede-empty]');
+
+                    if (count) {
+                        count.textContent = String(visibleCards.length);
+                    }
+
+                    if (empty) {
+                        empty.classList.toggle('hidden', visibleCards.length > 0);
+                    }
+
+                    dropdown.open = Boolean(filter && visibleCards.length > 0);
+                });
+            };
+
+            window.handleGroupSearchInput = (form, immediate = false) => {
+                const mode = form.querySelector('[name="search_type"]')?.value || 'groups';
+
+                if (mode === 'groups') {
+                    applyLocalGroupFilter(form);
+                    return false;
+                }
+
+                if (immediate) {
+                    return window.submitGroupSearchAjax(form);
+                }
+
+                window.clearTimeout(form.groupSearchAjaxTimer);
+                form.groupSearchAjaxTimer = window.setTimeout(() => {
+                    window.submitGroupSearchAjax(form);
+                }, 350);
+
+                return false;
+            };
+
+            window.submitGroupSearchAjax = (form, updateHistory = false) => {
+                const mode = form.querySelector('[name="search_type"]')?.value || 'groups';
+                if (mode === 'groups') {
+                    applyLocalGroupFilter(form);
+                    return false;
+                }
+
+                const url = buildGroupSearchUrl(form);
+                const input = form.querySelector('[name="search"]') || document.getElementById('searchGroup');
+                const cursorPosition = input?.selectionStart ?? null;
+                const loader = document.getElementById('loader');
+                const container = document.getElementById('main-content');
+
+                if (!container) {
+                    window.location.assign(url);
+                    return false;
+                }
+
+                if (activeGroupSearchRequest) {
+                    activeGroupSearchRequest.abort();
+                }
+
+                const controller = new AbortController();
+                activeGroupSearchRequest = controller;
+                container.classList.add('loading');
+                if (loader) {
+                    loader.style.display = 'block';
+                }
+
+                (async () => {
+                    try {
+                        const response = await fetch(url, {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            signal: controller.signal,
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('No se pudo buscar.');
+                        }
+
+                        container.innerHTML = await response.text();
+
+                        const nextInput = document.getElementById('searchGroup');
+                        if (nextInput) {
+                            nextInput.focus();
+                            const nextPosition = cursorPosition ?? nextInput.value.length;
+                            nextInput.setSelectionRange(nextPosition, nextPosition);
+                        }
+
+                        if (updateHistory) {
+                            window.history.replaceState({ url }, '', url);
+                        }
+
+                        if (typeof window.initGroupFunctions === 'function') {
+                            window.initGroupFunctions();
+                        }
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            console.error(error);
+                            window.location.assign(url);
+                        }
+                    } finally {
+                        if (activeGroupSearchRequest === controller) {
+                            activeGroupSearchRequest = null;
+                        }
+
+                        container.classList.remove('loading');
+                        if (loader) {
+                            loader.style.display = 'none';
+                        }
+                    }
+                })();
+
+                return false;
+            };
+        })();
+    </script>
     {{-- <script src="{{ asset('assets/js/onLoaded.js') }}"></script> --}}
     @stack('scripts')
 </body>
