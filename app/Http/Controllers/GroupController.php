@@ -67,6 +67,13 @@ class GroupController extends Controller
     {
         $isPortalInventoryCatalog = ! tenant() && $request->user()?->isGlobalAdmin();
         $groupsBySede = collect();
+        $groupSearchType = $request->input('search_type', 'groups');
+        $groupSearchTerm = trim((string) $request->input('search', ''));
+        $groupSearchResults = collect();
+
+        if (! in_array($groupSearchType, ['groups', 'inventories', 'goods'], true)) {
+            $groupSearchType = 'groups';
+        }
 
         if ($isPortalInventoryCatalog) {
             $groupsBySede = $this->getGroupsBySedeForPortal();
@@ -75,12 +82,32 @@ class GroupController extends Controller
             $groups = Group::withCount('inventories')->orderBy('name')->get();
         }
 
+        if ($groupSearchTerm !== '' && $groupSearchType !== 'groups') {
+            $groupSearchResults = $isPortalInventoryCatalog
+                ? $this->searchInventoryPortalCatalog($groupSearchType, $groupSearchTerm, 30)
+                : $this->searchInventoryTenantCatalog($groupSearchType, $groupSearchTerm, 30);
+        }
+
         if ($request->ajax()) {
-            return view('inventories.groups', compact('groups', 'groupsBySede', 'isPortalInventoryCatalog'))
+            return view('inventories.groups', compact(
+                'groups',
+                'groupsBySede',
+                'isPortalInventoryCatalog',
+                'groupSearchType',
+                'groupSearchTerm',
+                'groupSearchResults'
+            ))
                 ->renderSections()['content'];
         }
 
-        return view('inventories.groups', compact('groups', 'groupsBySede', 'isPortalInventoryCatalog'));
+        return view('inventories.groups', compact(
+            'groups',
+            'groupsBySede',
+            'isPortalInventoryCatalog',
+            'groupSearchType',
+            'groupSearchTerm',
+            'groupSearchResults'
+        ));
     }
 
     /**

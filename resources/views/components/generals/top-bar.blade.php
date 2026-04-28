@@ -5,6 +5,10 @@
 // Define el identificador que tendrá este campo de búsqueda
     'id' => null,
     'placeholder' => 'Buscar...',
+    'searchName' => null,
+    'searchValue' => '',
+    'searchForm' => null,
+    'searchOnInput' => null,
 
 // Define la función JS que se iniciará al hacer click en el botón "Crear"
     'onclick' => null,
@@ -24,6 +28,10 @@
         <input
             id="{{ $id }}"
             type="text"
+            @if($searchName) name="{{ $searchName }}" @endif
+            @if($searchForm) form="{{ $searchForm }}" @endif
+            @if($searchOnInput) oninput="{{ $searchOnInput }}" @endif
+            value="{{ $searchValue }}"
             placeholder="{{ $placeholder }}"
             class="search-bar searchInput"
         />

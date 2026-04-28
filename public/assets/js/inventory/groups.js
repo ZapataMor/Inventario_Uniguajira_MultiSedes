@@ -67,6 +67,7 @@ async function refrescarVistaGrupos() {
 
 function initGroupSearch() {
     const root = document.querySelector('[data-group-search-root]');
+    const searchForm = document.getElementById('groupSearchForm');
     const searchInput = document.getElementById('searchGroup');
     const modeSelect = document.getElementById('groupSearchMode');
     const resultsContainer = document.querySelector('[data-group-search-results]');
@@ -91,9 +92,51 @@ function initGroupSearch() {
         inventories: 'No se encontraron inventarios.',
         goods: 'No se encontraron bienes.',
     };
+    const validModes = ['groups', 'inventories', 'goods'];
 
     let debounceTimer = null;
     let currentRequest = null;
+
+    const buildSearchStateUrl = () => {
+        const url = new URL(searchForm?.getAttribute('action') || '/groups', window.location.origin);
+        const params = new URLSearchParams();
+        const mode = validModes.includes(modeSelect.value) ? modeSelect.value : 'groups';
+        const term = searchInput.value.trim();
+
+        if (portalCatalog) {
+            params.set('portal', '1');
+        }
+
+        if (mode !== 'groups' || term !== '') {
+            params.set('search_type', mode);
+        }
+
+        if (term !== '') {
+            params.set('search', term);
+        }
+
+        url.search = params.toString();
+        return `${url.pathname}${url.search}`;
+    };
+
+    const syncSearchRoute = () => {
+        const url = buildSearchStateUrl();
+        window.history.replaceState({ url }, '', url);
+        return url;
+    };
+
+    const hydrateSearchFromRoute = () => {
+        const params = new URLSearchParams(window.location.search);
+        const mode = params.get('search_type');
+
+        if (validModes.includes(mode)) {
+            modeSelect.value = mode;
+        }
+
+        if (params.has('search')) {
+            searchInput.value = params.get('search') || '';
+        }
+    };
 
     const updatePortalDropdowns = () => {
         if (typeof searchInput.__portalGroupDropdownUpdater === 'function') {
@@ -128,6 +171,7 @@ function initGroupSearch() {
     };
 
     const applyLocalGroupSearch = () => {
+        syncSearchRoute();
         const filter = searchInput.value.toLowerCase().trim();
 
         document.querySelectorAll('[data-group-card]').forEach((card) => {
@@ -204,6 +248,8 @@ function initGroupSearch() {
         const mode = modeSelect.value;
         const term = searchInput.value.trim();
 
+        syncSearchRoute();
+
         if (mode === 'groups') {
             applyLocalGroupSearch();
             return;
@@ -262,6 +308,7 @@ function initGroupSearch() {
     };
 
     const scheduleRemoteSearch = () => {
+        syncSearchRoute();
         window.clearTimeout(debounceTimer);
         if (currentRequest) {
             currentRequest.abort();
@@ -273,6 +320,7 @@ function initGroupSearch() {
     const applySearchMode = () => {
         const mode = modeSelect.value;
         searchInput.placeholder = placeholders[mode] ?? placeholders.groups;
+        syncSearchRoute();
 
         if (mode === 'groups') {
             clearPendingRemoteSearch();
@@ -284,6 +332,8 @@ function initGroupSearch() {
     };
 
     const handleSearchInput = () => {
+        syncSearchRoute();
+
         if (modeSelect.value === 'groups') {
             clearPendingRemoteSearch();
             applyLocalGroupSearch();
@@ -302,6 +352,7 @@ function initGroupSearch() {
         handleInput: handleSearchInput,
     };
 
+    hydrateSearchFromRoute();
     applySearchMode();
 
     return searchInput.__groupSearchController;
