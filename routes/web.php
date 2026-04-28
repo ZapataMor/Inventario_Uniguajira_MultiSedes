@@ -135,6 +135,7 @@ Route::get('/groups', [GroupController::class, 'index'])->name('inventory.groups
 
 Route::prefix('api/groups')->group(function () {
     Route::get('getAll', [GroupController::class, 'getAll']);
+    Route::get('search', [GroupController::class, 'search'])->name('groups.search');
     Route::post('create', [GroupController::class, 'store'])->name('groups.create');
     Route::post('rename', [GroupController::class, 'update'])->name('groups.rename');
     Route::delete('delete/{id}', [GroupController::class, 'destroy'])->name('groups.delete');

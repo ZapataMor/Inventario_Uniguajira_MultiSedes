@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Helpers\ActivityLogger;
 use App\Models\Central\Tenant;
 use App\Models\Group;
+use App\Models\Inventory;
 use App\Support\Tenancy\TenantConnectionManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class GroupController extends Controller
 {
@@ -29,6 +31,31 @@ class GroupController extends Controller
             ]);
 
         return response()->json($groups);
+    }
+
+    /**
+     * Busca grupos, inventarios o bienes desde la vista principal de grupos.
+     */
+    public function search(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:groups,inventories,goods',
+            'q' => 'nullable|string|max:120',
+        ]);
+
+        $term = trim((string) ($validated['q'] ?? ''));
+        if ($term === '') {
+            return response()->json(['results' => []]);
+        }
+
+        $limit = 20;
+        $results = (! tenant() && $request->user()?->isGlobalAdmin())
+            ? $this->searchInventoryPortalCatalog($validated['type'], $term, $limit)
+            : $this->searchInventoryTenantCatalog($validated['type'], $term, $limit);
+
+        return response()->json([
+            'results' => $results->values(),
+        ]);
     }
 
     /**
@@ -223,6 +250,139 @@ class GroupController extends Controller
                 ];
             });
         });
+    }
+
+    private function searchInventoryPortalCatalog(string $type, string $term, int $limit): Collection
+    {
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with('branding')
+            ->orderBy('id')
+            ->get();
+
+        $tenantConnections = app(TenantConnectionManager::class);
+        $results = collect();
+
+        foreach ($tenants as $tenant) {
+            if ($results->count() >= $limit) {
+                break;
+            }
+
+            $sedeName = $this->resolveSedeName($tenant);
+            $tenantResults = $tenantConnections->runForTenant(
+                $tenant,
+                fn () => $this->searchInventoryTenantCatalog($type, $term, $limit)
+            );
+
+            $results = $results->concat(
+                $tenantResults->map(function (array $result) use ($tenant, $sedeName) {
+                    $redirect = $result['type'] === 'good'
+                        ? "/group/{$result['group_id']}/inventory/{$result['inventory_id']}"
+                        : "/group/{$result['group_id']}";
+
+                    return array_merge($result, [
+                        'sede_name' => $sedeName,
+                        'tenant_slug' => $tenant->slug,
+                        'url' => route('portal.switch', [
+                            'slug' => $tenant->slug,
+                            'redirect' => $redirect,
+                            'inplace' => 1,
+                        ]),
+                        'update_history' => false,
+                    ]);
+                })
+            );
+        }
+
+        return $results->take($limit)->values();
+    }
+
+    private function searchInventoryTenantCatalog(string $type, string $term, int $limit): Collection
+    {
+        $escapedTerm = $this->escapeLike($term);
+
+        return match ($type) {
+            'groups' => Group::query()
+                ->withCount('inventories')
+                ->where('name', 'like', "{$escapedTerm}%")
+                ->orderBy('name')
+                ->limit($limit)
+                ->get()
+                ->map(static fn (Group $group): array => [
+                    'type' => 'group',
+                    'title' => $group->name,
+                    'group_id' => $group->id,
+                    'group_name' => $group->name,
+                    'inventory_id' => null,
+                    'inventory_name' => null,
+                    'asset_id' => null,
+                    'asset_type' => null,
+                    'inventories_count' => $group->inventories_count,
+                    'url' => route('inventory.inventories', $group->id),
+                    'update_history' => true,
+                ]),
+
+            'inventories' => Inventory::query()
+                ->with('group:id,name')
+                ->select('id', 'name', 'group_id')
+                ->where('name', 'like', "{$escapedTerm}%")
+                ->orderBy('name')
+                ->limit($limit)
+                ->get()
+                ->map(static fn (Inventory $inventory): array => [
+                    'type' => 'inventory',
+                    'title' => $inventory->name,
+                    'group_id' => $inventory->group_id,
+                    'group_name' => $inventory->group?->name ?? 'Sin grupo',
+                    'inventory_id' => $inventory->id,
+                    'inventory_name' => $inventory->name,
+                    'asset_id' => null,
+                    'asset_type' => null,
+                    'url' => route('inventory.inventories', $inventory->group_id),
+                    'update_history' => true,
+                ]),
+
+            'goods' => DB::connection('tenant')
+                ->table('asset_inventory as ai')
+                ->join('assets as a', 'a.id', '=', 'ai.asset_id')
+                ->join('inventories as i', 'i.id', '=', 'ai.inventory_id')
+                ->join('groups as g', 'g.id', '=', 'i.group_id')
+                ->where('a.name', 'like', "%{$escapedTerm}%")
+                ->select([
+                    'a.id as asset_id',
+                    'a.name as asset_name',
+                    'a.type as asset_type',
+                    'i.id as inventory_id',
+                    'i.name as inventory_name',
+                    'g.id as group_id',
+                    'g.name as group_name',
+                ])
+                ->orderBy('a.name')
+                ->orderBy('g.name')
+                ->orderBy('i.name')
+                ->limit($limit)
+                ->get()
+                ->map(static fn (object $row): array => [
+                    'type' => 'good',
+                    'title' => $row->asset_name,
+                    'group_id' => $row->group_id,
+                    'group_name' => $row->group_name,
+                    'inventory_id' => $row->inventory_id,
+                    'inventory_name' => $row->inventory_name,
+                    'asset_id' => $row->asset_id,
+                    'asset_type' => $row->asset_type,
+                    'url' => route('inventory.goods', [
+                        'groupId' => $row->group_id,
+                        'inventoryId' => $row->inventory_id,
+                    ]),
+                    'update_history' => true,
+                ]),
+        };
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
     private function resolveSedeName(Tenant $tenant): string

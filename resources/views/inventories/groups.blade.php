@@ -7,7 +7,11 @@
     $isPortalInventoryCatalog = $isPortalInventoryCatalog ?? false;
     $groupsBySede = $groupsBySede ?? collect();
 @endphp
-<div class="content">
+<div
+    class="content"
+    data-group-search-root
+    data-portal-catalog="{{ $isPortalInventoryCatalog ? '1' : '0' }}"
+>
 
     <div class="inventory-header">
         <h1>Inventario</h1>
@@ -21,6 +25,17 @@
         modal="#modalCrearGrupo"
         canCreate="{{ $isPortalInventoryCatalog ? 'false' : 'true' }}"
     >
+        <label for="groupSearchMode" class="sr-only">Filtrar por</label>
+        <select
+            id="groupSearchMode"
+            class="h-11 rounded-lg border border-slate-200 bg-white px-3 pr-8 text-sm font-semibold text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+            aria-label="Filtrar busqueda por"
+        >
+            <option value="groups">Grupos</option>
+            <option value="inventories">Inventarios</option>
+            <option value="goods">Bienes</option>
+        </select>
+
         @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
             <button
                 type="button"
@@ -31,6 +46,13 @@
             </button>
         @endif
     </x-generals.top-bar>
+
+    <div
+        id="groupSearchResults"
+        class="mb-5 hidden"
+        aria-live="polite"
+        data-group-search-results
+    ></div>
 
     {{-- Barra de control para selección múltiple --}}
     @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
@@ -48,6 +70,7 @@
     </div>
     @endif
 
+    <div data-group-listing>
     @if($groups->isEmpty())
         <div class="empty-state">
             <i class="fas fa-layer-group fa-3x"></i>
@@ -70,7 +93,7 @@
                         @else
                             <div class="card-grid inventory-sede-grid">
                                 @foreach ($sedeData['groups'] as $group)
-                                    <div class="card card-item">
+                                    <div class="card card-item" data-group-card>
                                         <div class="card-left">
                                             <i class="fas fa-layer-group icon-folder"></i>
                                         </div>
@@ -116,6 +139,7 @@
             @foreach ($groups as $group)
                 <div
                     class="card card-item"
+                    data-group-card
                     @if(Auth::user()->isAdministrator())
                         data-id="{{ $group->id }}"
                         data-name="{{ $group->name }}"
@@ -156,6 +180,7 @@
             @endforeach
         </div>
     @endif
+    </div>
 
     {{-- MODALES --}}
     @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)

@@ -24,8 +24,8 @@ function initGroupFunctions() {
         });
     }
 
-    // Inicializar búsqueda de grupos
-    iniciarBusqueda('searchGroup');
+    // Inicializar busqueda de grupos, inventarios y bienes
+    initGroupSearch();
     initPortalGroupDropdowns();
 
     console.log('Funciones de grupos inicializadas');
@@ -65,12 +65,326 @@ async function refrescarVistaGrupos() {
     });
 }
 
+function initGroupSearch() {
+    const root = document.querySelector('[data-group-search-root]');
+    const searchInput = document.getElementById('searchGroup');
+    const modeSelect = document.getElementById('groupSearchMode');
+    const resultsContainer = document.querySelector('[data-group-search-results]');
+    const groupListing = document.querySelector('[data-group-listing]');
+
+    if (!searchInput || !modeSelect || !resultsContainer || !groupListing) {
+        return;
+    }
+
+    if (searchInput.__groupSearchController) {
+        searchInput.__groupSearchController.apply();
+        return;
+    }
+
+    const portalCatalog = root?.dataset.portalCatalog === '1';
+    const placeholders = {
+        groups: 'Buscar grupo...',
+        inventories: 'Buscar inventario...',
+        goods: 'Buscar bien...',
+    };
+    const emptyMessages = {
+        inventories: 'No se encontraron inventarios.',
+        goods: 'No se encontraron bienes.',
+    };
+
+    let debounceTimer = null;
+    let currentRequest = null;
+
+    const updatePortalDropdowns = () => {
+        if (typeof searchInput.__portalGroupDropdownUpdater === 'function') {
+            searchInput.__portalGroupDropdownUpdater();
+        }
+    };
+
+    const clearPendingRemoteSearch = () => {
+        window.clearTimeout(debounceTimer);
+        debounceTimer = null;
+
+        if (currentRequest) {
+            currentRequest.abort();
+            currentRequest = null;
+        }
+    };
+
+    const setListingVisible = (visible) => {
+        groupListing.classList.toggle('hidden', !visible);
+    };
+
+    const clearResults = () => {
+        resultsContainer.innerHTML = '';
+        resultsContainer.classList.add('hidden');
+    };
+
+    const resetGroupCards = () => {
+        document.querySelectorAll('[data-group-card]').forEach((card) => {
+            card.style.display = '';
+        });
+        updatePortalDropdowns();
+    };
+
+    const applyLocalGroupSearch = () => {
+        const filter = searchInput.value.toLowerCase().trim();
+
+        document.querySelectorAll('[data-group-card]').forEach((card) => {
+            const text = card.querySelector('.name-item')?.textContent?.toLowerCase() ?? '';
+            card.style.display = text.includes(filter) ? '' : 'none';
+        });
+
+        clearResults();
+        setListingVisible(true);
+        updatePortalDropdowns();
+    };
+
+    const renderMessage = (message, iconClass = 'fa-circle-info') => {
+        resultsContainer.classList.remove('hidden');
+        resultsContainer.innerHTML = `
+            <div class="rounded-lg border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <i class="fas ${iconClass} text-emerald-600"></i>
+                    <span>${escapeHtml(message)}</span>
+                </div>
+            </div>
+        `;
+    };
+
+    const renderLoading = () => {
+        renderMessage('Buscando...', 'fa-spinner fa-spin');
+    };
+
+    const renderError = () => {
+        renderMessage('No se pudo completar la busqueda.', 'fa-triangle-exclamation');
+    };
+
+    const renderResults = (results, mode) => {
+        resultsContainer.classList.remove('hidden');
+
+        if (!results.length) {
+            renderMessage(emptyMessages[mode] ?? 'No se encontraron resultados.');
+            return;
+        }
+
+        resultsContainer.innerHTML = `
+            <div class="grid gap-3">
+                ${results.map(renderResultCard).join('')}
+            </div>
+        `;
+
+        resultsContainer.querySelectorAll('[data-go-url]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const url = button.dataset.goUrl;
+                const resultType = button.dataset.resultType;
+                const updateHistory = button.dataset.updateHistory !== 'false';
+                const initializer = resultType === 'good'
+                    ? 'initGoodsInventoryFunctions'
+                    : 'initInventoryFunctions';
+
+                if (typeof loadContent === 'function') {
+                    loadContent(url, {
+                        updateHistory,
+                        onSuccess: () => {
+                            if (typeof window[initializer] === 'function') {
+                                window[initializer]();
+                            }
+                        },
+                    });
+                    return;
+                }
+
+                window.location.assign(url);
+            });
+        });
+    };
+
+    const runRemoteSearch = async () => {
+        const mode = modeSelect.value;
+        const term = searchInput.value.trim();
+
+        if (mode === 'groups') {
+            applyLocalGroupSearch();
+            return;
+        }
+
+        clearPendingRemoteSearch();
+
+        if (term === '') {
+            clearResults();
+            resetGroupCards();
+            setListingVisible(true);
+            return;
+        }
+
+        setListingVisible(false);
+        renderLoading();
+
+        const request = new AbortController();
+        currentRequest = request;
+        const params = new URLSearchParams({
+            type: mode,
+            q: term,
+        });
+
+        if (portalCatalog) {
+            params.set('portal', '1');
+        }
+
+        try {
+            const response = await fetch(`/api/groups/search?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                signal: request.signal,
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al buscar');
+            }
+
+            const data = await response.json();
+            renderResults(Array.isArray(data.results) ? data.results : [], mode);
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            console.error(error);
+            renderError();
+        } finally {
+            if (currentRequest === request) {
+                currentRequest = null;
+            }
+        }
+    };
+
+    const scheduleRemoteSearch = () => {
+        window.clearTimeout(debounceTimer);
+        if (currentRequest) {
+            currentRequest.abort();
+            currentRequest = null;
+        }
+        debounceTimer = window.setTimeout(runRemoteSearch, 250);
+    };
+
+    const applySearchMode = () => {
+        const mode = modeSelect.value;
+        searchInput.placeholder = placeholders[mode] ?? placeholders.groups;
+
+        if (mode === 'groups') {
+            clearPendingRemoteSearch();
+            applyLocalGroupSearch();
+            return;
+        }
+
+        scheduleRemoteSearch();
+    };
+
+    const handleSearchInput = () => {
+        if (modeSelect.value === 'groups') {
+            clearPendingRemoteSearch();
+            applyLocalGroupSearch();
+            return;
+        }
+
+        scheduleRemoteSearch();
+    };
+
+    searchInput.addEventListener('input', handleSearchInput);
+    searchInput.addEventListener('search', handleSearchInput);
+    modeSelect.addEventListener('change', applySearchMode);
+
+    searchInput.__groupSearchController = {
+        apply: applySearchMode,
+    };
+
+    applySearchMode();
+}
+
+function renderResultCard(result) {
+    const resultType = result.type || 'inventory';
+    const iconClass = {
+        group: 'fa-layer-group',
+        inventory: 'fa-folder',
+        good: 'fa-box',
+    }[resultType] ?? 'fa-search';
+    const badge = {
+        group: 'Grupo',
+        inventory: 'Inventario',
+        good: 'Bien',
+    }[resultType] ?? 'Resultado';
+    const metaParts = buildResultMeta(result);
+
+    return `
+        <article class="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex min-w-0 items-start gap-3">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="break-words text-base font-semibold text-slate-800">${escapeHtml(result.title)}</h3>
+                        <span class="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">${badge}</span>
+                    </div>
+                    <p class="mt-1 text-sm text-slate-600">${metaParts.join(' &middot; ')}</p>
+                </div>
+            </div>
+            <button
+                type="button"
+                class="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                data-go-url="${escapeHtml(result.url)}"
+                data-result-type="${escapeHtml(resultType)}"
+                data-update-history="${result.update_history === false ? 'false' : 'true'}"
+            >
+                <i class="fas fa-arrow-right text-xs"></i>
+                <span>Ir</span>
+            </button>
+        </article>
+    `;
+}
+
+function buildResultMeta(result) {
+    const meta = [];
+
+    if (result.type === 'good') {
+        meta.push(`Inventario: ${escapeHtml(result.inventory_name)}`);
+        meta.push(`Grupo: ${escapeHtml(result.group_name)}`);
+    } else if (result.type === 'inventory') {
+        meta.push(`Grupo: ${escapeHtml(result.group_name)}`);
+    } else if (result.type === 'group') {
+        const count = Number(result.inventories_count ?? 0);
+        meta.push(`${count} inventario${count === 1 ? '' : 's'}`);
+    }
+
+    if (result.sede_name) {
+        meta.push(`Sede: ${escapeHtml(result.sede_name)}`);
+    }
+
+    if (result.asset_type) {
+        meta.push(`Tipo: ${escapeHtml(result.asset_type)}`);
+    }
+
+    return meta;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function initPortalGroupDropdowns() {
     const dropdowns = document.querySelectorAll('[data-sede-dropdown]');
     const searchInput = document.getElementById('searchGroup');
 
     if (!dropdowns.length || !searchInput) {
-        return;
+        return () => {};
     }
 
     const controllers = Array.from(dropdowns).map((dropdown) => ({
@@ -103,10 +417,18 @@ function initPortalGroupDropdowns() {
         });
     };
 
-    ['keyup', 'input', 'search'].forEach((eventName) => {
-        searchInput.addEventListener(eventName, updateDropdownState);
-    });
+    searchInput.__portalGroupDropdownUpdater = updateDropdownState;
+
+    if (searchInput.dataset.portalGroupDropdownsBound !== '1') {
+        ['input', 'search'].forEach((eventName) => {
+            searchInput.addEventListener(eventName, updateDropdownState);
+        });
+        searchInput.dataset.portalGroupDropdownsBound = '1';
+    }
+
     updateDropdownState();
+
+    return updateDropdownState;
 }
 
 function createSedeDropdownController(dropdown, bodySelector) {

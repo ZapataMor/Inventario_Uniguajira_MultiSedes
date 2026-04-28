@@ -71,7 +71,7 @@
     <script src="{{ asset('assets/js/user.js') }}"></script>
     <script src="{{ asset('assets/js/profile.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/groups.js') }}"></script>
+    <script src="{{ asset('assets/js/inventory/groups.js') }}?v={{ $assetVersion('assets/js/inventory/groups.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}?v={{ $assetVersion('assets/js/inventory/goodsInventory.js') }}"></script>
     @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=6"></script>
