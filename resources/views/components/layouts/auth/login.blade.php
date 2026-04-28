@@ -33,20 +33,18 @@
 
             <div class="flex h-full items-center px-6 py-8 sm:px-10 lg:px-0">
                 <div class="mx-auto flex w-full max-w-[640px] flex-col gap-6">
-                    <div class="relative isolate w-full max-w-[300px] overflow-hidden rounded-3xl p-3 text-white">
+                    <div class="relative isolate w-full max-w-full rounded-3xl p-3 text-white sm:max-w-[560px]">
                         <div class="absolute inset-0 z-0 rounded-3xl bg-white/50 backdrop-blur-sm"></div>
-                        <div class="relative z-10 mx-auto w-fit space-y-2 px-4 py-4">
-                            <div class="absolute inset-[-10px] z-0 bg-black/60 [animation:float_12s_ease-in-out_infinite]"></div>
-
-                            <h1 class="relative z-10 flex items-center gap-4 text-3xl font-bold leading-tight sm:text-4xl">
+                        <div class="relative z-10 mx-auto w-full space-y-2 px-4 py-4">
+                            <h1 class="relative z-10 flex flex-col items-center gap-4 text-center text-3xl font-bold leading-tight sm:flex-row sm:text-left sm:text-4xl lg:text-5xl">
                                 <x-app-logo-icon />
-                                <span>
+                                <span class="min-w-0">
                                     Bienvenido a <br>
-                                    <span class="inline-block whitespace-nowrap text-[#ad3728] drop-shadow-lg">
+                                    <span class="inline-block text-[#ad3728] drop-shadow-lg">
                                         {{ $appName }}
                                     </span>
                                     @if($sedeName)
-                                        <br><span class="text-2xl font-semibold text-white/90">{{ $sedeName }}</span>
+                                        <br><span class="text-2xl font-semibold text-white/90 sm:text-3xl">{{ $sedeName }}</span>
                                     @endif
                                 </span>
                             </h1>
