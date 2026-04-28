@@ -78,7 +78,6 @@ function initGroupSearch() {
     }
 
     if (searchInput.__groupSearchController) {
-        searchInput.__groupSearchController.apply();
         return searchInput.__groupSearchController;
     }
 
@@ -171,7 +170,6 @@ function initGroupSearch() {
     };
 
     const applyLocalGroupSearch = () => {
-        syncSearchRoute();
         const filter = searchInput.value.toLowerCase().trim();
 
         document.querySelectorAll('[data-group-card]').forEach((card) => {
@@ -248,8 +246,6 @@ function initGroupSearch() {
         const mode = modeSelect.value;
         const term = searchInput.value.trim();
 
-        syncSearchRoute();
-
         if (mode === 'groups') {
             applyLocalGroupSearch();
             return;
@@ -308,7 +304,6 @@ function initGroupSearch() {
     };
 
     const scheduleRemoteSearch = () => {
-        syncSearchRoute();
         window.clearTimeout(debounceTimer);
         if (currentRequest) {
             currentRequest.abort();
@@ -332,8 +327,6 @@ function initGroupSearch() {
     };
 
     const handleSearchInput = () => {
-        syncSearchRoute();
-
         if (modeSelect.value === 'groups') {
             clearPendingRemoteSearch();
             applyLocalGroupSearch();
@@ -636,6 +629,7 @@ window.initGroupSearch = initGroupSearch;
             return;
         }
 
+        event.__groupSearchHandled = true;
         const controller = bootGroupSearchModule();
         controller?.handleInput?.();
     }, true);
