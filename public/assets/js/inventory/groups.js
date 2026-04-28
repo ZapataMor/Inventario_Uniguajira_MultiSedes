@@ -25,8 +25,8 @@ function initGroupFunctions() {
     }
 
     // Inicializar busqueda de grupos, inventarios y bienes
-    initGroupSearch();
     initPortalGroupDropdowns();
+    initGroupSearch();
 
     console.log('Funciones de grupos inicializadas');
 }
@@ -78,7 +78,7 @@ function initGroupSearch() {
 
     if (searchInput.__groupSearchController) {
         searchInput.__groupSearchController.apply();
-        return;
+        return searchInput.__groupSearchController;
     }
 
     const portalCatalog = root?.dataset.portalCatalog === '1';
@@ -299,9 +299,12 @@ function initGroupSearch() {
 
     searchInput.__groupSearchController = {
         apply: applySearchMode,
+        handleInput: handleSearchInput,
     };
 
     applySearchMode();
+
+    return searchInput.__groupSearchController;
 }
 
 function renderResultCard(result) {
@@ -547,3 +550,59 @@ function createSedeDropdownController(dropdown, bodySelector) {
     dropdown.__sedeAccordionController = controller;
     return controller;
 }
+
+function bootGroupSearchModule() {
+    if (!document.querySelector('[data-group-search-root]')) {
+        return null;
+    }
+
+    initPortalGroupDropdowns();
+    return initGroupSearch();
+}
+
+window.initGroupFunctions = initGroupFunctions;
+window.initGroupSearch = initGroupSearch;
+
+(() => {
+    if (window.__groupSearchAutoBootInstalled) {
+        return;
+    }
+
+    window.__groupSearchAutoBootInstalled = true;
+
+    const boot = () => {
+        bootGroupSearchModule();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+    } else {
+        boot();
+    }
+
+    document.addEventListener('input', (event) => {
+        if (event.target?.id !== 'searchGroup') {
+            return;
+        }
+
+        const controller = bootGroupSearchModule();
+        controller?.handleInput?.();
+    }, true);
+
+    document.addEventListener('change', (event) => {
+        if (event.target?.id !== 'groupSearchMode') {
+            return;
+        }
+
+        const controller = bootGroupSearchModule();
+        controller?.apply?.();
+    }, true);
+
+    const content = document.getElementById('main-content');
+    if (content && typeof MutationObserver === 'function') {
+        const observer = new MutationObserver(() => {
+            boot();
+        });
+        observer.observe(content, { childList: true, subtree: true });
+    }
+})();
