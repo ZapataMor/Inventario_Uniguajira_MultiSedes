@@ -185,6 +185,8 @@ Route::prefix('api/goods-inventory')->group(function () {
     Route::post('/remove-good-serial', [GoodsInventoryController::class, 'removeGoodSerial']);
     Route::post('/move-good', [GoodsInventoryController::class, 'moveGood'])->name('goods-inventory.move-good');
     Route::post('/move-serial', [GoodsInventoryController::class, 'moveSerial'])->name('goods-inventory.move-serial');
+    Route::post('/batch-move-goods', [GoodsInventoryController::class, 'batchMoveGoods'])->name('goods-inventory.batch-move-goods');
+    Route::get('/equipments/{inventoryId}/{assetId}', [GoodsInventoryController::class, 'getEquipmentsByAssetInventory'])->name('goods-inventory.equipments');
     Route::post('/batchCreate/{inventoryId}', [GoodsInventoryController::class, 'batchCreateFromExcelOptimized'])->name('goods-inventory.batchCreate');
     Route::get('/download-template', [GoodsInventoryController::class, 'downloadInventoryTemplate'])->name('goods-inventory.download-template');
 });

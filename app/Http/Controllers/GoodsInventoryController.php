@@ -806,6 +806,212 @@ class GoodsInventoryController extends Controller
 
 
     /**
+     * Devuelve los equipos seriales de un bien dentro de un inventario
+     * GET /api/goods-inventory/equipments/{inventoryId}/{assetId}
+     */
+    public function getEquipmentsByAssetInventory($inventoryId, $assetId)
+    {
+        $relation = DB::table('asset_inventory')
+            ->where('inventory_id', $inventoryId)
+            ->where('asset_id', $assetId)
+            ->first();
+
+        if (! $relation) {
+            return response()->json([]);
+        }
+
+        $equipments = DB::table('asset_equipments')
+            ->where('asset_inventory_id', $relation->id)
+            ->get(['id', 'serial', 'brand', 'model', 'status']);
+
+        return response()->json($equipments);
+    }
+
+
+    /**
+     * Mover múltiples bienes de un inventario a otro en lote
+     * POST /api/goods-inventory/batch-move-goods
+     */
+    public function batchMoveGoods(Request $request)
+    {
+        abort_if(! auth()->user()?->isAdministrator(), 403);
+
+        $validated = $request->validate([
+            'sourceInventarioId'               => 'required|integer|exists:inventories,id',
+            'bienes'                           => 'required|array|min:1',
+            'bienes.*.id'                      => 'required|integer|exists:assets,id',
+            'bienes.*.type'                    => 'required|in:Cantidad,Serial',
+            'bienes.*.cantidad'                => 'nullable|integer|min:1',
+            'bienes.*.destinoInventarioId'     => 'required|integer|exists:inventories,id',
+            'bienes.*.equipmentIds'            => 'nullable|array',
+            'bienes.*.equipmentIds.*'          => 'integer|exists:asset_equipments,id',
+        ]);
+
+        $sourceId = (int) $validated['sourceInventarioId'];
+        $moved    = [];
+        $errors   = [];
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($validated['bienes'] as $bienData) {
+                $assetId = $bienData['id'];
+                $destId  = (int) $bienData['destinoInventarioId'];
+                $asset   = DB::table('assets')->where('id', $assetId)->first();
+
+                if (! $asset) {
+                    $errors[] = "Bien ID {$assetId} no encontrado.";
+                    continue;
+                }
+
+                if ($sourceId === $destId) {
+                    $errors[] = "'{$asset->name}': el destino no puede ser el mismo inventario de origen.";
+                    continue;
+                }
+
+                if ($asset->type === 'Cantidad') {
+                    $cantidad = $bienData['cantidad'] ?? null;
+
+                    if (! $cantidad) {
+                        $errors[] = "'{$asset->name}': debe indicar cantidad.";
+                        continue;
+                    }
+
+                    $sourceRelation = DB::table('asset_inventory')
+                        ->where('asset_id', $assetId)
+                        ->where('inventory_id', $sourceId)
+                        ->first();
+
+                    if (! $sourceRelation) {
+                        $errors[] = "'{$asset->name}' no existe en el inventario origen.";
+                        continue;
+                    }
+
+                    $currentQty = DB::table('asset_quantities')
+                        ->where('asset_inventory_id', $sourceRelation->id)
+                        ->value('quantity');
+
+                    if ($currentQty === null || $cantidad > $currentQty) {
+                        $errors[] = "'{$asset->name}': cantidad insuficiente (disponible: {$currentQty}).";
+                        continue;
+                    }
+
+                    $this->service->addQuantity($destId, $assetId, $cantidad);
+
+                    $newQty = $currentQty - $cantidad;
+                    if ($newQty > 0) {
+                        DB::table('asset_quantities')
+                            ->where('asset_inventory_id', $sourceRelation->id)
+                            ->update(['quantity' => $newQty]);
+                    } else {
+                        DB::table('asset_quantities')
+                            ->where('asset_inventory_id', $sourceRelation->id)
+                            ->delete();
+                        DB::table('asset_inventory')
+                            ->where('id', $sourceRelation->id)
+                            ->delete();
+                    }
+
+                    $moved[] = $asset->name;
+
+                } elseif ($asset->type === 'Serial') {
+                    $sourceRelation = DB::table('asset_inventory')
+                        ->where('asset_id', $assetId)
+                        ->where('inventory_id', $sourceId)
+                        ->first();
+
+                    if (! $sourceRelation) {
+                        $errors[] = "'{$asset->name}' no existe en el inventario origen.";
+                        continue;
+                    }
+
+                    $destRelation = DB::table('asset_inventory')
+                        ->where('asset_id', $assetId)
+                        ->where('inventory_id', $destId)
+                        ->first();
+
+                    $destRelationId = $destRelation
+                        ? $destRelation->id
+                        : DB::table('asset_inventory')->insertGetId([
+                            'asset_id'     => $assetId,
+                            'inventory_id' => $destId,
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+
+                    $equipmentIds = $bienData['equipmentIds'] ?? null;
+
+                    if (empty($equipmentIds)) {
+                        $errors[] = "'{$asset->name}': debe seleccionar al menos un equipo serial.";
+                        // Revertir relación de destino recién creada si aplica
+                        if (! $destRelation) {
+                            DB::table('asset_inventory')->where('id', $destRelationId)->delete();
+                        }
+                        continue;
+                    }
+
+                    DB::table('asset_equipments')
+                        ->where('asset_inventory_id', $sourceRelation->id)
+                        ->whereIn('id', $equipmentIds)
+                        ->update(['asset_inventory_id' => $destRelationId]);
+
+                    // Limpiar relación origen si ya no tiene equipos
+                    $remaining = DB::table('asset_equipments')
+                        ->where('asset_inventory_id', $sourceRelation->id)
+                        ->count();
+
+                    if ($remaining === 0) {
+                        DB::table('asset_inventory')
+                            ->where('id', $sourceRelation->id)
+                            ->delete();
+                    }
+
+                    $moved[] = $asset->name . ' (' . count($equipmentIds) . ' equipo(s))';
+                }
+            }
+
+            if (empty($moved) && ! empty($errors)) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => implode(' ', $errors),
+                ], 400);
+            }
+
+            DB::commit();
+
+            $sourceInventory = Inventory::find($sourceId);
+
+            ActivityLogger::custom(
+                'update',
+                'Trasladó ' . count($moved) . " bien(es) en lote desde '{$sourceInventory->name}': " . implode(', ', $moved),
+                [
+                    'model'      => 'AssetInventory',
+                    'new_values' => [
+                        'origen' => $sourceInventory->name,
+                        'bienes' => $moved,
+                    ],
+                ]
+            );
+
+            $msg = count($moved) . ' bien(es) trasladado(s) exitosamente.';
+            if (! empty($errors)) {
+                $msg .= ' Advertencias: ' . implode(' ', $errors);
+            }
+
+            return response()->json(['success' => true, 'message' => $msg]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al trasladar bienes: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
      * Mover un equipo serial individual a otro inventario
      * POST /api/goods-inventory/move-serial
      */

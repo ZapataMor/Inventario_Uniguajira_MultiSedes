@@ -3,7 +3,8 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(./vendor/bin/pest:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep -i \"\\\\.js$\")"
     ]
   }
 }
