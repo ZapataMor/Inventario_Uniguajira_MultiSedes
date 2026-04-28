@@ -56,32 +56,32 @@
     <script src="{{ asset('assets/js/helpers/search.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/toast.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/modal.js') }}"></script>
-    <script src="{{ asset('assets/js/helpers/selection.js') }}"></script>
-    <script src="{{ asset('assets/js/helpers/autocomplete.js') }}"></script>
-    <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v=1"></script>
-    <script src="{{ asset('assets/js/history-guard.js') }}?v=1"></script>
-    <script src="{{ asset('assets/js/tasks.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/selection.js') }}?v={{ $assetVersion('assets/js/helpers/selection.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/autocomplete.js') }}?v={{ $assetVersion('assets/js/helpers/autocomplete.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v={{ $assetVersion('assets/js/helpers/excel-ui.js') }}"></script>
+    <script src="{{ asset('assets/js/history-guard.js') }}?v={{ $assetVersion('assets/js/history-guard.js') }}"></script>
+    <script src="{{ asset('assets/js/tasks.js') }}?v={{ $assetVersion('assets/js/tasks.js') }}"></script>
 
-    <script src="{{ asset('assets/js/goods.js') }}?v=3"></script>
+    <script src="{{ asset('assets/js/goods.js') }}?v={{ $assetVersion('assets/js/goods.js') }}"></script>
     @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/goods-excel-upload.js') }}?v=3"></script>
         <script src="{{ asset('assets/js/goods-excel-upload-global.js') }}?v=5"></script>
     @endif
 
-    <script src="{{ asset('assets/js/user.js') }}"></script>
-    <script src="{{ asset('assets/js/profile.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/inventory.js') }}"></script>
+    <script src="{{ asset('assets/js/user.js') }}?v={{ $assetVersion('assets/js/user.js') }}"></script>
+    <script src="{{ asset('assets/js/profile.js') }}?v={{ $assetVersion('assets/js/profile.js') }}"></script>
+    <script src="{{ asset('assets/js/inventory/inventory.js') }}?v={{ $assetVersion('assets/js/inventory/inventory.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/groups.js') }}?v=groups-search-autoboot-{{ $assetVersion('assets/js/inventory/groups.js') }}"></script>
     <script src="{{ asset('assets/js/inventory/goodsInventory.js') }}?v={{ $assetVersion('assets/js/inventory/goodsInventory.js') }}"></script>
     @if(Auth::user()->isAdministrator())
         <script src="{{ asset('assets/js/inventory/goods-inventory-excel-upload.js') }}?v=6"></script>
     @endif
     <script src="{{ asset('assets/js/inventory/goodsSerialsInventory.js') }}?v={{ $assetVersion('assets/js/inventory/goodsSerialsInventory.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}"></script>
-    <script src="{{ asset('assets/js/reports/folders.js') }}"></script>
-    <script src="{{ asset('assets/js/reports/reports.js') }}"></script>
-    <script src="{{ asset('assets/js/records/historial.js') }}"></script>
-    <script src="{{ asset('assets/js/inventory/removedGoods.js') }}"></script>  {{-- ✅ AGREGADO --}}
+    <script src="{{ asset('assets/js/inventory/formGoodInventory.js') }}?v={{ $assetVersion('assets/js/inventory/formGoodInventory.js') }}"></script>
+    <script src="{{ asset('assets/js/reports/folders.js') }}?v={{ $assetVersion('assets/js/reports/folders.js') }}"></script>
+    <script src="{{ asset('assets/js/reports/reports.js') }}?v={{ $assetVersion('assets/js/reports/reports.js') }}"></script>
+    <script src="{{ asset('assets/js/records/historial.js') }}?v={{ $assetVersion('assets/js/records/historial.js') }}"></script>
+    <script src="{{ asset('assets/js/inventory/removedGoods.js') }}?v={{ $assetVersion('assets/js/inventory/removedGoods.js') }}"></script>  {{-- ✅ AGREGADO --}}
     <script>
         (() => {
             if (window.inventoryControlCompatibilityBound) {
