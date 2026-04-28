@@ -97,6 +97,22 @@
     @endif --}}
 
     @if(Auth::user()->isAdministrator())
+    {{-- Barra de acción para multi-selección --}}
+    <div id="batch-action-bar" class="control-bar">
+        <span class="selected-name batch-count">0 seleccionados</span>
+        <div class="control-actions">
+            <button class="control-btn" type="button" title="Mover seleccionados"
+                    onclick="btnMoverSeleccionados()">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Mover</span>
+            </button>
+            <button class="control-btn" type="button" title="Limpiar selección"
+                    onclick="clearMultiSelection()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
     {{-- Barra de control para bienes --}}
     <div id="control-bar-good" class="control-bar">
         <div class="selected-name">1 seleccionado</div>
@@ -248,7 +264,7 @@
                         data-cantidad="{{ $asset->quantity }}"
                         data-asset-type="{{ $asset->type }}"
                         data-type="good"
-                
+
                         @if ($asset->type === 'Cantidad')
                             onclick="toggleSelectItem(this)"
                         @else
@@ -260,7 +276,15 @@
                         @endif
                     @endif
                 >
-        
+                    @if(Auth::user()->isAdministrator())
+                    <label class="multi-check-label"
+                           onclick="event.stopPropagation()">
+                        <input type="checkbox"
+                               class="multi-check-input"
+                               onclick="event.stopPropagation()"
+                               onchange="toggleMultiSelectItem(this.closest('.bien-card'), event)">
+                    </label>
+                    @endif
 
                     {{-- Imagen --}}
                     <img
@@ -292,6 +316,7 @@
     <x-modal.inventory.good-inventory-edit-quantity />
     <x-modal.inventory.good-inventory-remove />
     <x-modal.inventory.good-inventory-move />
+    <x-modal.inventory.good-inventory-batch-move />
     <x-modal.inventory.inventory-responsible />
 
     @once

@@ -838,4 +838,68 @@ class GoodsController extends Controller
 
         return $normalized ?: ucfirst($tenant->slug);
     }
+
+    /**
+     * Obtiene las ubicaciones de un bien en todos los inventarios.
+     * GET /api/goods/{id}/locations
+     */
+    public function getLocations(string $id)
+    {
+        $asset = Asset::findOrFail($id);
+
+        $locations = DB::table('asset_inventory as ai')
+            ->join('inventories as i', 'i.id', '=', 'ai.inventory_id')
+            ->join('groups as g', 'g.id', '=', 'i.group_id')
+            ->where('ai.asset_id', $id)
+            ->select([
+                'i.id as inventory_id',
+                'i.name as inventory_name',
+                'g.id as group_id',
+                'g.name as group_name',
+                'i.responsible',
+                'i.conservation_status',
+            ])
+            ->get()
+            ->map(function ($loc) use ($id, $asset) {
+                $assetInv = DB::table('asset_inventory')
+                    ->where('asset_id', $id)
+                    ->where('inventory_id', $loc->inventory_id)
+                    ->first();
+
+                if (!$assetInv) {
+                    $loc->quantity = 0;
+                    $loc->serials = [];
+                    return $loc;
+                }
+
+                if ($asset->type === 'Cantidad') {
+                    $loc->quantity = DB::table('asset_quantities')
+                        ->where('asset_inventory_id', $assetInv->id)
+                        ->value('quantity') ?? 0;
+                    $loc->serials = [];
+                } else {
+                    $loc->quantity = DB::table('asset_equipments')
+                        ->where('asset_inventory_id', $assetInv->id)
+                        ->count();
+                    $loc->serials = DB::table('asset_equipments')
+                        ->where('asset_inventory_id', $assetInv->id)
+                        ->select('serial', 'brand', 'model', 'status')
+                        ->get()
+                        ->toArray();
+                }
+
+                return $loc;
+            });
+
+        return response()->json([
+            'success' => true,
+            'asset' => [
+                'id' => $asset->id,
+                'name' => $asset->name,
+                'type' => $asset->type,
+                'image' => $asset->image,
+            ],
+            'locations' => $locations
+        ]);
+    }
 }

@@ -1,3 +1,77 @@
+/* ── Modal: Ver ubicaciones del bien ── */
+.modal-content.locations-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 75vh;
+    overflow: hidden;
+}
+
+.locations-scroll-area {
+    overflow-y: auto;
+    padding-right: 6px;
+    flex: 1;
+}
+
+.locations-scroll-area::-webkit-scrollbar {
+    width: 5px;
+}
+
+.locations-scroll-area::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.locations-scroll-area::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.location-card {
+    background: #fcf6f513;
+    border: 1px solid #2c3e50;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.location-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.location-card p {
+    margin: 0.25rem 0;
+    color: #495057;
+}
+
+.location-card details {
+    margin-top: 0.5rem;
+}
+
+.location-card summary {
+    cursor: pointer;
+    color: #ce4634;
+    font-weight: 500;
+}
+
+.location-card ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+}
+
+.location-card li {
+    margin: 0.25rem 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.no-locations {
+    text-align: center;
+    padding: 2rem;
+    color: #6c7d70;
+}
+
 /* Grid de bienes */
 .bienes-grid {
     display: grid;
@@ -72,7 +146,7 @@
     }
 
     a:hover {
-        color: #a3333d;
+        color: #ce4634;
         cursor: pointer;
     }
 }
