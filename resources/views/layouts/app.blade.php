@@ -371,9 +371,33 @@
             window.groupSearchAjaxBound = true;
             let activeGroupSearchRequest = null;
 
+            const getGroupSearchForm = () => document.getElementById('groupSearchForm');
+            const getGroupSearchInput = () => document.getElementById('searchGroup');
+            const getGroupSearchMode = () => document.getElementById('groupSearchMode');
+
+            const getGroupSearchModeValue = (form) => {
+                return getGroupSearchMode()?.value
+                    || form?.querySelector('[name="search_type"]')?.value
+                    || 'groups';
+            };
+
+            const getGroupSearchTermValue = (form) => {
+                return getGroupSearchInput()?.value
+                    || form?.querySelector('[name="search"]')?.value
+                    || '';
+            };
+
             const buildGroupSearchUrl = (form) => {
                 const url = new URL(form.getAttribute('action'), window.location.origin);
-                const params = new URLSearchParams(new FormData(form));
+                const params = new URLSearchParams();
+                const formData = new FormData(form);
+
+                formData.forEach((value, key) => {
+                    params.set(key, value);
+                });
+
+                params.set('search_type', getGroupSearchModeValue(form));
+                params.set('search', getGroupSearchTermValue(form));
 
                 params.forEach((value, key) => {
                     if (String(value).trim() === '') {
@@ -386,8 +410,7 @@
             };
 
             const applyLocalGroupFilter = (form) => {
-                const input = form.querySelector('[name="search"]') || document.getElementById('searchGroup');
-                const filter = (input?.value || '').toLowerCase().trim();
+                const filter = getGroupSearchTermValue(form).toLowerCase().trim();
 
                 document.querySelectorAll('[data-group-card]').forEach((card) => {
                     const name = card.querySelector('.name-item');
@@ -426,7 +449,7 @@
             };
 
             window.handleGroupSearchInput = (form, immediate = false) => {
-                const mode = form.querySelector('[name="search_type"]')?.value || 'groups';
+                const mode = getGroupSearchModeValue(form);
 
                 if (mode === 'groups') {
                     applyLocalGroupFilter(form);
@@ -446,14 +469,15 @@
             };
 
             window.submitGroupSearchAjax = (form, updateHistory = false) => {
-                const mode = form.querySelector('[name="search_type"]')?.value || 'groups';
+                const mode = getGroupSearchModeValue(form);
                 if (mode === 'groups') {
                     applyLocalGroupFilter(form);
                     return false;
                 }
 
                 const url = buildGroupSearchUrl(form);
-                const input = form.querySelector('[name="search"]') || document.getElementById('searchGroup');
+                const searchTerm = getGroupSearchTermValue(form);
+                const input = getGroupSearchInput() || form.querySelector('[name="search"]');
                 const cursorPosition = input?.selectionStart ?? null;
                 const loader = document.getElementById('loader');
                 const container = document.getElementById('main-content');
@@ -489,6 +513,7 @@
 
                         const nextInput = document.getElementById('searchGroup');
                         if (nextInput) {
+                            nextInput.value = searchTerm;
                             nextInput.focus();
                             const nextPosition = cursorPosition ?? nextInput.value.length;
                             nextInput.setSelectionRange(nextPosition, nextPosition);
@@ -520,6 +545,44 @@
 
                 return false;
             };
+
+            document.addEventListener('input', (event) => {
+                if (event.target?.id !== 'searchGroup') {
+                    return;
+                }
+
+                const form = getGroupSearchForm();
+                if (!form) {
+                    return;
+                }
+
+                event.stopImmediatePropagation();
+                window.handleGroupSearchInput(form);
+            }, true);
+
+            document.addEventListener('change', (event) => {
+                if (event.target?.id !== 'groupSearchMode') {
+                    return;
+                }
+
+                const form = getGroupSearchForm();
+                if (!form) {
+                    return;
+                }
+
+                event.stopImmediatePropagation();
+                window.handleGroupSearchInput(form, true);
+            }, true);
+
+            document.addEventListener('submit', (event) => {
+                if (event.target?.id !== 'groupSearchForm') {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                window.submitGroupSearchAjax(event.target, true);
+            }, true);
         })();
     </script>
     {{-- <script src="{{ asset('assets/js/onLoaded.js') }}"></script> --}}
