@@ -40,7 +40,7 @@
         searchName="search"
         searchValue="{{ $groupSearchTerm }}"
         searchForm="groupSearchForm"
-        searchOnInput="clearTimeout(this.form.groupSearchTimer); this.form.groupSearchTimer = setTimeout(() => window.handleGroupSearchInput ? window.handleGroupSearchInput(this.form) : this.form.requestSubmit(), 450)"
+        searchOnInput="clearTimeout(this.form.groupSearchTimer); this.form.groupSearchTimer = setTimeout(() => window.submitGroupSearchAjax ? window.submitGroupSearchAjax(this.form, true) : this.form.requestSubmit(), 450)"
         modal="#modalCrearGrupo"
         canCreate="{{ $isPortalInventoryCatalog ? 'false' : 'true' }}"
     >
@@ -49,7 +49,7 @@
             id="groupSearchMode"
             name="search_type"
             form="groupSearchForm"
-            onchange="window.handleGroupSearchInput ? window.handleGroupSearchInput(this.form, true) : this.form.requestSubmit()"
+            onchange="window.submitGroupSearchAjax ? window.submitGroupSearchAjax(this.form, true) : this.form.requestSubmit()"
             class="h-11 rounded-lg border border-slate-200 bg-white px-3 pr-8 text-sm font-semibold text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
             aria-label="Filtrar busqueda por"
         >

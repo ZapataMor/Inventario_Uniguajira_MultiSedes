@@ -409,6 +409,11 @@
                 return `${url.pathname}${url.search}`;
             };
 
+            const replaceGroupSearchHistory = (form, url = null) => {
+                const nextUrl = url || buildGroupSearchUrl(form);
+                window.history.replaceState({ url: nextUrl }, '', nextUrl);
+            };
+
             const applyLocalGroupFilter = (form) => {
                 const filter = getGroupSearchTermValue(form).toLowerCase().trim();
 
@@ -453,16 +458,17 @@
 
                 if (mode === 'groups') {
                     applyLocalGroupFilter(form);
+                    replaceGroupSearchHistory(form);
                     return false;
                 }
 
                 if (immediate) {
-                    return window.submitGroupSearchAjax(form);
+                    return window.submitGroupSearchAjax(form, true);
                 }
 
                 window.clearTimeout(form.groupSearchAjaxTimer);
                 form.groupSearchAjaxTimer = window.setTimeout(() => {
-                    window.submitGroupSearchAjax(form);
+                    window.submitGroupSearchAjax(form, true);
                 }, 350);
 
                 return false;
@@ -472,6 +478,9 @@
                 const mode = getGroupSearchModeValue(form);
                 if (mode === 'groups') {
                     applyLocalGroupFilter(form);
+                    if (updateHistory) {
+                        replaceGroupSearchHistory(form);
+                    }
                     return false;
                 }
 
@@ -485,6 +494,10 @@
                 if (!container) {
                     window.location.assign(url);
                     return false;
+                }
+
+                if (updateHistory) {
+                    replaceGroupSearchHistory(form, url);
                 }
 
                 if (activeGroupSearchRequest) {
@@ -517,10 +530,6 @@
                             nextInput.focus();
                             const nextPosition = cursorPosition ?? nextInput.value.length;
                             nextInput.setSelectionRange(nextPosition, nextPosition);
-                        }
-
-                        if (updateHistory) {
-                            window.history.replaceState({ url }, '', url);
                         }
 
                         if (typeof window.initGroupFunctions === 'function') {
