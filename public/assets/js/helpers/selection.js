@@ -26,6 +26,63 @@ let selectedItem = null;
 // Variable para controlar si se permite la deselección
 let allowDeselection = true;
 
+// ── Multi-selección ─────────────────────────────────────────────────────────
+let multiSelectedItems = [];
+
+function toggleMultiSelectItem(element, event) {
+    event.stopPropagation();
+
+    const id = element.dataset.id;
+    const idx = multiSelectedItems.findIndex(i => i.id === id);
+
+    if (idx >= 0) {
+        multiSelectedItems.splice(idx, 1);
+        element.classList.remove('multi-selected');
+    } else {
+        multiSelectedItems.push({
+            id:        element.dataset.id,
+            name:      element.dataset.name,
+            assetType: element.dataset.assetType,
+            cantidad:  element.dataset.cantidad,
+            element,
+        });
+        element.classList.add('multi-selected');
+    }
+
+    const cb = element.querySelector('.multi-check-input');
+    if (cb) cb.checked = idx < 0;
+
+    updateBatchBar();
+}
+
+function updateBatchBar() {
+    const bar = document.getElementById('batch-action-bar');
+    if (!bar) return;
+
+    const count = multiSelectedItems.length;
+    if (count > 0) {
+        bar.classList.add('visible');
+        const label = bar.querySelector('.batch-count');
+        if (label) {
+            label.textContent = `${count} bien${count > 1 ? 'es' : ''} seleccionado${count > 1 ? 's' : ''}`;
+        }
+    } else {
+        bar.classList.remove('visible');
+    }
+}
+
+function clearMultiSelection() {
+    multiSelectedItems.forEach(i => {
+        i.element.classList.remove('multi-selected');
+        const cb = i.element.querySelector('.multi-check-input');
+        if (cb) cb.checked = false;
+    });
+    multiSelectedItems = [];
+    updateBatchBar();
+}
+
+Object.assign(window, { toggleMultiSelectItem, updateBatchBar, clearMultiSelection });
+
 // Función para seleccionar un elemento
 function toggleSelectItem(element) {
     // Si se hace clic en un botón dentro del elemento, no hacer nada

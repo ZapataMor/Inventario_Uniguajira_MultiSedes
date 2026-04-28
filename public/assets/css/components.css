@@ -70,7 +70,7 @@
 /* ── Botones ────────────────────────────────────────────────────── */
 
 .create-btn {
-    background-color: #a3333d;
+    background-color: #ce4634;
     color: white;
     padding: 10px 20px;
     border: none;
@@ -82,7 +82,7 @@
 }
 
 .create-btn:hover {
-    background-color: #8c2b32;
+    background-color: #e62b12;
 }
 
 /* Botón de carga por localización */
@@ -328,7 +328,7 @@
 }
 
 .btn-open {
-    background-color: #a3333d;
+    background-color: #ce4634;
     color: white;
     padding: 8px 16px;
     border: none;
@@ -344,7 +344,7 @@
 }
 
 .btn-open:hover {
-    background-color: #8c2b32;
+    background-color: #e62b12;
 }
 
 .btn-open i {

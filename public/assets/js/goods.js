@@ -1,3 +1,12 @@
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Función que inicializa el formulario para crear bienes
 function initFormsBien() {
     if (document.querySelector('#formCrearBien')) {
@@ -76,6 +85,88 @@ function btnEditarBien(id, nombre) {
     mostrarModal('#modalActualizarBien')
 }
 
+/**
+ * Muestra las ubicaciones de un bien en todos los inventarios.
+ * @param {number} bienId - ID del bien
+ */
+function btnDetallesBien(bienId) {
+    fetch(`/api/goods/${bienId}/locations`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error al cargar ubicaciones');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data.success) {
+            showToast({ success: false, message: data.message || 'Error al cargar ubicaciones' });
+            return;
+        }
+
+        const asset = data.asset;
+        const locations = data.locations;
+
+        // Header con información del bien
+        let headerHtml = `
+            <div class="bien-detail-header">
+                <h2>${escapeHtml(asset.name)}</h2>
+                <span class="badge badge-${asset.type === 'Serial' ? 'info' : 'success'}">${asset.type}</span>
+            </div>
+        `;
+
+        // Contenido de ubicaciones
+        let contentHtml = '';
+
+        if (locations.length === 0) {
+            contentHtml = `
+                <div class="no-locations">
+                    <p>El bien no está asignado a ningún inventario.</p>
+                </div>
+            `;
+        } else {
+            locations.forEach(loc => {
+                const statusLabel = {
+                    'good': 'Bueno',
+                    'regular': 'Regular',
+                    'bad': 'Malo'
+                }[loc.conservation_status] || loc.conservation_status;
+
+                contentHtml += `
+                    <div class="location-card">
+                        <h4>${escapeHtml(loc.inventory_name)}</h4>
+                        <p><strong>Grupo:</strong> ${escapeHtml(loc.group_name)}</p>
+                        <p><strong>Cantidad:</strong> ${loc.quantity}</p>
+                        <p><strong>Responsable:</strong> ${escapeHtml(loc.responsible || 'N/A')}</p>
+                        <p><strong>Estado de conservación:</strong> ${escapeHtml(statusLabel)}</p>
+                        ${loc.serials && loc.serials.length > 0 ? `
+                            <details>
+                                <summary>Ver ${loc.serials.length} serial(es)</summary>
+                                <ul>
+                                    ${loc.serials.map(s => `
+                                        <li>${escapeHtml(s.serial || 'N/A')} - ${escapeHtml(s.brand || '')} ${escapeHtml(s.model || '')} (${escapeHtml(s.status || 'N/A')})</li>
+                                    `).join('')}
+                                </ul>
+                            </details>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('ubicacionesHeader').innerHTML = headerHtml;
+        document.getElementById('ubicacionesContent').innerHTML = contentHtml;
+        mostrarModal('#modalVerUbicaciones');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast({ success: false, message: 'Error al cargar ubicaciones.' });
+    });
+}
 
 /**
  * Inicializa el comportamiento de los dropdowns en la vista de bienes.
