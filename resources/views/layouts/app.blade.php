@@ -370,6 +370,8 @@
 
             window.groupSearchAjaxBound = true;
             let activeGroupSearchRequest = null;
+            let activeGroupSearchApiRequest = null;
+            let groupSearchTypingTimer = null;
 
             const getGroupSearchForm = () => document.getElementById('groupSearchForm');
             const getGroupSearchInput = () => document.getElementById('searchGroup');
@@ -414,6 +416,28 @@
                 window.history.replaceState({ url: nextUrl }, '', nextUrl);
             };
 
+            const buildGroupSearchApiUrl = (form) => {
+                const params = new URLSearchParams({
+                    type: getGroupSearchModeValue(form),
+                    q: getGroupSearchTermValue(form).trim(),
+                });
+                const portal = document.querySelector('[data-group-search-root]')?.dataset.portalCatalog === '1'
+                    || new FormData(form).get('portal') === '1';
+
+                if (portal) {
+                    params.set('portal', '1');
+                }
+
+                return `/api/groups/search?${params.toString()}`;
+            };
+
+            const escapeGroupSearchHtml = (value) => String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+
             const applyLocalGroupFilter = (form) => {
                 const filter = getGroupSearchTermValue(form).toLowerCase().trim();
 
@@ -453,6 +477,176 @@
                 });
             };
 
+            const setGroupListingVisible = (visible) => {
+                const listing = document.querySelector('[data-group-listing]');
+
+                if (listing) {
+                    listing.classList.toggle('hidden', !visible);
+                }
+            };
+
+            const renderGroupSearchMessage = (message, iconClass = 'fa-circle-info') => {
+                const results = document.querySelector('[data-group-search-results]');
+
+                if (!results) {
+                    return;
+                }
+
+                results.classList.remove('hidden');
+                results.innerHTML = `
+                    <div class="card">
+                        <div class="card-left">
+                            <i class="fas ${iconClass} icon-folder"></i>
+                        </div>
+                        <div class="card-center">
+                            <div class="title">${escapeGroupSearchHtml(message)}</div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const buildGroupSearchMeta = (result) => {
+                const meta = [];
+
+                if (result.type === 'good') {
+                    meta.push(`Inventario: ${escapeGroupSearchHtml(result.inventory_name)}`);
+                    meta.push(`Grupo: ${escapeGroupSearchHtml(result.group_name)}`);
+                } else {
+                    meta.push(`Grupo: ${escapeGroupSearchHtml(result.group_name)}`);
+                }
+
+                if (result.sede_name) {
+                    meta.push(`Sede: ${escapeGroupSearchHtml(result.sede_name)}`);
+                }
+
+                if (result.asset_type) {
+                    meta.push(`Tipo: ${escapeGroupSearchHtml(result.asset_type)}`);
+                }
+
+                return meta;
+            };
+
+            const renderGroupSearchResults = (results, mode) => {
+                const container = document.querySelector('[data-group-search-results]');
+
+                if (!container) {
+                    return;
+                }
+
+                container.classList.remove('hidden');
+
+                if (!results.length) {
+                    renderGroupSearchMessage(mode === 'goods' ? 'No se encontraron bienes.' : 'No se encontraron inventarios.');
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="card-grid">
+                        ${results.map((result) => {
+                            const resultType = result.type === 'good' ? 'good' : 'inventory';
+                            const icon = resultType === 'good' ? 'fa-box' : 'fa-folder';
+                            const label = resultType === 'good' ? 'Bien' : 'Inventario';
+                            const meta = buildGroupSearchMeta(result);
+
+                            return `
+                                <div class="card card-item">
+                                    <div class="card-left">
+                                        <i class="fas ${icon} icon-folder"></i>
+                                    </div>
+                                    <div class="card-center">
+                                        <div class="title name-item">${escapeGroupSearchHtml(result.title)}</div>
+                                        <div class="stats">
+                                            <span class="stat-item">
+                                                <i class="fas fa-filter"></i>
+                                                ${label}
+                                            </span>
+                                            ${meta.map((item) => `
+                                                <span class="stat-item">
+                                                    <i class="fas fa-circle"></i>
+                                                    ${item}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                    <div class="card-right">
+                                        <button
+                                            type="button"
+                                            class="btn-open"
+                                            data-group-search-go
+                                            data-url="${escapeGroupSearchHtml(result.url)}"
+                                            data-result-type="${escapeGroupSearchHtml(resultType)}"
+                                        >
+                                            <i class="fas fa-arrow-right"></i> Ir
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            };
+
+            const clearGroupSearchRemoteResults = () => {
+                const results = document.querySelector('[data-group-search-results]');
+
+                if (results) {
+                    results.innerHTML = '';
+                    results.classList.add('hidden');
+                }
+            };
+
+            const performGroupSearchTyping = async (form) => {
+                const mode = getGroupSearchModeValue(form);
+                const term = getGroupSearchTermValue(form).trim();
+
+                if (mode === 'groups') {
+                    applyLocalGroupFilter(form);
+                    return;
+                }
+
+                if (activeGroupSearchApiRequest) {
+                    activeGroupSearchApiRequest.abort();
+                }
+
+                if (term === '') {
+                    applyLocalGroupFilter(form);
+                    setGroupListingVisible(true);
+                    return;
+                }
+
+                setGroupListingVisible(false);
+                renderGroupSearchMessage('Buscando...', 'fa-spinner fa-spin');
+
+                const controller = new AbortController();
+                activeGroupSearchApiRequest = controller;
+
+                try {
+                    const response = await fetch(buildGroupSearchApiUrl(form), {
+                        headers: {
+                            Accept: 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        signal: controller.signal,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('No se pudo buscar.');
+                    }
+
+                    const data = await response.json();
+                    renderGroupSearchResults(Array.isArray(data.results) ? data.results : [], mode);
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error(error);
+                        renderGroupSearchMessage('No se pudo completar la busqueda.', 'fa-triangle-exclamation');
+                    }
+                } finally {
+                    if (activeGroupSearchApiRequest === controller) {
+                        activeGroupSearchApiRequest = null;
+                    }
+                }
+            };
+
             window.handleGroupSearchTyping = (form) => {
                 const mode = getGroupSearchModeValue(form);
 
@@ -461,12 +655,11 @@
                     return false;
                 }
 
-                const controller = getGroupSearchInput()?.__groupSearchController
-                    || (typeof window.initGroupSearch === 'function'
-                    ? window.initGroupSearch()
-                    : null);
+                window.clearTimeout(groupSearchTypingTimer);
+                groupSearchTypingTimer = window.setTimeout(() => {
+                    performGroupSearchTyping(form);
+                }, 250);
 
-                controller?.handleInput?.();
                 return false;
             };
 
@@ -579,11 +772,54 @@
                     return;
                 }
 
-                if (!event.__groupSearchHandled) {
-                    window.handleGroupSearchTyping(form);
+                event.__groupSearchHandled = true;
+                window.handleGroupSearchTyping(form);
+                event.stopImmediatePropagation();
+            }, true);
+
+            document.addEventListener('keyup', (event) => {
+                if (event.target?.id !== 'searchGroup') {
+                    return;
                 }
 
+                const form = getGroupSearchForm();
+                if (!form) {
+                    return;
+                }
+
+                event.preventDefault();
                 event.stopImmediatePropagation();
+                window.handleGroupSearchTyping(form);
+            }, true);
+
+            document.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-group-search-go]');
+
+                if (!button) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopImmediatePropagation();
+
+                const url = button.dataset.url;
+                const resultType = button.dataset.resultType;
+                const initializer = resultType === 'good'
+                    ? 'initGoodsInventoryFunctions'
+                    : 'initInventoryFunctions';
+
+                if (typeof window.loadContent === 'function') {
+                    window.loadContent(url, {
+                        onSuccess: () => {
+                            if (typeof window[initializer] === 'function') {
+                                window[initializer]();
+                            }
+                        },
+                    });
+                    return;
+                }
+
+                window.location.assign(url);
             }, true);
 
             document.addEventListener('change', (event) => {
