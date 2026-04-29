@@ -4,7 +4,10 @@
       "Bash(dir:*)",
       "Bash(./vendor/bin/pest:*)",
       "Bash(npm run:*)",
-      "Bash(grep -i \"\\\\.js$\")"
+      "Bash(grep -i \"\\\\.js$\")",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git push *)"
     ]
   }
 }
