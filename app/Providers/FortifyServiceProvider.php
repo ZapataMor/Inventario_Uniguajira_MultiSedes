@@ -50,15 +50,15 @@ class FortifyServiceProvider extends ServiceProvider
 
     private function authenticateUser(Request $request): ?User
     {
-        $email = trim((string) $request->input(Fortify::username()));
+        $login = trim((string) $request->input(Fortify::username()));
         $password = (string) $request->input('password');
 
-        if ($email === '' || $password === '') {
+        if ($login === '' || $password === '') {
             return null;
         }
 
         if (tenant()) {
-            $user = $this->attemptUserOnConnection('tenant', $email, $password);
+            $user = $this->attemptUserOnConnection('tenant', $login, $password);
 
             if ($user) {
                 $this->syncTenantMembershipForLocalUser($user);
@@ -72,19 +72,22 @@ class FortifyServiceProvider extends ServiceProvider
         $request->session()->forget(['tenant_id', 'auth_tenant_id']);
 
         $centralConnection = config('tenancy.central_connection', 'central');
-        $centralUser = $this->attemptUserOnConnection($centralConnection, $email, $password);
+        $centralUser = $this->attemptUserOnConnection($centralConnection, $login, $password);
 
         if ($centralUser?->isGlobalAdmin()) {
             return $this->normalizeCentralGlobalAdminFromTenants($centralUser, $password);
         }
 
-        return $this->attemptGlobalAdminFromTenants($email, $password);
+        return $this->attemptGlobalAdminFromTenants($login, $password);
     }
 
-    private function attemptUserOnConnection(string $connection, string $email, string $password): ?User
+    private function attemptUserOnConnection(string $connection, string $login, string $password): ?User
     {
         $user = User::on($connection)
-            ->where('email', $email)
+            ->where(function ($query) use ($login) {
+                $query->where('email', $login)
+                    ->orWhere('username', $login);
+            })
             ->first();
 
         if (! $user || ! Hash::check($password, (string) $user->password)) {
@@ -94,7 +97,7 @@ class FortifyServiceProvider extends ServiceProvider
         return $user;
     }
 
-    private function attemptGlobalAdminFromTenants(string $email, string $password): ?User
+    private function attemptGlobalAdminFromTenants(string $login, string $password): ?User
     {
         $tenantConnections = app(TenantConnectionManager::class);
 
@@ -106,7 +109,7 @@ class FortifyServiceProvider extends ServiceProvider
         foreach ($tenants as $tenant) {
             $tenantUser = $tenantConnections->runForTenant(
                 $tenant,
-                fn () => $this->attemptUserOnConnection('tenant', $email, $password)
+                fn () => $this->attemptUserOnConnection('tenant', $login, $password)
             );
 
             if (! $tenantUser?->isGlobalAdmin()) {
