@@ -124,13 +124,13 @@
 }
 
 .submit-btn {
-    background-color: #a31927;
+    background-color: #ce4634;
     color: white;
     width: 100%;
 }
 
 .submit-btn:hover {
-    background-color: #2c4cc1;
+    background-color: #e62b12;
 }
 
 .cancel-btn {
@@ -171,7 +171,7 @@
 }
 
 .close:hover {
-    color: #a31927;
+    color: #e62b12;
 }
 
 /* Animaciones */
