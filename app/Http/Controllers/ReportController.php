@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ReportController extends Controller
 {
@@ -58,26 +62,38 @@ class ReportController extends Controller
             'tipoReporte' => 'required|in:inventario,grupo,allInventories,goods,serial,removedGoods,historial',
             'grupo_id' => 'nullable|required_if:tipoReporte,inventario,grupo|integer|exists:groups,id',
             'inventario_id' => 'nullable|required_if:tipoReporte,inventario|integer|exists:inventories,id',
+            'formato' => 'nullable|in:pdf,excel',
         ]);
 
-        try {
-            $pdfPayload = $this->buildStyledPayload($validated);
-            $html = view($pdfPayload['view'], $pdfPayload['data'])->render();
+        $formato = $validated['formato'] ?? 'pdf';
 
+        try {
             $safeName = Str::slug($validated['nombreReporte'], '_');
             if ($safeName === '') {
                 $safeName = 'reporte';
             }
 
-            $relativePath = tenant_asset('reports/'.now()->format('Y/m').'/'.$safeName.'_'.now()->format('Ymd_His').'.pdf');
+            if ($formato === 'excel') {
+                $spreadsheet = $this->buildExcelSpreadsheet($validated);
+                $relativePath = tenant_asset('reports/'.now()->format('Y/m').'/'.$safeName.'_'.now()->format('Ymd_His').'.xlsx');
 
-            $pdfContent = $this->pdfService->buildHtml(
-                $html,
-                $pdfPayload['paper'],
-                $pdfPayload['orientation']
-            );
+                $tmpFile = tempnam(sys_get_temp_dir(), 'xlsx_');
+                (new Xlsx($spreadsheet))->save($tmpFile);
+                Storage::disk('local')->put($relativePath, file_get_contents($tmpFile));
+                @unlink($tmpFile);
+            } else {
+                $pdfPayload = $this->buildStyledPayload($validated);
+                $html = view($pdfPayload['view'], $pdfPayload['data'])->render();
+                $relativePath = tenant_asset('reports/'.now()->format('Y/m').'/'.$safeName.'_'.now()->format('Ymd_His').'.pdf');
 
-            Storage::disk('local')->put($relativePath, $pdfContent);
+                $pdfContent = $this->pdfService->buildHtml(
+                    $html,
+                    $pdfPayload['paper'],
+                    $pdfPayload['orientation']
+                );
+
+                Storage::disk('local')->put($relativePath, $pdfContent);
+            }
 
             $report = Report::create([
                 'name' => trim($validated['nombreReporte']),
@@ -184,27 +200,186 @@ class ReportController extends Controller
             ], 404);
         }
 
+        $isExcel = str_ends_with((string) $filePath, '.xlsx');
+        $extension = $isExcel ? '.xlsx' : '.pdf';
+        $contentType = $isExcel
+            ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            : 'application/pdf';
+        $downloadName = $this->sanitizeFileName($report->name).$extension;
+
+        $headers = [
+            'Content-Type' => $contentType,
+            'Content-Disposition' => 'attachment; filename="'.$downloadName.'"',
+        ];
+
         if (Storage::exists($filePath)) {
-            return Storage::download($filePath, $this->sanitizeFileName($report->name).'.pdf');
+            $content = Storage::get($filePath);
+
+            return response($content, 200, $headers);
         }
 
         $publicPath = public_path($filePath);
         if (file_exists($publicPath)) {
-            return response()->download($publicPath, $this->sanitizeFileName($report->name).'.pdf', [
-                'Content-Type' => 'application/pdf',
-            ]);
+            $content = file_get_contents($publicPath);
+
+            return response($content, 200, $headers);
         }
 
         if (file_exists($filePath)) {
-            return response()->download($filePath, $this->sanitizeFileName($report->name).'.pdf', [
-                'Content-Type' => 'application/pdf',
-            ]);
+            $content = file_get_contents($filePath);
+
+            return response($content, 200, $headers);
         }
 
         return response()->json([
             'success' => false,
             'message' => 'Archivo no encontrado en el servidor.',
         ], 404);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function buildExcelSpreadsheet(array $validated): Spreadsheet
+    {
+        $tipo = (string) $validated['tipoReporte'];
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'ce4634']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ];
+
+        match ($tipo) {
+            'inventario' => $this->excelInventario($sheet, $headerStyle, (int) $validated['grupo_id'], (int) $validated['inventario_id']),
+            'grupo' => $this->excelGrupo($sheet, $headerStyle, (int) $validated['grupo_id']),
+            'allInventories' => $this->excelTodosInventarios($sheet, $headerStyle),
+            'goods' => $this->excelBienes($sheet, $headerStyle),
+            'serial' => $this->excelEquipos($sheet, $headerStyle),
+            'removedGoods' => $this->excelDadosDeBaja($sheet, $headerStyle),
+            'historial' => $this->excelHistorial($sheet, $headerStyle),
+            default => throw ValidationException::withMessages(['tipoReporte' => 'Tipo de reporte no soportado.']),
+        };
+
+        foreach (range('A', $sheet->getHighestColumn()) as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        return $spreadsheet;
+    }
+
+    private function excelInventario(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs, int $groupId, int $inventoryId): void
+    {
+        $data = $this->inventoryData($groupId, $inventoryId);
+        $sheet->setTitle('Inventario');
+        $sheet->fromArray(['Bien', 'Tipo', 'Cantidad'], null, 'A1');
+        $sheet->getStyle('A1:C1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['goods'] as $g) {
+            $sheet->fromArray([$g->bien, $g->tipo, $g->cantidad], null, "A{$row}");
+            $row++;
+        }
+    }
+
+    private function excelGrupo(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs, int $groupId): void
+    {
+        $data = $this->groupData($groupId);
+        $sheet->setTitle('Grupo');
+        $sheet->fromArray(['Inventario', 'Bien', 'Tipo', 'Cantidad'], null, 'A1');
+        $sheet->getStyle('A1:D1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['inventories'] as $inv) {
+            foreach ($inv->goods as $g) {
+                $sheet->fromArray([$inv->nombre, $g->bien, $g->tipo, $g->cantidad], null, "A{$row}");
+                $row++;
+            }
+        }
+    }
+
+    private function excelTodosInventarios(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs): void
+    {
+        $data = $this->allInventoriesData();
+        $sheet->setTitle('Todos los inventarios');
+        $sheet->fromArray(['Grupo', 'Inventario', 'Bien', 'Tipo', 'Cantidad'], null, 'A1');
+        $sheet->getStyle('A1:E1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['groups'] as $grp) {
+            foreach ($grp->inventories as $inv) {
+                foreach ($inv->goods as $g) {
+                    $sheet->fromArray([$grp->nombre, $inv->nombre, $g->bien, $g->tipo, $g->cantidad], null, "A{$row}");
+                    $row++;
+                }
+            }
+        }
+    }
+
+    private function excelBienes(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs): void
+    {
+        $data = $this->goodsData();
+        $sheet->setTitle('Bienes');
+        $sheet->fromArray(['Bien', 'Tipo', 'Total Cantidad'], null, 'A1');
+        $sheet->getStyle('A1:C1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['goods'] as $g) {
+            $sheet->fromArray([$g->bien, $g->tipo_bien, $g->total_cantidad], null, "A{$row}");
+            $row++;
+        }
+    }
+
+    private function excelEquipos(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs): void
+    {
+        $data = $this->serialGoodsData();
+        $sheet->setTitle('Equipos');
+        $sheet->fromArray(['Bien', 'Serial', 'Marca', 'Modelo', 'Estado', 'Inventario', 'Condiciones'], null, 'A1');
+        $sheet->getStyle('A1:G1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['groupedGoods'] as $group) {
+            foreach ($group['items'] as $item) {
+                $sheet->fromArray([
+                    $item->bien, $item->serial, $item->marca,
+                    $item->modelo, $item->estado, $item->nombre_inventario, $item->condiciones_tecnicas,
+                ], null, "A{$row}");
+                $row++;
+            }
+        }
+    }
+
+    private function excelDadosDeBaja(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs): void
+    {
+        $data = $this->removedGoodsData();
+        $sheet->setTitle('Dados de baja');
+        $sheet->fromArray(['Bien', 'Tipo', 'Cantidad/Serial', 'Motivo', 'Grupo', 'Inventario',  'Fecha'], null, 'A1');
+        $sheet->getStyle('A1:H1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['removedByQuantity'] as $r) {
+            $sheet->fromArray([$r->bien, $r->tipo, $r->cantidad, $r->motivo, $r->grupo, $r->inventario, $r->fecha_baja], null, "A{$row}");
+            $row++;
+        }
+        foreach ($data['removedBySerial'] as $r) {
+            $sheet->fromArray([$r->bien, 'Serial', $r->serial, $r->motivo, $r->grupo, $r->inventario, $r->fecha_baja], null, "A{$row}");
+            $row++;
+        }
+    }
+
+    private function excelHistorial(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet, array $hs): void
+    {
+        $data = $this->historialData();
+        $sheet->setTitle('Historial');
+        $sheet->fromArray(['Fecha', 'Usuario', 'Acción', 'Modelo', 'Descripción'], null, 'A1');
+        $sheet->getStyle('A1:E1')->applyFromArray($hs);
+        $row = 2;
+        foreach ($data['logs'] as $log) {
+            $sheet->fromArray([
+                optional($log->created_at)->format('d/m/Y H:i'),
+                $log->user?->name ?? '—',
+                $log->action,
+                $log->model,
+                $log->description,
+            ], null, "A{$row}");
+            $row++;
+        }
     }
 
     /**

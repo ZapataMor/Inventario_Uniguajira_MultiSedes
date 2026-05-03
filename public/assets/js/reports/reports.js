@@ -231,7 +231,7 @@ function mostrarModalReporte(modalId) {
     mostrarModal(modalId);
 }
 
-function downloadReport(event, reportId, reportName) {
+function downloadReport(event, reportId, reportName, extension = 'pdf') {
     event.stopPropagation();
 
     const button = event.target.closest('button');
@@ -267,7 +267,7 @@ function downloadReport(event, reportId, reportName) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${reportName}.pdf`;
+            a.download = `${reportName}.${extension}`;
             document.body.appendChild(a);
             a.click();
 
