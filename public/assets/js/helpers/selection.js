@@ -66,6 +66,11 @@ function updateBatchBar() {
         if (label) {
             label.textContent = `${count} bien${count > 1 ? 'es' : ''} seleccionado${count > 1 ? 's' : ''}`;
         }
+        const moveBtn = bar.querySelector('button[onclick="btnMoverSeleccionados()"]');
+        if (moveBtn) {
+            moveBtn.disabled = count < 2;
+            moveBtn.title = count < 2 ? 'Selecciona al menos 2 bienes para mover en grupo' : 'Mover seleccionados';
+        }
     } else {
         bar.classList.remove('visible');
     }

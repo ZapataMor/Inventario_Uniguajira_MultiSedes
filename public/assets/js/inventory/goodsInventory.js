@@ -330,6 +330,25 @@ function _bindGrupoInvChange(selGrupo, selInv, inventarioActualId) {
     });
 }
 
+function _removeBienFromBatch(itemId, rowEl) {
+    const idx = multiSelectedItems.findIndex(i => i.id === itemId);
+    if (idx >= 0) {
+        const removed = multiSelectedItems.splice(idx, 1)[0];
+        removed.element.classList.remove('multi-selected');
+        const cb = removed.element.querySelector('.multi-check-input');
+        if (cb) cb.checked = false;
+        updateBatchBar();
+    }
+
+    rowEl.remove();
+
+    const remaining = document.querySelectorAll('#batchBienesList .batch-bien-row').length;
+    if (remaining < 2) {
+        ocultarModal('#modalMoverMultiplesBienes');
+        showToast({ info: true, message: 'Para usar esta opción debe tener dos bienes o más seleccionados.' });
+    }
+}
+
 function _buildBienRow(item, mode) {
     const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
     const row = document.createElement('div');
@@ -350,6 +369,14 @@ function _buildBienRow(item, mode) {
             }</span>
         </div>
     `;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'batch-bien-remove-btn';
+    removeBtn.title = 'Quitar de la lista';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    removeBtn.addEventListener('click', () => _removeBienFromBatch(item.id, row));
+    main.appendChild(removeBtn);
 
     if (item.assetType === 'Cantidad') {
         const cantInput = document.createElement('input');
@@ -472,8 +499,8 @@ function onBatchModeChange(mode) {
 }
 
 function btnMoverSeleccionados() {
-    if (!multiSelectedItems || multiSelectedItems.length === 0) {
-        showToast({ success: false, message: 'No hay bienes seleccionados.' });
+    if (!multiSelectedItems || multiSelectedItems.length < 2) {
+        showToast({ info: true, message: 'Para usar esta opción debe tener dos bienes o más seleccionados.' });
         return;
     }
 

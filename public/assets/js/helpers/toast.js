@@ -1,8 +1,8 @@
 function showToast(msg) {
     const toastId = `toast-${Date.now()}`;
-    const toastType = msg.success ? "toast-success" : "toast-fail";
-    const icon = msg.success ? '✅' : '❌';
-    const toastTitle = msg.success ? 'Éxito' : 'Error';
+    const toastType = msg.success ? "toast-success" : (msg.info ? "toast-info" : "toast-fail");
+    const icon = msg.success ? '✅' : (msg.info ? 'ℹ️' : '❌');
+    const toastTitle = msg.success ? 'Éxito' : (msg.info ? 'Sugerencia' : 'Error');
     const toastMessage = msg.message || (msg.success ? 'Operación completada' : 'Algo salió mal');
 
     // Estructura del toast
@@ -22,7 +22,7 @@ function showToast(msg) {
     
     const toastElement = document.getElementById(toastId);
     const toast = new bootstrap.Toast(toastElement, {
-        delay: 5000 // Duración de 3 segundos
+        delay: msg.info ? 4000 : 5000
     });
     toast.show();
     

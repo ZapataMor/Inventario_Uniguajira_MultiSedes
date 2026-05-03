@@ -126,6 +126,26 @@
     min-width: 0;
 }
 
+.batch-bien-remove-btn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.batch-bien-remove-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
 .batch-bien-name {
     font-weight: 500;
     color: #1e293b;
