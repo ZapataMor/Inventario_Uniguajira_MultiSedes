@@ -498,7 +498,7 @@ class ReportController extends Controller
 
         $inventories = DB::table('inventories')
             ->where('group_id', $groupId)
-            ->orderBy('name')
+            ->orderByRaw('CAST(name AS UNSIGNED), name')
             ->get()
             ->map(function (object $inventory): object {
                 $inventory->estado_conservacion = $this->mapConservationStatus((string) $inventory->conservation_status);
@@ -527,7 +527,7 @@ class ReportController extends Controller
             ->map(function (object $group): object {
                 $group->inventories = DB::table('inventories')
                     ->where('group_id', $group->id)
-                    ->orderBy('name')
+                    ->orderByRaw('CAST(name AS UNSIGNED), name')
                     ->get()
                     ->map(function (object $inventory): object {
                         $inventory->nombre = $inventory->name;
