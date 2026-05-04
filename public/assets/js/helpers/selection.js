@@ -119,11 +119,16 @@ function toggleSelectItem(element) {
 // Función para actualizar la barra de control
 function updateControlBar(type) {
     const controlBar = document.getElementById(`control-bar-${type}`);
+    if (!controlBar) {
+        return;
+    }
 
     if (selectedItem && selectedItem.type === type) {
         controlBar.classList.add('visible');
         const nameElement = controlBar.querySelector('.selected-name');
-        nameElement.textContent = selectedItem.name;
+        if (nameElement) {
+            nameElement.textContent = selectedItem.name;
+        }
     } else {
         controlBar.classList.remove('visible');
     }
