@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AssetInventory;
 use App\Models\Maintenance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,12 +11,9 @@ class MaintenanceController extends Controller
 {
     public function index(int $inventoryId, int $assetId): JsonResponse
     {
-        $assetInventory = AssetInventory::where('inventory_id', $inventoryId)
+        $maintenances = Maintenance::with('registeredBy:id,name')
             ->where('asset_id', $assetId)
-            ->firstOrFail();
-
-        $maintenances = $assetInventory->maintenances()
-            ->with('registeredBy:id,name')
+            ->orderByDesc('date')
             ->get()
             ->map(fn ($m) => [
                 'id'             => $m->id,
@@ -41,18 +37,13 @@ class MaintenanceController extends Controller
             'date'         => ['required', 'date'],
         ]);
 
-        $assetInventory = AssetInventory::where('inventory_id', $data['inventory_id'])
-            ->where('asset_id', $data['asset_id'])
-            ->firstOrFail();
-
         $maintenance = Maintenance::create([
+            'asset_id'      => $data['asset_id'],
             'title'         => $data['title'],
             'description'   => $data['description'] ?? null,
             'date'          => $data['date'],
             'registered_by' => Auth::id(),
         ]);
-
-        $assetInventory->maintenances()->attach($maintenance->id);
 
         return response()->json([
             'success' => true,
@@ -71,7 +62,6 @@ class MaintenanceController extends Controller
     public function destroy(int $id): JsonResponse
     {
         $maintenance = Maintenance::findOrFail($id);
-        $maintenance->assetInventories()->detach();
         $maintenance->delete();
 
         return response()->json(['success' => true, 'message' => 'Mantenimiento eliminado.']);
