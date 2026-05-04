@@ -215,7 +215,7 @@ function eliminarUsuario(id) {
     eliminarRegistro({
         url: `api/users/delete/${id}`,
         confirmTitle: 'Eliminar usuario',
-        confirmText: '¿Deseas eliminar este usuario definitivamente?',
+        confirmText: 'Â¿Deseas eliminar este usuario definitivamente?',
         onSuccess: (response) => {
             loadContent('/users', {
                 onSuccess: () => initUserFunctions()

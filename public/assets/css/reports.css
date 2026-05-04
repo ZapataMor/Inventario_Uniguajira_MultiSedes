@@ -374,3 +374,56 @@
     background-color: #a3333d;
     transform: translateY(-2px);
 }
+
+/* ── Selector de formato (PDF / Excel) ──────────────────────────── */
+
+.report-format-selector {
+    margin-top: 14px;
+}
+
+.report-format-selector > label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 8px;
+}
+
+.format-options {
+    display: flex;
+    gap: 10px;
+}
+
+.format-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+    user-select: none;
+}
+
+.format-option:has(input[value="pdf"]:checked) {
+    border-color: #ce4634;
+    background-color: #fdf2f2;
+    color: #ce4634;
+}
+
+.format-option:has(input[value="excel"]:checked) {
+    border-color: #1d6f42;
+    background-color: #f0faf4;
+    color: #1d6f42;
+}
+
+.format-option input[type="radio"] {
+    display: none;
+}
+
+.format-option .fa-file-pdf { color: #a3333d; }
+.format-option .fa-file-excel { color: #1d6f42; }

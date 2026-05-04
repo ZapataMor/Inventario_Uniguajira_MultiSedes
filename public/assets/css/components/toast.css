@@ -29,6 +29,10 @@
     border-left: 6px solid #dc3545; /* Rojo para fallo */
 }
 
+.toast-info {
+    border-left: 6px solid #6366f1; /* Índigo para sugerencias */
+}
+
 /* Contenido del toast */
 .toast-body {
     padding: 0.75rem;

@@ -214,6 +214,13 @@
                     </select>
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
@@ -243,6 +250,13 @@
                     </select>
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
@@ -265,6 +279,13 @@
                     <input type="text" id="nombreReporteDeTodosLosInventarios" name="nombreReporte" required />
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
@@ -287,6 +308,13 @@
                     <input type="text" id="nombreReporteDeBienes" name="nombreReporte" required />
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
@@ -309,6 +337,13 @@
                     <input type="text" id="nombreReporteDeEquipos" name="nombreReporte" required />
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
@@ -331,6 +366,13 @@
                     <input type="text" id="nombreReporteDeDadosDeBaja" name="nombreReporte" required />
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
@@ -353,6 +395,13 @@
                     <input type="text" id="nombreReporteDeHistorial" name="nombreReporte" required />
                 </div>
 
+                <div class="report-format-selector">
+                    <label>Formato:</label>
+                    <div class="format-options">
+                        <label class="format-option"><input type="radio" name="formato" value="pdf" checked> <i class="fas fa-file-pdf"></i> PDF</label>
+                        <label class="format-option"><input type="radio" name="formato" value="excel"> <i class="fas fa-file-excel"></i> Excel</label>
+                    </div>
+                </div>
                 <div class="form-actions">
                     <button type="submit" class="btn submit-btn">Generar</button>
                 </div>
