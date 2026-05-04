@@ -721,6 +721,10 @@ class GoodsInventoryController extends Controller
                         ->where('asset_inventory_id', $sourceRelation->id)
                         ->update(['quantity' => $newQty]);
                 } else {
+                    $destRelation = DB::table('asset_inventory')
+                        ->where('asset_id', $assetId)
+                        ->where('inventory_id', $destId)
+                        ->first();
                     DB::table('asset_quantities')
                         ->where('asset_inventory_id', $sourceRelation->id)
                         ->delete();
@@ -762,7 +766,6 @@ class GoodsInventoryController extends Controller
                     ->where('asset_inventory_id', $sourceRelation->id)
                     ->update(['asset_inventory_id' => $destRelationId]);
 
-                // Eliminar relación de origen vacía
                 DB::table('asset_inventory')
                     ->where('id', $sourceRelation->id)
                     ->delete();
@@ -1759,4 +1762,5 @@ class GoodsInventoryController extends Controller
             ]
         );
     }
+
 }

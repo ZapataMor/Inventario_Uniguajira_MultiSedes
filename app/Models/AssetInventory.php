@@ -34,10 +34,4 @@ class AssetInventory extends Model
         return $this->hasMany(AssetEquipment::class);
     }
 
-    public function maintenances()
-    {
-        return $this->belongsToMany(Maintenance::class, 'asset_inventory_maintenance')
-                    ->withTimestamps()
-                    ->orderByDesc('maintenances.date');
-    }
 }

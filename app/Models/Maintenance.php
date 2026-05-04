@@ -10,19 +10,19 @@ class Maintenance extends Model
 {
     use HasFactory, UsesTenantConnection;
 
-    protected $fillable = ['title', 'description', 'date', 'registered_by'];
+    protected $fillable = ['asset_id', 'title', 'description', 'date', 'registered_by'];
 
     protected $casts = [
         'date' => 'date',
     ];
 
+    public function asset()
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
     public function registeredBy()
     {
         return $this->belongsTo(User::class, 'registered_by');
-    }
-
-    public function assetInventories()
-    {
-        return $this->belongsToMany(AssetInventory::class, 'asset_inventory_maintenance');
     }
 }
