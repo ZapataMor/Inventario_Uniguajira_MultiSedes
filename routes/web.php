@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AssetImageController,
     HomeController,
+    MaintenanceController,
     PortalController,
     ProfileController,
     TaskController,
@@ -209,6 +210,12 @@ Route::get('/group/{groupId}/inventory/{inventoryId}/goods/{assetId}/serials', [
 Route::get('removed', [RemovedController::class, 'index'])->name('removed.index');
 
 Route::get('removed/{id}', [RemovedController::class, 'show'])->name('removed.show');
+
+Route::prefix('api/maintenances')->group(function () {
+    Route::get('/{inventoryId}/{assetId}', [MaintenanceController::class, 'index'])->name('maintenances.index');
+    Route::post('/create', [MaintenanceController::class, 'store'])->name('maintenances.store');
+    Route::delete('/{id}', [MaintenanceController::class, 'destroy'])->name('maintenances.destroy');
+});
 
 Route::prefix('api/removed')->group(function () {
     Route::get('/filter', [RemovedController::class, 'filter'])->name('removed.filter');

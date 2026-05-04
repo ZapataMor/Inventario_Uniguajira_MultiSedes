@@ -53,6 +53,10 @@
         <div id="control-bar-serial-good" class="control-bar">
             <div class="selected-name">1 seleccionado</div>
             <div class="control-actions">
+                <button class="control-btn" type="button" title="Ver mantenimientos"
+                        onclick="event.stopPropagation(); if (typeof btnVerMantenimientos === 'function') btnVerMantenimientos();">
+                    <i class="fas fa-wrench"></i>
+                </button>
                 <button class="control-btn" type="button" title="Cambiar inventario" onclick="event.stopPropagation(); if (typeof btnCambiarInventarioSerial === 'function') { btnCambiarInventarioSerial(); } else if (typeof window.openSerialMoveFallback === 'function') { window.openSerialMoveFallback(); }">
                     <i class="fas fa-exchange-alt"></i>
                 </button>
@@ -146,6 +150,7 @@
     <x-modal.inventory.good-inventory-edit-serial />
     <x-modal.inventory.good-inventory-remove-serial />
     <x-modal.inventory.good-inventory-move-serial />
+    <x-modal.inventory.good-inventory-maintenances />
 
     @once
         <script>

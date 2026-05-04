@@ -209,6 +209,14 @@
                 <i class="fas fa-exchange-alt"></i>
             </button>
 
+            {{-- Boton para ver mantenimientos --}}
+             <button class="control-btn"
+                    type="button"
+                    title="Ver mantenimientos"
+                    onclick="event.stopPropagation(); if (typeof btnVerMantenimientos === 'function') btnVerMantenimientos();">
+                <i class="fas fa-wrench"></i>
+            </button>
+
             {{-- Dar de baja --}}
             <button class="control-btn"
                     type="button"
@@ -317,6 +325,7 @@
     <x-modal.inventory.good-inventory-remove />
     <x-modal.inventory.good-inventory-move />
     <x-modal.inventory.good-inventory-batch-move />
+    <x-modal.inventory.good-inventory-maintenances />
     <x-modal.inventory.inventory-responsible />
 
     @once

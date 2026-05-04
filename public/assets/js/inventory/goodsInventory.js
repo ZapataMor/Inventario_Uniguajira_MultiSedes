@@ -645,6 +645,163 @@ function submitBatchMove() {
     .catch(() => showToast({ success: false, message: 'Error al procesar la solicitud.' }));
 }
 
+// ── Mantenimientos ───────────────────────────────────────────────────────────
+
+function toggleMantForm() {
+    const section = document.getElementById('mantFormSection');
+    const btn     = document.getElementById('mantAddBtn');
+    const visible = section.style.display !== 'none';
+
+    section.style.display = visible ? 'none' : 'block';
+    btn.classList.toggle('active', !visible);
+}
+
+function _closeMantForm() {
+    const section = document.getElementById('mantFormSection');
+    const btn     = document.getElementById('mantAddBtn');
+    if (section) section.style.display = 'none';
+    if (btn)     btn.classList.remove('active');
+}
+
+function btnVerMantenimientos() {
+    if (!selectedItem || (selectedItem.type !== 'good' && selectedItem.type !== 'serial-good')) {
+        showToast({ success: false, message: 'No se ha seleccionado un bien.' });
+        return;
+    }
+
+    const card        = selectedItem.element;
+    const assetId     = selectedItem.type === 'serial-good'
+                            ? card.dataset.bienId
+                            : selectedItem.id;
+    const inventoryId = selectedItem.type === 'serial-good'
+                            ? card.dataset.inventoryId
+                            : document.getElementById('inventory-name').getAttribute('data-id');
+
+    document.getElementById('mantenimientoAssetId').value     = assetId;
+    document.getElementById('mantenimientoInventoryId').value = inventoryId;
+
+    _closeMantForm();
+    _cargarMantenimientos(inventoryId, assetId);
+    mostrarModal('#modalMantenimientos');
+}
+
+function _cargarMantenimientos(inventoryId, assetId) {
+    const lista = document.getElementById('mantenimientosList');
+    lista.innerHTML = '<div class="mant-empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
+
+    fetch(`/api/maintenances/${inventoryId}/${assetId}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(r => r.json())
+    .then(items => {
+        if (!items.length) {
+            lista.innerHTML = '<div class="mant-empty">Sin mantenimientos registrados.</div>';
+            return;
+        }
+        lista.innerHTML = '';
+        items.forEach(m => lista.appendChild(_buildMantItem(m)));
+    })
+    .catch(() => {
+        lista.innerHTML = '<div class="mant-empty">Error al cargar los mantenimientos.</div>';
+    });
+}
+
+function _buildMantItem(m) {
+    const el = document.createElement('div');
+    el.className = 'mant-item';
+    el.dataset.id = m.id;
+
+    const isAdmin = document.getElementById('batch-action-bar') !== null;
+
+    el.innerHTML = `
+        <div class="mant-item-header">
+            <span class="mant-item-title">${m.title}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <span class="mant-item-date">${m.date_formatted}</span>
+                ${isAdmin ? `<button type="button" class="mant-delete-btn" title="Eliminar" onclick="deleteMantItem(${m.id}, this)"><i class="fas fa-times"></i></button>` : ''}
+            </div>
+        </div>
+        ${m.description ? `<div class="mant-item-desc">${m.description}</div>` : ''}
+        <div class="mant-item-by">Registrado por: ${m.registered_by}</div>
+    `;
+    return el;
+}
+
+function submitMantenimiento() {
+    const inventoryId = document.getElementById('mantenimientoInventoryId').value;
+    const assetId     = document.getElementById('mantenimientoAssetId').value;
+    const title       = document.getElementById('mantTitulo').value.trim();
+    const date        = document.getElementById('mantFecha').value;
+    const description = document.getElementById('mantDescripcion').value.trim();
+
+    if (!title) {
+        showToast({ success: false, message: 'El título es obligatorio.' });
+        return;
+    }
+    if (!date) {
+        showToast({ success: false, message: 'La fecha es obligatoria.' });
+        return;
+    }
+
+    fetch('/api/maintenances/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({ inventory_id: inventoryId, asset_id: assetId, title, date, description }),
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) {
+            showToast({ success: false, message: res.message || 'Error al guardar.' });
+            return;
+        }
+
+        const lista = document.getElementById('mantenimientosList');
+        const empty = lista.querySelector('.mant-empty');
+        if (empty) empty.remove();
+        lista.prepend(_buildMantItem(res.data));
+
+        document.getElementById('mantTitulo').value      = '';
+        document.getElementById('mantFecha').value       = '';
+        document.getElementById('mantDescripcion').value = '';
+        _closeMantForm();
+
+        showToast({ success: true, message: res.message });
+    })
+    .catch(() => showToast({ success: false, message: 'Error al guardar el mantenimiento.' }));
+}
+
+function deleteMantItem(id, btn) {
+    if (!confirm('¿Eliminar este mantenimiento?')) return;
+
+    fetch(`/api/maintenances/${id}`, {
+        method: 'DELETE',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (!res.success) {
+            showToast({ success: false, message: res.message || 'Error al eliminar.' });
+            return;
+        }
+        const item = btn.closest('.mant-item');
+        item.remove();
+
+        const lista = document.getElementById('mantenimientosList');
+        if (!lista.querySelector('.mant-item')) {
+            lista.innerHTML = '<div class="mant-empty">Sin mantenimientos registrados.</div>';
+        }
+        showToast({ success: true, message: res.message });
+    })
+    .catch(() => showToast({ success: false, message: 'Error al eliminar el mantenimiento.' }));
+}
+
 // Los onclick inline de la vista necesitan handlers disponibles en window.
 Object.assign(window, {
     initGoodsInventoryFunctions,
@@ -654,6 +811,10 @@ Object.assign(window, {
     btnCambiarInventario,
     btnDarDeBajaBienCantidad,
     btnMoverSeleccionados,
+    btnVerMantenimientos,
+    toggleMantForm,
+    submitMantenimiento,
+    deleteMantItem,
     onBatchModeChange,
     submitBatchMove,
 });
