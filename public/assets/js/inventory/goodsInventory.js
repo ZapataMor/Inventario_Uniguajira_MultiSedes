@@ -663,35 +663,60 @@ function _closeMantForm() {
     if (btn)     btn.classList.remove('active');
 }
 
+// ── Hook: muestra/oculta el botón de mantenimiento según tipo de bien seleccionado ──
+window._onSelectionUpdate = function (type, item) {
+    if (type !== 'good') return;
+    const btn = document.getElementById('btn-mantenimiento-good');
+    if (!btn) return;
+    const isSerial = item && item.element.dataset.assetType === 'Serial';
+    btn.style.display = isSerial ? '' : 'none';
+};
+
 function btnVerMantenimientos() {
-    if (!selectedItem || (selectedItem.type !== 'good' && selectedItem.type !== 'serial-good')) {
+    if (!selectedItem) {
         showToast({ success: false, message: 'No se ha seleccionado un bien.' });
         return;
     }
 
-    const card        = selectedItem.element;
-    const assetId     = selectedItem.type === 'serial-good'
-                            ? card.dataset.bienId
-                            : selectedItem.id;
-    const inventoryId = selectedItem.type === 'serial-good'
-                            ? card.dataset.inventoryId
-                            : document.getElementById('inventory-name').getAttribute('data-id');
+    const card = selectedItem.element;
 
-    document.getElementById('mantenimientoAssetId').value     = assetId;
-    document.getElementById('mantenimientoInventoryId').value = inventoryId;
+    // Bienes tipo Serial individuales (vista de seriales)
+    if (selectedItem.type === 'serial-good') {
+        const equipmentId = card.dataset.id;  // asset_equipment_id
+        document.getElementById('mantenimientoEquipmentId').value = equipmentId;
+        document.getElementById('mantenimientoAssetId').value     = '';
+        document.getElementById('mantenimientoInventoryId').value = '';
+        _closeMantForm();
+        _cargarMantenimientos({ equipmentId });
+        mostrarModal('#modalMantenimientos');
+        return;
+    }
 
-    _closeMantForm();
-    _cargarMantenimientos(inventoryId, assetId);
-    mostrarModal('#modalMantenimientos');
+    // Bienes tipo Serial desde la vista de inventario general
+    if (selectedItem.type === 'good' && card.dataset.assetType === 'Serial') {
+        const assetId     = selectedItem.id;
+        const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
+        document.getElementById('mantenimientoEquipmentId').value = '';
+        document.getElementById('mantenimientoAssetId').value     = assetId;
+        document.getElementById('mantenimientoInventoryId').value = inventoryId;
+        _closeMantForm();
+        _cargarMantenimientos({ inventoryId, assetId });
+        mostrarModal('#modalMantenimientos');
+        return;
+    }
+
+    showToast({ success: false, message: 'Solo los bienes tipo Serial tienen mantenimientos.' });
 }
 
-function _cargarMantenimientos(inventoryId, assetId) {
+function _cargarMantenimientos({ equipmentId, inventoryId, assetId } = {}) {
     const lista = document.getElementById('mantenimientosList');
     lista.innerHTML = '<div class="mant-empty"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
 
-    fetch(`/api/maintenances/${inventoryId}/${assetId}`, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    })
+    const url = equipmentId
+        ? `/api/maintenances/equipment/${equipmentId}`
+        : `/api/maintenances/${inventoryId}/${assetId}`;
+
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
     .then(r => r.json())
     .then(items => {
         if (!items.length) {
@@ -728,6 +753,7 @@ function _buildMantItem(m) {
 }
 
 function submitMantenimiento() {
+    const equipmentId = document.getElementById('mantenimientoEquipmentId').value;
     const inventoryId = document.getElementById('mantenimientoInventoryId').value;
     const assetId     = document.getElementById('mantenimientoAssetId').value;
     const title       = document.getElementById('mantTitulo').value.trim();
@@ -743,6 +769,10 @@ function submitMantenimiento() {
         return;
     }
 
+    const payload = equipmentId
+        ? { equipment_id: Number(equipmentId), title, date, description }
+        : { inventory_id: Number(inventoryId), asset_id: Number(assetId), title, date, description };
+
     fetch('/api/maintenances/create', {
         method: 'POST',
         headers: {
@@ -750,7 +780,7 @@ function submitMantenimiento() {
             'X-Requested-With': 'XMLHttpRequest',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
         },
-        body: JSON.stringify({ inventory_id: inventoryId, asset_id: assetId, title, date, description }),
+        body: JSON.stringify(payload),
     })
     .then(r => r.json())
     .then(res => {

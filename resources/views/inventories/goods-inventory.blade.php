@@ -209,10 +209,12 @@
                 <i class="fas fa-exchange-alt"></i>
             </button>
 
-            {{-- Boton para ver mantenimientos --}}
-             <button class="control-btn"
+            {{-- Boton para ver mantenimientos (solo bienes tipo Serial) --}}
+            <button id="btn-mantenimiento-good"
+                    class="control-btn"
                     type="button"
                     title="Ver mantenimientos"
+                    style="display:none"
                     onclick="event.stopPropagation(); if (typeof btnVerMantenimientos === 'function') btnVerMantenimientos();">
                 <i class="fas fa-wrench"></i>
             </button>
