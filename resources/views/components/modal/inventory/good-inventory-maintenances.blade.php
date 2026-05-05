@@ -20,6 +20,7 @@
 
         <input type="hidden" id="mantenimientoAssetId" />
         <input type="hidden" id="mantenimientoInventoryId" />
+        <input type="hidden" id="mantenimientoEquipmentId" />
 
         @if(Auth::user()->isAdministrator())
         {{-- Formulario colapsable --}}

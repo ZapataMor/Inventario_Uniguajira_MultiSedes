@@ -132,6 +132,11 @@ function updateControlBar(type) {
     } else {
         controlBar.classList.remove('visible');
     }
+
+    // Hook opcional: permite que módulos externos reaccionen al cambio de selección
+    if (typeof window._onSelectionUpdate === 'function') {
+        window._onSelectionUpdate(type, selectedItem);
+    }
 }
 
 // Función para limpiar la selección

@@ -10,7 +10,7 @@ class Maintenance extends Model
 {
     use HasFactory, UsesTenantConnection;
 
-    protected $fillable = ['asset_id', 'title', 'description', 'date', 'registered_by'];
+    protected $fillable = ['asset_id', 'inventory_id', 'equipment_id', 'title', 'description', 'date', 'registered_by'];
 
     protected $casts = [
         'date' => 'date',

@@ -212,6 +212,7 @@ Route::get('removed', [RemovedController::class, 'index'])->name('removed.index'
 Route::get('removed/{id}', [RemovedController::class, 'show'])->name('removed.show');
 
 Route::prefix('api/maintenances')->group(function () {
+    Route::get('/equipment/{equipmentId}', [MaintenanceController::class, 'indexByEquipment'])->name('maintenances.byEquipment');
     Route::get('/{inventoryId}/{assetId}', [MaintenanceController::class, 'index'])->name('maintenances.index');
     Route::post('/create', [MaintenanceController::class, 'store'])->name('maintenances.store');
     Route::delete('/{id}', [MaintenanceController::class, 'destroy'])->name('maintenances.destroy');
