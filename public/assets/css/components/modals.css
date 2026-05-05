@@ -143,6 +143,34 @@
     background-color: #5a6268;
 }
 
+/* Responsable actual en modal editar responsable */
+.responsable-actual-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background-color: #f8f9fa;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 16px;
+}
+
+.responsable-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+}
+
+.responsable-valor {
+    font-size: 0.85rem;
+    color: #1e293b;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Acciones de Formulario */
 .form-actions {
     display: flex;

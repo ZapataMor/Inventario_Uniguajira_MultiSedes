@@ -19,9 +19,14 @@
             @csrf
             <input type="hidden" name="id" id="editarResponsableId" />
 
+            <div class="responsable-actual-row">
+                <span class="responsable-label">Responsable:</span>
+                <span class="responsable-valor" id="responsableActualTexto">—</span>
+            </div>
+
             <div>
-                <label for="editarResponsableNombre">Nuevo Responsable:</label>
-                <input type="text" name="responsable" id="editarResponsableNombre" />
+                <label for="editarResponsableNombre">Nuevo responsable</label>
+                <input type="text" name="responsable" id="editarResponsableNombre" placeholder="Escribe el nuevo responsable..." />
             </div>
 
             <div class="form-actions">

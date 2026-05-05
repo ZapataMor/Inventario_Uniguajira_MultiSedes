@@ -4,6 +4,20 @@ function initGoodsInventoryFunctions() {
     const groupId = document.getElementById('inventory-name').getAttribute('data-group-id');
     const inventoryId = document.getElementById('inventory-name').getAttribute('data-id');
 
+    // Inicializa el formulario para editar responsable del inventario
+    inicializarFormularioAjax('#formEditarResponsable', {
+        closeModalOnSuccess: true,
+        resetOnSuccess: false,
+        onSuccess: (response) => {
+            showToast(response);
+            const newResponsable = response.data?.responsible ?? '';
+            const nameEl = document.getElementById('inventory-name');
+            if (nameEl) nameEl.setAttribute('data-responsible', newResponsable);
+            const url = `/group/${groupId}/inventory/${inventoryId}`;
+            loadContent(url, { onSuccess: () => initGoodsInventoryFunctions() });
+        }
+    });
+
     // Inicializa el formulario para crear un bien en el inventario
     // ruta: /api/goods-inventory/create
     inicializarFormularioAjax('#formCrearBienInventario', {

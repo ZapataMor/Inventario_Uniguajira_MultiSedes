@@ -82,11 +82,21 @@ function btnEliminarInventario() {
 
 // Función para abrir el modal de editar responsable del inventario
 function btnEditarResponsable() {
-    // Agrega el id del inventario desde localStorage al input oculto antes de enviar
-    const idInventario = localStorage.getItem('openInventory');
+    const nameEl = document.getElementById('inventory-name');
+    const idInventario = nameEl
+        ? nameEl.getAttribute('data-id')
+        : localStorage.getItem('openInventory');
+
     if (idInventario) {
         document.getElementById('editarResponsableId').value = idInventario;
     }
+
+    const responsableActual = nameEl ? (nameEl.getAttribute('data-responsible') ?? '') : '';
+    document.getElementById('editarResponsableNombre').value = '';
+
+    const textoEl = document.getElementById('responsableActualTexto');
+    if (textoEl) textoEl.textContent = responsableActual || '—';
+
     mostrarModal('#modalEditarResponsable');
 }
 

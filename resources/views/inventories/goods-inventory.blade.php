@@ -63,7 +63,7 @@
 
     <div class="back-and-title">
         <div>
-            <span id="inventory-name" class="location" data-id="{{ $inventory->id }}" data-group-id="{{ $inventory->group_id }}" >{{ $inventory->name }}</span>
+            <span id="inventory-name" class="location" data-id="{{ $inventory->id }}" data-group-id="{{ $inventory->group_id }}" data-responsible="{{ $inventory->responsible ?? '' }}">{{ $inventory->name }}</span>
             @if ($inventory->responsible)
                 <span class="sub-info">Responsable: {{ $inventory->responsible }}</span>
             @endif
