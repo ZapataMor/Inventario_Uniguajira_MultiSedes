@@ -9,14 +9,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('maintenances', function (Blueprint $table) {
-            $table->unsignedBigInteger('equipment_id')->nullable()->after('asset_inventory_id');
+            if (! Schema::hasColumn('maintenances', 'equipment_id')) {
+                $afterColumn = Schema::hasColumn('maintenances', 'asset_id') ? 'asset_id' : 'id';
+
+                $table->unsignedBigInteger('equipment_id')->nullable()->after($afterColumn);
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('maintenances', function (Blueprint $table) {
-            $table->dropColumn('equipment_id');
+            if (Schema::hasColumn('maintenances', 'equipment_id')) {
+                $table->dropColumn('equipment_id');
+            }
         });
     }
 };
