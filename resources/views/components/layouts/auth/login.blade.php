@@ -7,17 +7,10 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     </head>
     @php
-        $currentTenant = $tenant ?? tenant();
         $backgroundPath = ($branding ?? null)?->login_background ?: 'images/fondo-actualizado.png';
         $backgroundAlt = ($branding ?? null)?->sede_name
             ? "Fondo del login de {$branding->sede_name}"
-            : 'Campus de la Universidad de La Guajira';
-        $sedeName = ($branding ?? null)?->sede_name ?? match ($currentTenant?->slug) {
-            'maicao' => 'Sede Maicao',
-            'villanueva' => 'Sede Villanueva',
-            'fonseca' => 'Sede Fonseca',
-            default => 'Universidad de La Guajira',
-        };
+            : 'Fondo institucional';
         $twoFactorUrl = \Illuminate\Support\Facades\Route::has('two-factor.login')
             ? route('two-factor.login')
             : route('login');
@@ -70,21 +63,6 @@
                 <main class="relative z-10 grid h-full w-full grid-cols-12">
                     <section class="col-span-12 flex items-center justify-center p-5 sm:p-6 lg:order-1 lg:col-span-5 lg:p-10 xl:col-span-4 max-sm:items-start max-sm:overflow-y-auto max-sm:py-4">
                         <div class="w-full max-w-[440px] max-sm:max-w-none">
-                            <div class="mb-5 flex items-center justify-center lg:hidden">
-                                <div class="flex items-center gap-3">
-                                    <div class="relative">
-                                        <div class="absolute inset-0 rounded-2xl bg-[#2b5cff]/20 blur-xl"></div>
-                                        <div class="relative grid size-12 place-items-center rounded-2xl bg-white/95 shadow-[0_8px_24px_-8px_rgba(43,92,255,.35)] ring-1 ring-white/80">
-                                            <img src="{{ asset('images/logo-uniguajira-seo-150x150.webp') }}" alt="Universidad de La Guajira" class="size-9 object-contain">
-                                        </div>
-                                    </div>
-                                    <div class="leading-tight">
-                                        <div class="text-[10px] font-medium uppercase tracking-[.32em] text-slate-500">Universidad de</div>
-                                        <div class="-mt-0.5 text-[18px] font-semibold tracking-normal text-slate-900">La Guajira</div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div
                                 class="relative isolate w-full rounded-[28px] border border-white/85 bg-white/80 p-6 shadow-[0_1px_0_rgba(255,255,255,1)_inset,0_-40px_80px_-50px_rgba(43,92,255,.10)_inset,0_30px_60px_-25px_rgba(20,28,60,.18),0_8px_20px_-8px_rgba(20,28,60,.10),0_0_0_1px_rgba(20,28,60,.03)] backdrop-blur-[28px] backdrop-saturate-[180%] sm:p-9 max-sm:w-[calc(100vw-2.5rem)] max-sm:max-w-[350px] max-sm:p-5 motion-safe:animate-auth-rise"
                                 data-auth-card
@@ -104,40 +82,9 @@
                     </section>
 
                     <section class="relative order-2 col-span-7 hidden flex-col justify-between p-10 lg:flex lg:p-14 xl:col-span-8">
-                        <header class="flex items-center justify-between motion-safe:animate-auth-rise">
-                            <div class="flex items-center gap-3">
-                                <div class="relative">
-                                    <div class="absolute inset-0 rounded-2xl bg-[#2b5cff]/20 blur-xl"></div>
-                                    <div class="relative grid size-12 place-items-center rounded-2xl bg-white/95 shadow-[0_8px_24px_-8px_rgba(43,92,255,.35)] ring-1 ring-white/80">
-                                        <img src="{{ asset('images/logo-uniguajira-seo-150x150.webp') }}" alt="Universidad de La Guajira" class="size-9 object-contain">
-                                    </div>
-                                </div>
-                                <div class="leading-tight">
-                                    <div class="text-[10px] font-medium uppercase tracking-[.32em] text-slate-500">Universidad de</div>
-                                    <div class="-mt-0.5 text-[18px] font-semibold tracking-normal text-slate-900">La Guajira</div>
-                                </div>
-                            </div>
-                            <div class="hidden items-center gap-6 text-[13px] text-slate-700 md:flex">
-                                <span class="flex items-center gap-2">
-                                    <span class="size-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_0_rgba(34,197,94,.45)] motion-safe:animate-[ping_1.8s_ease-out_infinite]"></span>
-                                    Sistemas operativos
-                                </span>
-                                <span class="hidden items-center gap-1.5 xl:flex">
-                                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
-                                    ES · CO
-                                </span>
-                                <span class="hidden items-center gap-1.5 xl:flex">
-                                    <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg>
-                                    Soporte
-                                </span>
-                            </div>
-                        </header>
+                        <div aria-hidden="true"></div>
 
                         <div class="max-w-[640px] motion-safe:animate-auth-rise [animation-delay:.12s]">
-                            <div class="mb-7 inline-flex items-center gap-2 rounded-full border border-white/85 bg-white/65 px-3 py-1.5 text-[11px] uppercase tracking-[.22em] text-slate-700 shadow-[0_1px_0_rgba(255,255,255,.9)_inset,0_4px_14px_-6px_rgba(20,28,60,.08)] backdrop-blur-[18px] backdrop-saturate-[160%]">
-                                <svg class="size-3.5 text-[#2b5cff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg>
-                                Plataforma académica · v3.0
-                            </div>
                             <div class="relative inline-block">
                                 <div class="pointer-events-none absolute -inset-10 rounded-[40px] bg-[#2b5cff]/10 opacity-80 blur-3xl"></div>
                                 <div class="pointer-events-none absolute -inset-12 rounded-[40px] bg-[#ffb71b]/10 opacity-50 blur-3xl"></div>
@@ -161,7 +108,7 @@
                                     <div class="mt-1 text-[11px] uppercase tracking-[.16em] text-slate-500">comunidad activa</div>
                                 </div>
                                 <div class="rounded-2xl border border-white/85 bg-white/65 px-4 py-3.5 shadow-[0_1px_0_rgba(255,255,255,.9)_inset,0_4px_14px_-6px_rgba(20,28,60,.08)] backdrop-blur-[18px] backdrop-saturate-[160%]">
-                                    <div class="text-[30px] font-semibold leading-none tracking-normal text-slate-900">6</div>
+                                    <div class="text-[30px] font-semibold leading-none tracking-normal text-slate-900">3</div>
                                     <div class="mt-1 text-[11px] uppercase tracking-[.16em] text-slate-500">sedes conectadas</div>
                                 </div>
                             </div>
@@ -174,16 +121,10 @@
                                     <div class="capitalize" data-auth-date>{{ now()->locale('es_CO')->translatedFormat('l, d \d\e F') }}</div>
                                 </div>
                                 <div class="hidden h-9 w-px bg-slate-900/15 md:block"></div>
-                                <div class="hidden max-w-xs leading-snug md:block">
-                                    {{ $sedeName }}
+                                <div class="hidden max-w-xs leading-snug text-slate-500/80 md:block">
+                                    Riohacha · La Guajira, Colombia
                                     <div class="text-slate-500/70">11.5444° N · 72.9072° W</div>
                                 </div>
-                            </div>
-                            <div class="hidden items-center gap-5 lg:flex">
-                                <span class="opacity-80">© {{ now()->year }} Uniguajira</span>
-                                <span class="transition hover:text-slate-900">Términos</span>
-                                <span class="transition hover:text-slate-900">Privacidad</span>
-                                <span class="transition hover:text-slate-900">Estado</span>
                             </div>
                         </footer>
 
