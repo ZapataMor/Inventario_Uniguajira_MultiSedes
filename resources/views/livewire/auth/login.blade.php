@@ -1,6 +1,12 @@
 <x-layouts.auth.login>
     @php
-        $sedeLabel = $branding?->sede_name ?? 'Sede Maicao';
+        $tenantSlug = $tenant?->slug;
+        $sedeHeading = match ($tenantSlug) {
+            'maicao' => 'SEDE MAICAO UNIGUAJIRA',
+            'villanueva' => 'SEDE VILLANUEVA UNIGUAJIRA',
+            'fonseca' => 'SEDE FONSECA UNIGUAJIRA',
+            default => 'UNIGUAJIRA',
+        };
     @endphp
 
     <div class="relative -mx-3 -mt-2 mb-4 flex justify-center px-3 pb-2 pt-[18px]">
@@ -14,7 +20,7 @@
 
     <div class="mb-6 mt-[18px] text-center">
         <div class="mb-2 text-[11px] font-bold uppercase tracking-widest text-[oklch(0.55_0.16_28)]">
-            {{ $sedeLabel }} · Uniguajira
+            {{ $sedeHeading }}
         </div>
         <h1 class="font-['Instrument_Serif',serif] text-[34px] font-normal leading-[1.05] text-[oklch(0.18_0.02_30)]">
             Bienvenido <em class="italic text-[oklch(0.55_0.16_28)]">de vuelta</em>

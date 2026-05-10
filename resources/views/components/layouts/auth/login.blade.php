@@ -7,7 +7,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     </head>
     @php
-        $backgroundPath = $branding?->login_background ?: 'images/fondounigua.png';
+        $backgroundPath = $branding?->login_background ?: 'assets/images/portal-uniguajira.jpeg';
         $backgroundAlt = $branding?->sede_name
             ? "Fondo del login de {$branding->sede_name}"
             : 'Fondo del login de Inventario Uniguajira';
