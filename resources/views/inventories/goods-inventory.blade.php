@@ -4,7 +4,7 @@
 @section('title', 'Bienes del Inventario')
 
 @section('content')
-<div id="goods-inventory" class="content">
+<div id="goods-inventory" class="content" data-view-mode-root="inventory-goods" data-view-mode="grid">
 
     <div class="inventory-header">
         <h1>Inventario</h1>
@@ -80,6 +80,8 @@
         placeholder="Buscar bien..."
         onclick="btnAbrirModalCrearBien"
     >
+        <x-generals.view-mode-toggle target="inventory-goods" />
+
         @if(Auth::user()->isAdministrator())
             <button class="excel-btn" onclick="btnAbrirModalExcelInventario()" title="Cargar bienes desde Excel">
                 <i class="fas fa-file-excel "></i>
@@ -265,7 +267,7 @@
             <p>No hay bienes en este inventario</p>
         </div>
     @else
-        <div class="bienes-grid">
+        <div class="bienes-grid" data-view-mode-container>
             @foreach($assets as $asset)
                 <div class="bien-card card-item"
                     @if (Auth::user()->isAdministrator())

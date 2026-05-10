@@ -333,6 +333,7 @@ function updateRemovedAssetsList(assets) {
                 <p>No se encontraron bienes con los filtros aplicados</p>
             </div>
         `;
+        window.initViewModeToggles?.();
         return;
     }
 
@@ -388,6 +389,7 @@ function updateRemovedAssetsList(assets) {
             </div>
         `;
     }).join('');
+    window.initViewModeToggles?.();
 }
 
 /**

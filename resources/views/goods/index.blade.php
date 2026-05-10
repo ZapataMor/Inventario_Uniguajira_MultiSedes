@@ -10,7 +10,7 @@
     $goodsBySede = $goodsBySede ?? collect();
 @endphp
 
-<div class="content">
+<div class="content" data-view-mode-root="goods-catalog" data-view-mode="grid">
 
     <div class="goods-header">
         <h2>Catalogo de bienes</h2>
@@ -23,6 +23,7 @@
         modal="#modalCrearBien"
         canCreate="{{ $isPortalCatalog ? 'false' : 'true' }}"
     >
+        <x-generals.view-mode-toggle target="goods-catalog" />
 
 {{-- Botón de carga masiva desde Excel, visible solo para administradores fuera del portal --}}
         @if (Auth::user()->isAdministrator() && ! $isPortalCatalog)
@@ -67,7 +68,7 @@
 
                             {{-- Cuadrícula de bienes correspondiente a la sede actual --}}
                             @else
-                                <div class="bienes-grid">
+                                <div class="bienes-grid" data-view-mode-container>
                                     @foreach ($sedeData['goods'] as $bien)
                                         <div class="bien-card card-item">
                                             <img
@@ -101,7 +102,7 @@
 
         {{-- En modo normal, se muestra la cuadrícula de bienes de la sede actual --}}
         @else
-            <div id="bienes-grid" class="bienes-grid">
+            <div id="bienes-grid" class="bienes-grid" data-view-mode-container>
                 @foreach ($dataGoods as $bien)
                     <div class="bien-card card-item">
 

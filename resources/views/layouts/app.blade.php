@@ -56,6 +56,7 @@
     <script src="{{ asset('assets/js/helpers/search.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/toast.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/modal.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/view-mode.js') }}?v={{ $assetVersion('assets/js/helpers/view-mode.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/selection.js') }}?v={{ $assetVersion('assets/js/helpers/selection.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/autocomplete.js') }}?v={{ $assetVersion('assets/js/helpers/autocomplete.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v={{ $assetVersion('assets/js/helpers/excel-ui.js') }}"></script>
@@ -541,7 +542,7 @@
                 }
 
                 container.innerHTML = `
-                    <div class="card-grid">
+                    <div class="card-grid" data-view-mode-container>
                         ${results.map((result) => {
                             const resultType = result.type === 'good' ? 'good' : 'inventory';
                             const icon = resultType === 'good' ? 'fa-box' : 'fa-folder';
@@ -584,6 +585,7 @@
                         }).join('')}
                     </div>
                 `;
+                window.initViewModeToggles?.();
             };
 
             const clearGroupSearchRemoteResults = () => {
