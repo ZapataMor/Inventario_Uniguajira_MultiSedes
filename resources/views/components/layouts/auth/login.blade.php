@@ -63,7 +63,7 @@
                 <main class="relative z-10 grid h-full w-full grid-cols-12">
                     <section class="col-span-12 flex items-center justify-center p-5 sm:p-6 lg:order-1 lg:col-span-5 lg:p-10 xl:col-span-4 max-sm:overflow-y-auto max-sm:py-6">
                         <div class="w-full max-w-[440px] max-sm:max-w-none">
-                            <div class="mb-5 flex justify-center motion-safe:animate-auth-rise">
+                            <div class="mb-5 flex justify-center motion-safe:animate-auth-rise lg:hidden">
                                 <img
                                     src="{{ asset('images/sofia-transparent.png') }}"
                                     alt="SOFIA"
