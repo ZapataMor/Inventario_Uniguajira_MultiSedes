@@ -61,8 +61,16 @@
                 </div>
 
                 <main class="relative z-10 grid h-full w-full grid-cols-12">
-                    <section class="col-span-12 flex items-center justify-center p-5 sm:p-6 lg:order-1 lg:col-span-5 lg:p-10 xl:col-span-4 max-sm:items-start max-sm:overflow-y-auto max-sm:py-4">
+                    <section class="col-span-12 flex items-center justify-center p-5 sm:p-6 lg:order-1 lg:col-span-5 lg:p-10 xl:col-span-4 max-sm:overflow-y-auto max-sm:py-6">
                         <div class="w-full max-w-[440px] max-sm:max-w-none">
+                            <div class="mb-5 flex justify-center motion-safe:animate-auth-rise">
+                                <img
+                                    src="{{ asset('images/sofia-transparent.png') }}"
+                                    alt="SOFIA"
+                                    class="h-auto w-[280px] max-w-[86vw] drop-shadow-[0_16px_28px_rgba(20,28,60,.16)] sm:w-[320px]"
+                                >
+                            </div>
+
                             <div
                                 class="relative isolate w-full rounded-[28px] border border-white/85 bg-white/80 p-6 shadow-[0_1px_0_rgba(255,255,255,1)_inset,0_-40px_80px_-50px_rgba(43,92,255,.10)_inset,0_30px_60px_-25px_rgba(20,28,60,.18),0_8px_20px_-8px_rgba(20,28,60,.10),0_0_0_1px_rgba(20,28,60,.03)] backdrop-blur-[28px] backdrop-saturate-[180%] sm:p-9 max-sm:w-[calc(100vw-2.5rem)] max-sm:max-w-[350px] max-sm:p-5 motion-safe:animate-auth-rise"
                                 data-auth-card
