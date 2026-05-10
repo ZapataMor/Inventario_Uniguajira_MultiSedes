@@ -7,23 +7,19 @@
     $isPortalRemovedCatalog = $isPortalRemovedCatalog ?? false;
     $removedAssetsBySede = $removedAssetsBySede ?? collect();
 @endphp
-<div id="goods-removed" class="content" data-portal-catalog="{{ $isPortalRemovedCatalog ? '1' : '0' }}">
+<div id="goods-removed" class="content" data-view-mode-root="removed-goods" data-view-mode="grid" data-portal-catalog="{{ $isPortalRemovedCatalog ? '1' : '0' }}">
 
     <div class="inventory-header">
         <h1>Bienes Dados de Baja</h1>
     </div>
 
-    <div class="mb-5 flex items-center gap-2.5">
-        <div class="flex-1">
-            <x-generals.top-bar
-                id="searchRemovedGoods"
-                placeholder="Buscar por nombre o motivo..."
-                :canCreate="false"
-            />
-        </div>
-
+    <x-generals.top-bar
+        id="searchRemovedGoods"
+        placeholder="Buscar por nombre o motivo..."
+        :canCreate="false"
+    >
+        <x-generals.view-mode-toggle target="removed-goods" />
         @if(! $isPortalRemovedCatalog)
-        <div class="mb-5">
             <button
                 id="btnOpenFilter"
                 class="create-btn"
@@ -39,9 +35,8 @@
                 title="Limpiar filtros">
                 <i class="fas fa-times"></i>
             </button>
-        </div>
         @endif
-    </div>
+    </x-generals.top-bar>
 
     @if($isPortalRemovedCatalog)
         <div class="inventory-sede-list">
@@ -58,7 +53,7 @@
                         @if($sedeData['removed_assets']->isEmpty())
                             <p class="inventory-sede-empty">No hay bienes dados de baja en esta sede.</p>
                         @else
-                            <div class="bienes-grid">
+                            <div class="bienes-grid" data-view-mode-container>
                                 @foreach($sedeData['removed_assets'] as $asset)
                                     <div class="bien-card card-item cursor-pointer"
                                         data-search="{{ strtolower($asset->asset_name . ' ' . $asset->reason) }}"
@@ -109,7 +104,7 @@
             <p>No hay bienes dados de baja</p>
         </div>
     @else
-        <div class="bienes-grid">
+        <div class="bienes-grid" data-view-mode-container>
             @foreach($removedAssets as $asset)
                 <div class="bien-card card-item cursor-pointer"
                     data-search="{{ strtolower($asset->asset_name . ' ' . $asset->reason) }}"

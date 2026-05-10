@@ -166,7 +166,8 @@
             return;
         }
 
-        ctx.results.innerHTML = `<div class="card-grid">${results.map(resultCard).join('')}</div>`;
+        ctx.results.innerHTML = `<div class="card-grid" data-view-mode-container>${results.map(resultCard).join('')}</div>`;
+        window.initViewModeToggles?.();
     };
 
     const runRemoteSearch = () => {

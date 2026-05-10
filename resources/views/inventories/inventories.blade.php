@@ -9,7 +9,7 @@
         ? route('inventory.groups', ['portal' => 1])
         : route('inventory.groups');
 @endphp
-<div class="content">
+<div class="content" data-view-mode-root="inventory-inventories" data-view-mode="grid">
 
     <div class="inventory-header">
         <h1>Inventario</h1>
@@ -29,7 +29,9 @@
         id="searchInventory"
         placeholder="Buscar inventario..."
         modal="#modalCrearInventario"
-    />
+    >
+        <x-generals.view-mode-toggle target="inventory-inventories" />
+    </x-generals.top-bar>
 
     {{-- Barra de control --}}
     @if(Auth::user()->isAdministrator())
@@ -47,7 +49,7 @@
     @endif
 
     {{-- GRID DE INVENTARIOS --}}
-    <div class="card-grid">
+    <div class="card-grid" data-view-mode-container>
 @php
     // dd($inventories)
 @endphp
