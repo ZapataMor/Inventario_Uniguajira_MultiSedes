@@ -40,7 +40,7 @@
 
     <x-generals.top-bar
         id="searchGroup"
-        placeholder="{{ $groupSearchType === 'inventories' ? 'Buscar inventario...' : ($groupSearchType === 'goods' ? 'Buscar bien...' : 'Buscar grupo...') }}"
+        placeholder="{{ $groupSearchType === 'inventories' ? 'Buscar inventario...' : ($groupSearchType === 'goods' ? 'Buscar bien...' : ($groupSearchType === 'serial' ? 'Buscar serial...' : 'Buscar grupo...')) }}"
         searchName="search"
         searchValue="{{ $groupSearchTerm }}"
         searchForm="groupSearchForm"
@@ -64,6 +64,7 @@
             <option value="groups" @selected($groupSearchType === 'groups')>Grupos</option>
             <option value="inventories" @selected($groupSearchType === 'inventories')>Inventarios</option>
             <option value="goods" @selected($groupSearchType === 'goods')>Bienes</option>
+            <option value="serial" @selected($groupSearchType === 'serial')>Serial</option>
         </select>
 
         @if(Auth::user()->isAdministrator() && ! $isPortalInventoryCatalog)
@@ -91,7 +92,7 @@
                     </div>
                     <div class="card-center">
                         <div class="title">
-                            {{ $groupSearchType === 'goods' ? 'No se encontraron bienes.' : 'No se encontraron inventarios.' }}
+                            {{ $groupSearchType === 'goods' ? 'No se encontraron bienes.' : ($groupSearchType === 'serial' ? 'No se encontraron seriales.' : 'No se encontraron inventarios.') }}
                         </div>
                     </div>
                 </div>
@@ -100,7 +101,7 @@
                     @foreach($groupSearchResults as $result)
                         <div class="card card-item">
                             <div class="card-left">
-                                <i class="fas {{ $result['type'] === 'good' ? 'fa-box' : 'fa-folder' }} icon-folder"></i>
+                                <i class="fas {{ $result['type'] === 'good' ? 'fa-box' : ($result['type'] === 'serial' ? 'fa-barcode' : 'fa-folder') }} icon-folder"></i>
                             </div>
 
                             <div class="card-center">
@@ -108,10 +109,17 @@
                                 <div class="stats">
                                     <span class="stat-item">
                                         <i class="fas fa-filter"></i>
-                                        {{ $result['type'] === 'good' ? 'Bien' : 'Inventario' }}
+                                        {{ $result['type'] === 'good' ? 'Bien' : ($result['type'] === 'serial' ? 'Serial' : 'Inventario') }}
                                     </span>
 
-                                    @if($result['type'] === 'good')
+                                    @if($result['type'] === 'serial')
+                                        <span class="stat-item">
+                                            <i class="fas fa-box"></i>
+                                            Bien: {{ $result['asset_name'] }}
+                                        </span>
+                                    @endif
+
+                                    @if(in_array($result['type'], ['good', 'serial'], true))
                                         <span class="stat-item">
                                             <i class="fas fa-folder"></i>
                                             Inventario: {{ $result['inventory_name'] }}

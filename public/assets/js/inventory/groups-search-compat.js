@@ -92,6 +92,10 @@
         if (result.type === 'good') {
             meta.push('Inventario: ' + escapeHtml(result.inventory_name));
             meta.push('Grupo: ' + escapeHtml(result.group_name));
+        } else if (result.type === 'serial') {
+            meta.push('Bien: ' + escapeHtml(result.asset_name));
+            meta.push('Inventario: ' + escapeHtml(result.inventory_name));
+            meta.push('Grupo: ' + escapeHtml(result.group_name));
         } else if (result.type === 'inventory') {
             meta.push('Grupo: ' + escapeHtml(result.group_name));
         } else if (result.type === 'group') {
@@ -116,11 +120,13 @@
             group: 'fa-layer-group',
             inventory: 'fa-folder',
             good: 'fa-box',
+            serial: 'fa-barcode',
         };
         const labels = {
             group: 'Grupo',
             inventory: 'Inventario',
             good: 'Bien',
+            serial: 'Serial',
         };
         const meta = metaFor(result)
             .map((item) => `<span class="stat-item"><i class="fas fa-circle"></i>${item}</span>`)
@@ -159,9 +165,10 @@
         if (!results.length) {
             showMessage(
                 ctx,
-                ctx.mode.value === 'goods'
-                    ? 'No se encontraron bienes.'
-                    : 'No se encontraron inventarios.'
+                {
+                    goods: 'No se encontraron bienes.',
+                    serial: 'No se encontraron seriales.',
+                }[ctx.mode.value] || 'No se encontraron inventarios.'
             );
             return;
         }
@@ -247,6 +254,7 @@
             groups: 'Buscar grupo...',
             inventories: 'Buscar inventario...',
             goods: 'Buscar bien...',
+            serial: 'Buscar serial...',
         };
 
         ctx.input.placeholder = placeholders[ctx.mode.value] || placeholders.groups;
@@ -297,9 +305,10 @@
         event.preventDefault();
         event.stopImmediatePropagation();
 
-        const initializer = button.dataset.groupSearchResultType === 'good'
-            ? 'initGoodsInventoryFunctions'
-            : 'initInventoryFunctions';
+        const initializer = {
+            good: 'initGoodsInventoryFunctions',
+            serial: 'initGoodsSerialsInventoryFunctions',
+        }[button.dataset.groupSearchResultType] || 'initInventoryFunctions';
 
         if (typeof loadContent === 'function') {
             loadContent(button.dataset.groupSearchGoUrl, {

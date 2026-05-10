@@ -39,7 +39,7 @@ class GroupController extends Controller
     public function search(Request $request)
     {
         $validated = $request->validate([
-            'type' => 'required|in:groups,inventories,goods',
+            'type' => 'required|in:groups,inventories,goods,serial',
             'q' => 'nullable|string|max:120',
         ]);
 
@@ -71,7 +71,7 @@ class GroupController extends Controller
         $groupSearchTerm = trim((string) $request->input('search', ''));
         $groupSearchResults = collect();
 
-        if (! in_array($groupSearchType, ['groups', 'inventories', 'goods'], true)) {
+        if (! in_array($groupSearchType, ['groups', 'inventories', 'goods', 'serial'], true)) {
             $groupSearchType = 'groups';
         }
 
@@ -303,9 +303,11 @@ class GroupController extends Controller
 
             $results = $results->concat(
                 $tenantResults->map(function (array $result) use ($tenant, $sedeName) {
-                    $redirect = $result['type'] === 'good'
-                        ? "/group/{$result['group_id']}/inventory/{$result['inventory_id']}"
-                        : "/group/{$result['group_id']}";
+                    $redirect = match ($result['type']) {
+                        'good' => "/group/{$result['group_id']}/inventory/{$result['inventory_id']}",
+                        'serial' => "/group/{$result['group_id']}/inventory/{$result['inventory_id']}/goods/{$result['asset_id']}/serials",
+                        default => "/group/{$result['group_id']}",
+                    };
 
                     return array_merge($result, [
                         'sede_name' => $sedeName,
@@ -401,6 +403,48 @@ class GroupController extends Controller
                     'url' => route('inventory.goods', [
                         'groupId' => $row->group_id,
                         'inventoryId' => $row->inventory_id,
+                    ]),
+                    'update_history' => true,
+                ]),
+
+            'serial' => DB::connection('tenant')
+                ->table('asset_equipments as ae')
+                ->join('asset_inventory as ai', 'ai.id', '=', 'ae.asset_inventory_id')
+                ->join('assets as a', 'a.id', '=', 'ai.asset_id')
+                ->join('inventories as i', 'i.id', '=', 'ai.inventory_id')
+                ->join('groups as g', 'g.id', '=', 'i.group_id')
+                ->where('ae.serial', 'like', "%{$escapedTerm}%")
+                ->select([
+                    'ae.id as asset_equipment_id',
+                    'ae.serial',
+                    'a.id as asset_id',
+                    'a.name as asset_name',
+                    'a.type as asset_type',
+                    'i.id as inventory_id',
+                    'i.name as inventory_name',
+                    'g.id as group_id',
+                    'g.name as group_name',
+                ])
+                ->orderBy('ae.serial')
+                ->orderBy('a.name')
+                ->limit($limit)
+                ->get()
+                ->map(static fn (object $row): array => [
+                    'type' => 'serial',
+                    'title' => $row->serial,
+                    'group_id' => $row->group_id,
+                    'group_name' => $row->group_name,
+                    'inventory_id' => $row->inventory_id,
+                    'inventory_name' => $row->inventory_name,
+                    'asset_id' => $row->asset_id,
+                    'asset_name' => $row->asset_name,
+                    'asset_equipment_id' => $row->asset_equipment_id,
+                    'asset_type' => $row->asset_type,
+                    'serial' => $row->serial,
+                    'url' => route('inventory.serials', [
+                        'groupId' => $row->group_id,
+                        'inventoryId' => $row->inventory_id,
+                        'assetId' => $row->asset_id,
                     ]),
                     'update_history' => true,
                 ]),

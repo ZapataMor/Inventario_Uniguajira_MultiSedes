@@ -509,7 +509,11 @@
             const buildGroupSearchMeta = (result) => {
                 const meta = [];
 
-                if (result.type === 'good') {
+                if (result.type === 'serial') {
+                    meta.push(`Bien: ${escapeGroupSearchHtml(result.asset_name)}`);
+                    meta.push(`Inventario: ${escapeGroupSearchHtml(result.inventory_name)}`);
+                    meta.push(`Grupo: ${escapeGroupSearchHtml(result.group_name)}`);
+                } else if (result.type === 'good') {
                     meta.push(`Inventario: ${escapeGroupSearchHtml(result.inventory_name)}`);
                     meta.push(`Grupo: ${escapeGroupSearchHtml(result.group_name)}`);
                 } else {
@@ -537,16 +541,28 @@
                 container.classList.remove('hidden');
 
                 if (!results.length) {
-                    renderGroupSearchMessage(mode === 'goods' ? 'No se encontraron bienes.' : 'No se encontraron inventarios.');
+                    const emptyMessage = {
+                        goods: 'No se encontraron bienes.',
+                        serial: 'No se encontraron seriales.',
+                    }[mode] ?? 'No se encontraron inventarios.';
+                    renderGroupSearchMessage(emptyMessage);
                     return;
                 }
 
                 container.innerHTML = `
                     <div class="card-grid">
                         ${results.map((result) => {
-                            const resultType = result.type === 'good' ? 'good' : 'inventory';
-                            const icon = resultType === 'good' ? 'fa-box' : 'fa-folder';
-                            const label = resultType === 'good' ? 'Bien' : 'Inventario';
+                            const resultType = ['good', 'serial'].includes(result.type) ? result.type : 'inventory';
+                            const icon = {
+                                good: 'fa-box',
+                                serial: 'fa-barcode',
+                                inventory: 'fa-folder',
+                            }[resultType];
+                            const label = {
+                                good: 'Bien',
+                                serial: 'Serial',
+                                inventory: 'Inventario',
+                            }[resultType];
                             const meta = buildGroupSearchMeta(result);
 
                             return `
@@ -805,9 +821,10 @@
 
                 const url = button.dataset.url;
                 const resultType = button.dataset.resultType;
-                const initializer = resultType === 'good'
-                    ? 'initGoodsInventoryFunctions'
-                    : 'initInventoryFunctions';
+                const initializer = {
+                    good: 'initGoodsInventoryFunctions',
+                    serial: 'initGoodsSerialsInventoryFunctions',
+                }[resultType] ?? 'initInventoryFunctions';
 
                 if (typeof window.loadContent === 'function') {
                     window.loadContent(url, {

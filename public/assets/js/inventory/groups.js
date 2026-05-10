@@ -86,12 +86,14 @@ function initGroupSearch() {
         groups: 'Buscar grupo...',
         inventories: 'Buscar inventario...',
         goods: 'Buscar bien...',
+        serial: 'Buscar serial...',
     };
     const emptyMessages = {
         inventories: 'No se encontraron inventarios.',
         goods: 'No se encontraron bienes.',
+        serial: 'No se encontraron seriales.',
     };
-    const validModes = ['groups', 'inventories', 'goods'];
+    const validModes = ['groups', 'inventories', 'goods', 'serial'];
 
     let debounceTimer = null;
     let currentRequest = null;
@@ -221,9 +223,10 @@ function initGroupSearch() {
                 const url = button.dataset.goUrl;
                 const resultType = button.dataset.resultType;
                 const updateHistory = button.dataset.updateHistory !== 'false';
-                const initializer = resultType === 'good'
-                    ? 'initGoodsInventoryFunctions'
-                    : 'initInventoryFunctions';
+                const initializer = {
+                    good: 'initGoodsInventoryFunctions',
+                    serial: 'initGoodsSerialsInventoryFunctions',
+                }[resultType] ?? 'initInventoryFunctions';
 
                 if (typeof loadContent === 'function') {
                     loadContent(url, {
@@ -357,11 +360,13 @@ function renderResultCard(result) {
         group: 'fa-layer-group',
         inventory: 'fa-folder',
         good: 'fa-box',
+        serial: 'fa-barcode',
     }[resultType] ?? 'fa-search';
     const badge = {
         group: 'Grupo',
         inventory: 'Inventario',
         good: 'Bien',
+        serial: 'Serial',
     }[resultType] ?? 'Resultado';
     const metaParts = buildResultMeta(result);
 
@@ -396,7 +401,11 @@ function renderResultCard(result) {
 function buildResultMeta(result) {
     const meta = [];
 
-    if (result.type === 'good') {
+    if (result.type === 'serial') {
+        meta.push(`Bien: ${escapeHtml(result.asset_name)}`);
+        meta.push(`Inventario: ${escapeHtml(result.inventory_name)}`);
+        meta.push(`Grupo: ${escapeHtml(result.group_name)}`);
+    } else if (result.type === 'good') {
         meta.push(`Inventario: ${escapeHtml(result.inventory_name)}`);
         meta.push(`Grupo: ${escapeHtml(result.group_name)}`);
     } else if (result.type === 'inventory') {
