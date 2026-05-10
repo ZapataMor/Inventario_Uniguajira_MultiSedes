@@ -542,7 +542,7 @@
                 }
 
                 container.innerHTML = `
-                    <div class="card-grid" data-view-mode-container>
+                    <div class="card-grid">
                         ${results.map((result) => {
                             const resultType = result.type === 'good' ? 'good' : 'inventory';
                             const icon = resultType === 'good' ? 'fa-box' : 'fa-folder';
@@ -585,7 +585,6 @@
                         }).join('')}
                     </div>
                 `;
-                window.initViewModeToggles?.();
             };
 
             const clearGroupSearchRemoteResults = () => {

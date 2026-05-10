@@ -166,8 +166,7 @@
             return;
         }
 
-        ctx.results.innerHTML = `<div class="card-grid" data-view-mode-container>${results.map(resultCard).join('')}</div>`;
-        window.initViewModeToggles?.();
+        ctx.results.innerHTML = `<div class="card-grid">${results.map(resultCard).join('')}</div>`;
     };
 
     const runRemoteSearch = () => {
@@ -321,14 +320,6 @@
         document.addEventListener('DOMContentLoaded', boot);
     } else {
         boot();
-    }
-
-    const mainContent = document.getElementById('main-content');
-    if (mainContent && typeof MutationObserver === 'function') {
-        new MutationObserver(boot).observe(mainContent, {
-            childList: true,
-            subtree: true,
-        });
     }
 
     window.groupSearchCompatibilityFallback = { boot, sync };

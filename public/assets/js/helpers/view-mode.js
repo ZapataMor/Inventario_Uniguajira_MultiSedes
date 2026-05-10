@@ -1,29 +1,10 @@
 (() => {
-    const storagePrefix = 'inventario:view-mode:';
     const defaultListClasses = ['grid-cols-1'];
 
     const parseClasses = (value) => String(value || '')
         .split(/\s+/)
         .map((className) => className.trim())
         .filter(Boolean);
-
-    const getStoredMode = (key) => {
-        try {
-            return localStorage.getItem(`${storagePrefix}${key}`) === 'list' ? 'list' : 'grid';
-        } catch (error) {
-            return 'grid';
-        }
-    };
-
-    const storeMode = (key, mode) => {
-        try {
-            localStorage.setItem(`${storagePrefix}${key}`, mode);
-        } catch (error) {
-            // Local storage may be unavailable in private or restricted contexts.
-        }
-    };
-
-    const getRootKey = (root) => root?.dataset.viewModeRoot || 'default';
 
     const findRoot = (button) => {
         const target = button?.dataset.viewModeToggle;
@@ -93,33 +74,11 @@
     };
 
     const initRoot = (root) => {
-        const key = getRootKey(root);
-        applyMode(root, getStoredMode(key));
+        applyMode(root, root.dataset.viewMode === 'list' ? 'list' : 'grid');
     };
 
     window.initViewModeToggles = () => {
         document.querySelectorAll('[data-view-mode-root]').forEach(initRoot);
-    };
-
-    const initSoon = () => {
-        window.requestAnimationFrame(() => window.initViewModeToggles());
-    };
-
-    const wrapLoadContent = () => {
-        if (typeof window.loadContent !== 'function' || window.loadContent.__viewModeWrapped) {
-            return;
-        }
-
-        const originalLoadContent = window.loadContent;
-
-        window.loadContent = async (...args) => {
-            const response = await originalLoadContent(...args);
-            initSoon();
-            return response;
-        };
-
-        window.loadContent.__viewModeWrapped = true;
-        window.loadContent.__viewModeOriginal = originalLoadContent;
     };
 
     document.addEventListener('click', (event) => {
@@ -130,18 +89,10 @@
         }
 
         const root = findRoot(button);
-        const key = getRootKey(root);
-        const currentMode = root?.dataset.viewMode === 'list' ? 'list' : getStoredMode(key);
+        const currentMode = root?.dataset.viewMode === 'list' ? 'list' : 'grid';
         const nextMode = currentMode === 'list' ? 'grid' : 'list';
 
         event.preventDefault();
         applyMode(root, nextMode);
-        storeMode(key, nextMode);
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-        initSoon();
-        wrapLoadContent();
-        window.setTimeout(wrapLoadContent, 0);
     });
 })();

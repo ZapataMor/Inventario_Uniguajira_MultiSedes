@@ -14,8 +14,10 @@
 <div
     class="content"
     data-group-search-root
-    data-view-mode-root="inventory-groups"
-    data-view-mode="grid"
+    @if(! $isPortalInventoryCatalog)
+        data-view-mode-root="inventory-groups"
+        data-view-mode="grid"
+    @endif
     data-portal-catalog="{{ $isPortalInventoryCatalog ? '1' : '0' }}"
 >
 
@@ -46,7 +48,9 @@
         modal="#modalCrearGrupo"
         canCreate="{{ $isPortalInventoryCatalog ? 'false' : 'true' }}"
     >
-        <x-generals.view-mode-toggle target="inventory-groups" />
+        @if(! $isPortalInventoryCatalog)
+            <x-generals.view-mode-toggle target="inventory-groups" />
+        @endif
 
         <label for="groupSearchMode" class="sr-only">Filtrar por</label>
         <select
@@ -92,7 +96,7 @@
                     </div>
                 </div>
             @else
-                <div class="card-grid" data-view-mode-container>
+                <div class="card-grid" @if(! $isPortalInventoryCatalog) data-view-mode-container @endif>
                     @foreach($groupSearchResults as $result)
                         <div class="card card-item">
                             <div class="card-left">
@@ -184,7 +188,7 @@
                         @if($sedeData['groups']->isEmpty())
                             <p class="inventory-sede-empty">No hay grupos disponibles en esta sede.</p>
                         @else
-                            <div class="card-grid inventory-sede-grid" data-view-mode-container>
+                            <div class="card-grid inventory-sede-grid">
                                 @foreach ($sedeData['groups'] as $group)
                                     <div class="card card-item" data-group-card>
                                         <div class="card-left">

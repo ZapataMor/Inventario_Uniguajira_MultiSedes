@@ -643,11 +643,4 @@ window.initGroupSearch = initGroupSearch;
         controller?.apply?.();
     }, true);
 
-    const content = document.getElementById('main-content');
-    if (content && typeof MutationObserver === 'function') {
-        const observer = new MutationObserver(() => {
-            boot();
-        });
-        observer.observe(content, { childList: true, subtree: true });
-    }
 })();
