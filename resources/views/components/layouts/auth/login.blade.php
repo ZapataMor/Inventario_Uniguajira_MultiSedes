@@ -8,6 +8,10 @@
     </head>
     @php
         $currentTenant = $tenant ?? tenant();
+        $backgroundPath = ($branding ?? null)?->login_background ?: 'images/fondo-actualizado.png';
+        $backgroundAlt = ($branding ?? null)?->sede_name
+            ? "Fondo del login de {$branding->sede_name}"
+            : 'Campus de la Universidad de La Guajira';
         $sedeName = ($branding ?? null)?->sede_name ?? match ($currentTenant?->slug) {
             'maicao' => 'Sede Maicao',
             'villanueva' => 'Sede Villanueva',
@@ -35,7 +39,13 @@
                 data-phase="idle"
             >
                 <div class="absolute inset-0 overflow-hidden" aria-hidden="true">
-                    <div class="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_0%,#ffffff_0%,#f3f5fa_45%,#eaeef6_100%)]"></div>
+                    <img
+                        src="{{ asset($backgroundPath) }}"
+                        alt="{{ $backgroundAlt }}"
+                        class="h-full w-full scale-[1.06] object-cover object-[center_35%] opacity-90 saturate-[.95] contrast-[1.06] motion-safe:animate-auth-slow-pan"
+                    >
+                    <div class="absolute inset-0 bg-[radial-gradient(120%_90%_at_80%_0%,rgba(255,255,255,.70)_0%,rgba(243,245,250,.58)_45%,rgba(234,238,246,.52)_100%)]"></div>
+                    <div class="absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,.78)_0%,rgba(255,255,255,.54)_34%,rgba(255,255,255,.26)_60%,rgba(246,248,252,.60)_100%)]"></div>
                     <div class="absolute inset-0 opacity-90 [background-image:linear-gradient(to_right,rgba(13,20,40,.045)_1px,transparent_1px),linear-gradient(to_bottom,rgba(13,20,40,.045)_1px,transparent_1px)] [background-size:56px_56px] [-webkit-mask-image:radial-gradient(70%_60%_at_50%_40%,black_30%,transparent_80%)] [mask-image:radial-gradient(70%_60%_at_50%_40%,black_30%,transparent_80%)]"></div>
                     <div class="absolute -inset-[10%] bg-[radial-gradient(45%_35%_at_18%_28%,rgba(43,92,255,.18)_0%,rgba(43,92,255,0)_60%),radial-gradient(40%_30%_at_82%_22%,rgba(255,183,27,.14)_0%,rgba(255,183,27,0)_60%),radial-gradient(50%_40%_at_65%_95%,rgba(200,16,46,.10)_0%,rgba(200,16,46,0)_65%),radial-gradient(40%_30%_at_12%_90%,rgba(58,166,255,.14)_0%,rgba(58,166,255,0)_65%)] blur-[.5px] motion-safe:animate-auth-slow-pan"></div>
                     <div class="absolute inset-0 bg-[conic-gradient(from_220deg_at_70%_40%,rgba(43,92,255,.10),rgba(255,183,27,.06),rgba(58,166,255,.10),rgba(255,255,255,0)_60%)] opacity-85 blur-[60px] saturate-[1.05] motion-safe:animate-auth-orb-drift"></div>
