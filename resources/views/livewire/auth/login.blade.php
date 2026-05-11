@@ -156,5 +156,9 @@
             </svg>
         </button>
 
+        <p class="mt-2 text-center text-xs font-medium text-orange-600">
+            © Diseñado y desarrollado por Semillero SIIS2 — Universidad de La Guajira
+        </p>
+
     </form>
 </x-layouts.auth.login>

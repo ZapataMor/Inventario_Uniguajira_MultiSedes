@@ -104,7 +104,7 @@
                                 >
                             </div>
                             <p class="mt-6 max-w-[520px] text-[16px] leading-relaxed text-slate-700 xl:text-[17px]">
-                                Una experiencia inteligente para estudiantes, docentes y administrativos, construida sobre la identidad <span class="font-medium text-slate-900">Wayúu</span> y el rigor académico de la Universidad de La Guajira.
+                                Una plataforma moderna para el control de inventarios institucionales, enfocada en la organización, trazabilidad y gestión eficiente de los recursos de la <span class="font-medium text-slate-900">Universidad de La Guajira.</span>
                             </p>
                             <div class="mt-10 grid max-w-[520px] grid-cols-3 gap-3">
                                 <div class="rounded-2xl border border-white/85 bg-white/65 px-4 py-3.5 shadow-[0_1px_0_rgba(255,255,255,.9)_inset,0_4px_14px_-6px_rgba(20,28,60,.08)] backdrop-blur-[18px] backdrop-saturate-[160%]">
@@ -112,8 +112,8 @@
                                     <div class="mt-1 text-[11px] uppercase tracking-[.16em] text-slate-500">años de historia</div>
                                 </div>
                                 <div class="rounded-2xl border border-white/85 bg-white/65 px-4 py-3.5 shadow-[0_1px_0_rgba(255,255,255,.9)_inset,0_4px_14px_-6px_rgba(20,28,60,.08)] backdrop-blur-[18px] backdrop-saturate-[160%]">
-                                    <div class="text-[30px] font-semibold leading-none tracking-normal text-slate-900">24K</div>
-                                    <div class="mt-1 text-[11px] uppercase tracking-[.16em] text-slate-500">comunidad activa</div>
+                                    <div class="text-[30px] font-semibold leading-none tracking-normal text-slate-900">+8</div>
+                                    <div class="mt-1 text-[11px] uppercase tracking-[.16em] text-slate-500">personas trabajando en conjunto</div>
                                 </div>
                                 <div class="rounded-2xl border border-white/85 bg-white/65 px-4 py-3.5 shadow-[0_1px_0_rgba(255,255,255,.9)_inset,0_4px_14px_-6px_rgba(20,28,60,.08)] backdrop-blur-[18px] backdrop-saturate-[160%]">
                                     <div class="text-[30px] font-semibold leading-none tracking-normal text-slate-900">3</div>
@@ -129,9 +129,9 @@
                                     <div class="capitalize" data-auth-date>{{ now()->locale('es_CO')->translatedFormat('l, d \d\e F') }}</div>
                                 </div>
                                 <div class="hidden h-9 w-px bg-slate-900/15 md:block"></div>
-                                <div class="hidden max-w-xs leading-snug text-slate-500/80 md:block">
-                                    Riohacha · La Guajira, Colombia
-                                    <div class="text-slate-500/70">11.5444° N · 72.9072° W</div>
+                                <div class="hidden max-w-xs leading-snug md:block text-[14px] text-slate-800">
+                                    Maicao · La Guajira, Colombia
+                                    <div class="text-slate-500/70">11°22′52″N 72°15′40″O</div>
                                 </div>
                             </div>
                         </footer>
