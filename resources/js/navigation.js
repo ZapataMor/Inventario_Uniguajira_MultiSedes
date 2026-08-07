@@ -94,6 +94,7 @@ window.initializeScripts = (url) => {
 
     const scriptMap = {
         home: 'initFormsTask',
+        schedules: 'initSchedulesModule',
         goods: 'initFormsBien',
         groups: 'initGroupFunctions',
         profile: 'initProfileFunctions',

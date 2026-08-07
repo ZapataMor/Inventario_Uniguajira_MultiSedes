@@ -36,6 +36,16 @@
                 </a>
             </li>
 
+            {{-- La programacion es operativa por sede: no tiene catalogo en el portal central --}}
+            @if(tenant())
+                <li>
+                    <a id="schedules" href="{{ route('schedules.index') }}" data-nav>
+                        <img src="{{ asset('assets/icons/programacion.svg') }}" alt="">
+                        <span>Programación</span>
+                    </a>
+                </li>
+            @endif
+
             <li>
                 <a id="goods" href="{{ route('goods.index', $portalQuery) }}" data-nav>
                     <img src="{{ asset('assets/icons/bienes.svg') }}" alt="">

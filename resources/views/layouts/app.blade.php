@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/components.css') }}?v={{ $assetVersion('assets/css/components.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/components/get.css') }}?v={{ $assetVersion('assets/css/components/get.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/responsive/get.css') }}?v={{ $assetVersion('assets/css/responsive/get.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/schedules.css') }}?v={{ $assetVersion('assets/css/schedules.css') }}">
     @stack('styles')
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -48,6 +49,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <script src="{{ asset('assets/js/sidebar.js') }}"></script>
     <script src="{{ asset('assets/js/navbar.js') }}"></script>
@@ -62,6 +64,7 @@
     <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v={{ $assetVersion('assets/js/helpers/excel-ui.js') }}"></script>
     <script src="{{ asset('assets/js/history-guard.js') }}?v={{ $assetVersion('assets/js/history-guard.js') }}"></script>
     <script src="{{ asset('assets/js/tasks.js') }}?v={{ $assetVersion('assets/js/tasks.js') }}"></script>
+    <script src="{{ asset('assets/js/schedules.js') }}?v={{ $assetVersion('assets/js/schedules.js') }}"></script>
 
     <script src="{{ asset('assets/js/goods.js') }}?v={{ $assetVersion('assets/js/goods.js') }}"></script>
     @if(Auth::user()->isAdministrator())

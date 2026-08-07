@@ -1,0 +1,396 @@
+/**
+ * schedules.css
+ *
+ * Módulo "Programación de inventarios" (vista interna del aplicativo).
+ * CSS puro, sin utilidades de Tailwind.
+ */
+
+.sched-intro {
+    max-width: 760px;
+    margin: -6px 0 18px;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* ─── Rejilla de tarjetas ──────────────────────────────────────── */
+
+.sched-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
+    align-items: start;
+    margin-top: 16px;
+}
+
+.sched-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+/* Agrandamiento al pasar el cursor. El contenido no cambia: solo la escala. */
+.sched-card:hover {
+    z-index: 2;
+    transform: scale(1.025);
+    border-color: #cbd5e1;
+    box-shadow: 0 18px 34px -18px rgba(15, 23, 42, .32);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sched-card {
+        transition: none;
+    }
+
+    .sched-card:hover {
+        transform: none;
+    }
+}
+
+/*
+ * Encabezado fijo: el nombre y la ubicacion siempre visibles.
+ * `position: static` es defensivo: navbar.css aplica `position: fixed`
+ * al elemento <header>, asi que este bloque nunca debe heredar ese
+ * comportamiento aunque cambie la etiqueta que lo envuelve.
+ */
+.sched-card-head {
+    position: static;
+    display: block;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.sched-card-title {
+    display: block;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #1e293b;
+    /* Nombres largos se muestran completos: sin recortes ni ellipsis. */
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
+.sched-card-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.sched-card-location i {
+    flex-shrink: 0;
+    color: #059669;
+}
+
+.sched-card-location-empty {
+    color: #94a3b8;
+    font-style: italic;
+    font-weight: 400;
+}
+
+/* ─── QR y enlace dentro de la tarjeta ─────────────────────────── */
+
+.sched-share {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: #f8fafc;
+}
+
+.sched-qr {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 150px;
+    height: 150px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.sched-qr img,
+.sched-qr canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.sched-qr-loading {
+    color: #94a3b8;
+    font-size: 12px;
+    text-align: center;
+}
+
+.sched-share-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sched-share-info label {
+    display: block;
+    margin-bottom: 6px;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.sched-link-row {
+    display: flex;
+    gap: 6px;
+}
+
+.sched-link-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    font-size: 12.5px;
+}
+
+.sched-link-row input:focus {
+    outline: none;
+    border-color: #059669;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, .12);
+}
+
+.sched-share-hint {
+    margin: 10px 0 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+/* ─── Pie de la tarjeta ────────────────────────────────────────── */
+
+.sched-card-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
+    font-size: 12px;
+}
+
+.sched-entries-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.sched-open-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.sched-open-flag-on {
+    color: #059669;
+}
+
+.sched-open-flag-off {
+    color: #94a3b8;
+}
+
+/* ─── Acciones ─────────────────────────────────────────────────── */
+
+.sched-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.sched-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.sched-btn:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.sched-btn-primary {
+    border-color: #059669;
+    background: #059669;
+    color: #fff;
+}
+
+.sched-btn-primary:hover {
+    border-color: #047857;
+    background: #047857;
+    color: #fff;
+}
+
+.sched-btn-danger {
+    border-color: #fecdd3;
+    color: #e11d48;
+}
+
+.sched-btn-danger:hover {
+    border-color: #e11d48;
+    background: #fff1f2;
+    color: #e11d48;
+}
+
+/* ─── Vacíos ───────────────────────────────────────────────────── */
+
+.sched-empty {
+    grid-column: 1 / -1;
+    padding: 46px 20px;
+    text-align: center;
+    color: #94a3b8;
+}
+
+.sched-empty i {
+    opacity: .55;
+}
+
+.sched-empty p {
+    margin: 14px 0 0;
+    font-size: 15px;
+}
+
+/* ─── Registros documentados ───────────────────────────────────── */
+
+.sched-modal-title {
+    margin: -6px 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.sched-entries {
+    display: grid;
+    gap: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.sched-entries-loading,
+.sched-entries-empty {
+    margin: 0;
+    padding: 28px 0;
+    color: #94a3b8;
+    text-align: center;
+}
+
+.sched-entry {
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #059669;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.sched-entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sched-entry-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.sched-entry-duration {
+    font-size: 12px;
+    font-weight: 700;
+    color: #047857;
+}
+
+.sched-entry-description {
+    margin: 8px 0 0;
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.sched-entry-meta {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 12.5px;
+    color: #64748b;
+}
+
+.sched-entry-meta li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sched-entry-meta i {
+    color: #94a3b8;
+}
+
+/* ─── Responsive ───────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+    .sched-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 460px) {
+    .sched-share {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .sched-share-info {
+        width: 100%;
+    }
+}

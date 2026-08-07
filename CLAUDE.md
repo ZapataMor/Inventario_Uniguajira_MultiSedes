@@ -72,6 +72,8 @@ database/
 | `GoodsInventoryController` | Goods within an inventory |
 | `GroupController` | Inventory group management |
 | `InventoryController` | Inventory management |
+| `InventoryScheduleController` | Programacion de inventarios (QR + enlace publico) |
+| `PublicScheduleController` | Formulario publico (QR/enlace) sin autenticacion |
 | `RecordController` | Activity logs (view, export, clear) |
 | `RemovedController` | Removed goods tracking |
 | `ReportController` | Reports CRUD |
@@ -95,6 +97,8 @@ database/
 | `Report` | Reports |
 | `ReportFolder` | Report folder organization |
 | `Task` | Task/to-do items |
+| `InventorySchedule` | Programaciones: nombre + ubicacion opcional + codigo publico |
+| `InventoryScheduleEntry` | Labores documentadas desde el formulario publico |
 | `ActivityLog` | Activity logging |
 
 ## Database Views (via migrations)
@@ -109,6 +113,7 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 
 **Web (auth required):**
 - `GET /home` - Dashboard
+- `GET /schedules` - Programacion de inventarios
 - `GET /goods` - Goods list
 - `GET /groups` - Inventory groups
 - `GET /group/{groupId}` - Inventories in group
@@ -117,6 +122,10 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 - `GET /users` - User management
 - `GET /records` - Activity records
 - `GET /removed` - Removed goods
+
+**Web (publico, sin auth):**
+- `GET|POST /programacion/{tenantSlug}/{code}` - Formulario externo de una programacion.
+  El slug de la sede viaja en la URL porque el visitante no tiene sesion ni tenant resuelto.
 
 **API (selected):**
 - Users: POST create/update, DELETE destroy
@@ -127,6 +136,7 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 - Removed: GET filter/filter-options/export/stats, DELETE destroy
 - Records: DELETE clean, GET export
 - Tasks: POST create, PUT update, PATCH toggle, DELETE destroy
+- Schedules: POST create/update/toggle-open, GET {id}/entries, DELETE delete
 
 ## Activity Logging
 
@@ -184,6 +194,8 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `ReportController`: genera PDFs persistidos en storage local por carpeta. Soporta reportes de inventario, grupo, todos los inventarios, bienes, seriales y bienes dados de baja. Usa branding por tenant y `SimplePdfService`.
 - `ReportFolderController`: CRUD basico de carpetas de reportes y vistas para listar reportes por carpeta.
 - `TaskController`: CRUD de tareas del dashboard con validacion de fecha no pasada y toggle `pending/completed`.
+- `InventoryScheduleController`: modulo "Programacion de inventarios". Una programacion solo captura el **nombre** con el que se identifica la labor y, opcionalmente, el **inventario** que hace de ubicacion (dropdown con todos los inventarios de la sede). Todo lo demas lo aporta la persona externa desde el formulario publico. La tarjeta del listado muestra el nombre junto al QR y al enlace ya listos para escanear o copiar, sin modal intermedio. Crear, editar y eliminar exige rol `administrador` o super administrador; el listado es visible para cualquier usuario de la sede. Redirige al portal si no hay tenant activo: no tiene catalogo central.
+- `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: solo inserta una labor sobre una programacion abierta, con `throttle` en el POST.
 - `UserController`: administracion de usuarios exclusiva para `administrador`; impide cambiar el propio rol y bloquear la eliminacion del usuario base o del usuario autenticado.
 - `ProfileController`: perfil del usuario autenticado; actualiza datos basicos y contrasena propia con respuestas JSON.
 - `AssetImageController`: sirve imagenes de bienes desde storage de forma segura, evita path traversal y cae en una imagen por defecto cuando no existe el archivo.
@@ -195,6 +207,7 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `window.loadContent(url, options)` hace fetch con header `X-Requested-With: XMLHttpRequest`, inyecta el HTML recibido en `#main-content`, muestra/oculta `#loader` y opcionalmente actualiza `history.pushState`.
 - `window.initializeScripts(url)` decide que inicializador volver a correr segun el primer segmento de la ruta. El mapa actual es:
   - `home` -> `initFormsTask`
+  - `schedules` -> `initSchedulesModule`
   - `goods` -> `initFormsBien`
   - `groups` -> `initGroupFunctions`
   - `profile` -> `initProfileFunctions`

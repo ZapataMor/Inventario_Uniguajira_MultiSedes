@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     AssetImageController,
     HomeController,
+    InventoryScheduleController,
     MaintenanceController,
     PortalController,
     ProfileController,
+    PublicScheduleController,
     TaskController,
     GoodsController,
     GroupController,
@@ -45,6 +47,7 @@ Route::middleware('auth')->group(function () {
  * Orden de las rutas:
  * 1. Home
  * 2. Tareas
+ * 2.1 Programacion de inventarios
  * 3. Bienes
  * 4. Excel upload
  * 5. Grupos
@@ -84,6 +87,21 @@ Route::get('asset-images/{path}', [AssetImageController::class, 'show'])
     ->where('path', '.*')
     ->name('assets.image');
 
+/**
+ * Formulario publico de programaciones (QR / enlace).
+ * ----------------------------------------------------------------------------
+ * Sin autenticacion: lo diligencia una persona externa al aplicativo.
+ * El slug de la sede viaja en la URL para activar la conexion tenant correcta.
+ */
+Route::prefix('programacion')->group(function () {
+    Route::get('{tenantSlug}/{code}', [PublicScheduleController::class, 'show'])
+        ->name('schedules.public.show');
+
+    Route::post('{tenantSlug}/{code}', [PublicScheduleController::class, 'store'])
+        ->middleware('throttle:12,1')
+        ->name('schedules.public.store');
+})->where(['tenantSlug' => '[A-Za-z0-9_-]+', 'code' => '[A-Za-z0-9]+']);
+
 Route::middleware('auth')->group(function () {
 
 /**
@@ -96,6 +114,22 @@ Route::prefix('api/tasks')->group(function () {
     Route::delete('delete/{id}', [TaskController::class, 'destroy']);
     Route::post('store', [TaskController::class, 'store'])->name('tasks.store');
     Route::put('update', [TaskController::class, 'update'])->name('tasks.update');
+});
+
+
+/**
+ * 2.1 Programacion de inventarios
+ * ----------------------------------------------------------------------------
+ */
+
+Route::get('schedules', [InventoryScheduleController::class, 'index'])->name('schedules.index');
+
+Route::prefix('api/schedules')->group(function () {
+    Route::post('create', [InventoryScheduleController::class, 'store'])->name('schedules.store');
+    Route::post('update', [InventoryScheduleController::class, 'update'])->name('schedules.update');
+    Route::post('toggle-open', [InventoryScheduleController::class, 'toggleOpen'])->name('schedules.toggleOpen');
+    Route::get('{id}/entries', [InventoryScheduleController::class, 'entries'])->name('schedules.entries');
+    Route::delete('delete/{id}', [InventoryScheduleController::class, 'destroy'])->name('schedules.destroy');
 });
 
 
