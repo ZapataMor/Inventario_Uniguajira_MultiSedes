@@ -6,7 +6,9 @@ use App\Concerns\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
@@ -14,6 +16,10 @@ use Illuminate\Support\Str;
  *
  * El campo `code` es el identificador publico que viaja en el QR
  * y en el enlace del formulario externo.
+ *
+ * Cada programacion es de un solo uso: se documenta una vez desde el
+ * formulario publico y a partir de ahi el QR queda consumido. Para una
+ * nueva labor se crea otra programacion, con su propio QR.
  */
 class InventorySchedule extends Model
 {
@@ -23,7 +29,6 @@ class InventorySchedule extends Model
         'code',
         'title',
         'is_open',
-        'inventory_id',
         'created_by',
     ];
 
@@ -38,9 +43,22 @@ class InventorySchedule extends Model
         return $this->hasMany(InventoryScheduleEntry::class)->orderByDesc('started_at');
     }
 
-    public function inventory(): BelongsTo
+    /**
+     * Labor documentada. Al ser de un solo uso, es la unica que existe.
+     */
+    public function entry(): HasOne
     {
-        return $this->belongsTo(Inventory::class);
+        return $this->hasOne(InventoryScheduleEntry::class)->latestOfMany();
+    }
+
+    /**
+     * Ubicaciones donde debe realizarse la labor.
+     */
+    public function inventories(): BelongsToMany
+    {
+        return $this->belongsToMany(Inventory::class, 'inventory_schedule_inventory')
+            ->withTimestamps()
+            ->orderBy('name');
     }
 
     public function createdBy(): BelongsTo
@@ -63,19 +81,52 @@ class InventorySchedule extends Model
     }
 
     /**
-     * Ubicacion legible: grupo e inventario asociados, si los hay.
+     * Una programacion ya diligenciada no vuelve a recibir registros:
+     * su QR se considera consumido.
+     */
+    public function isCompleted(): bool
+    {
+        return $this->relationLoaded('entry')
+            ? $this->entry !== null
+            : $this->entries()->exists();
+    }
+
+    /**
+     * El QR y el enlace solo se muestran mientras la programacion
+     * siga pendiente de diligenciar.
+     */
+    public function isShareable(): bool
+    {
+        return ! $this->isCompleted();
+    }
+
+    /**
+     * Ubicaciones legibles: "Grupo · Inventario" por cada una.
+     *
+     * @return array<int, string>
+     */
+    public function getLocationLabelsAttribute(): array
+    {
+        return $this->inventories
+            ->map(function (Inventory $inventory) {
+                $group = $inventory->group?->name;
+
+                return $group
+                    ? "{$group} · {$inventory->name}"
+                    : $inventory->name;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Todas las ubicaciones en una sola linea.
      */
     public function getLocationLabelAttribute(): ?string
     {
-        if (! $this->inventory) {
-            return null;
-        }
+        $labels = $this->location_labels;
 
-        $group = $this->inventory->group?->name;
-
-        return $group
-            ? "{$group} · {$this->inventory->name}"
-            : $this->inventory->name;
+        return $labels === [] ? null : implode(', ', $labels);
     }
 
     /**

@@ -13,10 +13,14 @@ use Illuminate\Support\Facades\Auth;
  * Modulo "Programacion de inventarios".
  *
  * Una programacion solo guarda el nombre con el que se identifica la labor
- * y, opcionalmente, el inventario donde se hara. A partir de ahi se genera
+ * y, opcionalmente, las ubicaciones donde se hara. A partir de ahi se genera
  * el codigo publico que alimenta el QR y el enlace del formulario externo.
  * Las labores documentadas por personas externas entran por
  * PublicScheduleController.
+ *
+ * El QR es de un solo uso: cuando alguien diligencia el formulario, la
+ * programacion queda cerrada y la tarjeta muestra lo documentado en lugar
+ * del QR. Para una nueva labor se crea otra programacion.
  */
 class InventoryScheduleController extends Controller
 {
@@ -45,7 +49,7 @@ class InventoryScheduleController extends Controller
         $search = trim((string) $request->input('search', ''));
 
         $schedules = InventorySchedule::query()
-            ->with(['inventory.group'])
+            ->with(['inventories.group', 'entry'])
             ->withCount('entries')
             ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
             ->orderByDesc('id')
@@ -79,18 +83,20 @@ class InventoryScheduleController extends Controller
         $data = $this->validateSchedule($request);
 
         $schedule = InventorySchedule::create([
-            ...$data,
+            'title' => $data['title'],
             'code' => InventorySchedule::generateCode(),
             'is_open' => true,
             'created_by' => Auth::id(),
         ]);
+
+        $schedule->inventories()->sync($data['inventory_ids']);
 
         ActivityLogger::created(InventorySchedule::class, $schedule->id, $schedule->title);
 
         return response()->json([
             'success' => true,
             'message' => 'Programación creada correctamente.',
-            'data' => $this->formatSchedule($schedule->fresh(['inventory.group'])),
+            'data' => $this->formatSchedule($schedule->fresh(['inventories.group', 'entry'])),
         ]);
     }
 
@@ -103,25 +109,41 @@ class InventoryScheduleController extends Controller
 
         $request->validate(['id' => ['required', 'integer', 'exists:inventory_schedules,id']]);
 
-        $schedule = InventorySchedule::findOrFail($request->input('id'));
+        $schedule = InventorySchedule::with('inventories')->findOrFail($request->input('id'));
+
+        // Una programacion ya diligenciada es historico: no se reabre ni se reedita.
+        if ($schedule->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta programación ya fue diligenciada y no puede modificarse. Crea una nueva.',
+            ], 422);
+        }
+
         $data = $this->validateSchedule($request);
 
-        $oldValues = $schedule->only(['title', 'inventory_id']);
+        $oldValues = [
+            'title' => $schedule->title,
+            'inventory_ids' => $schedule->inventories->pluck('id')->all(),
+        ];
 
-        $schedule->update($data);
+        $schedule->update(['title' => $data['title']]);
+        $schedule->inventories()->sync($data['inventory_ids']);
 
         ActivityLogger::updated(
             InventorySchedule::class,
             $schedule->id,
             $schedule->title,
             $oldValues,
-            $schedule->only(array_keys($oldValues))
+            [
+                'title' => $schedule->title,
+                'inventory_ids' => $data['inventory_ids'],
+            ]
         );
 
         return response()->json([
             'success' => true,
             'message' => 'Programación actualizada correctamente.',
-            'data' => $this->formatSchedule($schedule->fresh(['inventory.group'])),
+            'data' => $this->formatSchedule($schedule->fresh(['inventories.group', 'entry'])),
         ]);
     }
 
@@ -184,6 +206,15 @@ class InventoryScheduleController extends Controller
         $request->validate(['id' => ['required', 'integer', 'exists:inventory_schedules,id']]);
 
         $schedule = InventorySchedule::findOrFail($request->input('id'));
+
+        // El QR es de un solo uso: una vez diligenciado no se puede reabrir.
+        if ($schedule->isCompleted()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta programación ya fue diligenciada. Crea una nueva para generar otro QR.',
+            ], 422);
+        }
+
         $schedule->is_open = ! $schedule->is_open;
         $schedule->save();
 
@@ -209,12 +240,18 @@ class InventoryScheduleController extends Controller
      */
     private function validateSchedule(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'inventory_id' => ['nullable', 'integer', 'exists:inventories,id'],
+            'inventory_ids' => ['nullable', 'array'],
+            'inventory_ids.*' => ['integer', 'exists:inventories,id'],
         ], [
             'title.required' => 'El nombre de la programación es obligatorio.',
+            'inventory_ids.*.exists' => 'Alguna de las ubicaciones seleccionadas ya no existe.',
         ]);
+
+        $data['inventory_ids'] = array_values(array_unique($data['inventory_ids'] ?? []));
+
+        return $data;
     }
 
     /**
@@ -222,14 +259,19 @@ class InventoryScheduleController extends Controller
      */
     private function formatSchedule(InventorySchedule $schedule): array
     {
+        $completed = $schedule->isCompleted();
+
         return [
             'id' => $schedule->id,
             'code' => $schedule->code,
             'title' => $schedule->title,
             'is_open' => $schedule->is_open,
-            'inventory_id' => $schedule->inventory_id,
+            'is_completed' => $completed,
+            'inventory_ids' => $schedule->inventories->pluck('id')->all(),
+            'location_labels' => $schedule->location_labels,
             'location_label' => $schedule->location_label,
-            'public_url' => $schedule->publicUrl(),
+            // El enlace deja de compartirse cuando el QR ya fue usado.
+            'public_url' => $completed ? null : $schedule->publicUrl(),
         ];
     }
 }

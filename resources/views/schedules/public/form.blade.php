@@ -48,24 +48,37 @@
             <span class="badge">Programación</span>
             <h2 class="card-title">{{ $schedule->title }}</h2>
 
-            @if($schedule->location_label)
+            @if($schedule->location_labels)
                 <ul class="card-meta">
-                    <li>
-                        <i class="fas fa-location-dot"></i>
-                        <span>{{ $schedule->location_label }}</span>
-                    </li>
+                    @foreach($schedule->location_labels as $location)
+                        <li>
+                            <i class="fas fa-location-dot"></i>
+                            <span>{{ $location }}</span>
+                        </li>
+                    @endforeach
                 </ul>
             @endif
         </div>
 
         @if($submitted)
+            {{--
+                El formulario es de un solo uso: no se ofrece registrar otra
+                labor. Para eso se genera una programacion nueva con su QR.
+            --}}
             <div class="state state-success" data-success-state>
                 <i class="fas fa-circle-check"></i>
                 <h3>¡Registro enviado!</h3>
                 <p>Gracias. La labor quedó documentada y ya es visible para el equipo de inventario.</p>
-                <a class="btn btn-ghost" href="{{ route('schedules.public.show', ['tenantSlug' => $tenant->slug, 'code' => $schedule->code]) }}">
-                    Registrar otra labor
-                </a>
+                <p class="state-note">Este código QR ya fue utilizado y no admite más registros.</p>
+            </div>
+        @elseif($entry)
+            <div class="state state-closed">
+                <i class="fas fa-circle-check"></i>
+                <h3>Programación ya diligenciada</h3>
+                <p>
+                    Esta labor fue documentada el {{ $entry->created_at?->format('d/m/Y H:i') }}
+                    por {{ $entry->responsible_name }}. Cada código QR se usa una sola vez.
+                </p>
             </div>
         @elseif(! $schedule->is_open)
             <div class="state state-closed">

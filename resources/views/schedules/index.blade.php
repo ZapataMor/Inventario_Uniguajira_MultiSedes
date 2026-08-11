@@ -11,8 +11,9 @@
 <div class="container content">
     <h1>Programación de inventarios</h1>
     <p class="sched-intro">
-        Cada programación genera su propio código QR y enlace público. Quien lo escanee podrá
-        documentar la labor realizada sin iniciar sesión en el aplicativo.
+        Cada programación genera su propio código QR y enlace público, y se diligencia una sola vez.
+        Cuando la persona externa envía el formulario, el QR desaparece de la tarjeta y en su lugar
+        queda la información registrada. Para una nueva labor, crea otra programación.
     </p>
 
     <div id="schedules-topbar">
@@ -32,38 +33,73 @@
     <div id="schedulesGrid" class="sched-grid">
         @forelse($schedules as $schedule)
             @php
-                $publicUrl = $schedule->publicUrl();
+                // Diligenciada = QR consumido: se muestra lo registrado, no el QR.
+                $entry = $schedule->entry;
+                $isCompleted = $entry !== null;
+                $publicUrl = $isCompleted ? null : $schedule->publicUrl();
+                $locations = $schedule->location_labels;
             @endphp
             <article
-                class="sched-card"
+                class="sched-card{{ $isCompleted ? ' sched-card-done' : '' }}"
                 data-schedule-card
                 data-id="{{ $schedule->id }}"
                 data-code="{{ $schedule->code }}"
                 data-title="{{ $schedule->title }}"
                 data-open="{{ $schedule->is_open ? '1' : '0' }}"
+                data-completed="{{ $isCompleted ? '1' : '0' }}"
                 data-url="{{ $publicUrl }}"
-                data-inventory-id="{{ $schedule->inventory_id }}"
-                data-search="{{ Str::lower($schedule->title . ' ' . $schedule->location_label) }}"
+                data-inventory-ids="{{ implode(',', $schedule->inventories->pluck('id')->all()) }}"
+                data-search="{{ Str::lower($schedule->title . ' ' . implode(' ', $locations) . ' ' . ($entry->work_name ?? '') . ' ' . ($entry->responsible_name ?? '')) }}"
             >
                 {{--
-                    Encabezado fijo: nombre y ubicacion siempre impresos en la tarjeta.
+                    Encabezado fijo: nombre y ubicaciones siempre impresos en la tarjeta.
                     Se usa <div> y no <header>: navbar.css aplica `position: fixed`
                     al elemento <header> suelto y sacaba este bloque de la tarjeta.
                 --}}
                 <div class="sched-card-head">
                     <h2 class="sched-card-title">{{ $schedule->title }}</h2>
 
-                    <p class="sched-card-location">
-                        <i class="fas fa-location-dot"></i>
-                        @if($schedule->location_label)
-                            {{ $schedule->location_label }}
-                        @else
+                    @if($locations)
+                        <ul class="sched-card-locations">
+                            @foreach($locations as $location)
+                                <li>
+                                    <i class="fas fa-location-dot"></i>
+                                    <span>{{ $location }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="sched-card-location">
+                            <i class="fas fa-location-dot"></i>
                             <span class="sched-card-location-empty">Sin ubicación asignada</span>
-                        @endif
-                    </p>
+                        </p>
+                    @endif
                 </div>
 
-                @if($publicUrl)
+                @if($isCompleted)
+                    {{-- El QR y el enlace se sustituyen por lo que documentó la persona externa. --}}
+                    <div class="sched-record">
+                        <div class="sched-record-head">
+                            <span class="sched-record-badge">
+                                <i class="fas fa-circle-check"></i> Diligenciada
+                            </span>
+                            <span class="sched-record-duration">{{ $entry->duration_label }}</span>
+                        </div>
+
+                        <h3 class="sched-record-name">{{ $entry->work_name }}</h3>
+
+                        @if($entry->description)
+                            <p class="sched-record-description">{{ $entry->description }}</p>
+                        @endif
+
+                        <ul class="sched-record-meta">
+                            <li><i class="fas fa-user"></i> {{ $entry->responsible_name }}</li>
+                            <li><i class="fas fa-play"></i> Inicio: {{ $entry->started_at?->format('d/m/Y H:i') }}</li>
+                            <li><i class="fas fa-flag-checkered"></i> Fin: {{ $entry->finished_at?->format('d/m/Y H:i') }}</li>
+                            <li><i class="fas fa-clock"></i> Registrado: {{ $entry->created_at?->format('d/m/Y H:i') }}</li>
+                        </ul>
+                    </div>
+                @elseif($publicUrl)
                     <div class="sched-share">
                         <div class="sched-qr" data-qr-target data-url="{{ $publicUrl }}">
                             <span class="sched-qr-loading">Generando QR...</span>
@@ -83,6 +119,7 @@
 
                             <p class="sched-share-hint">
                                 Escanea el código o comparte el enlace para registrar la labor.
+                                Solo puede usarse una vez.
                             </p>
                         </div>
                     </div>
@@ -94,16 +131,25 @@
                         {{ $schedule->entries_count }} {{ $schedule->entries_count === 1 ? 'registro' : 'registros' }}
                     </span>
 
-                    <span class="sched-open-flag sched-open-flag-{{ $schedule->is_open ? 'on' : 'off' }}">
-                        <i class="fas {{ $schedule->is_open ? 'fa-lock-open' : 'fa-lock' }}"></i>
-                        {{ $schedule->is_open ? 'Formulario abierto' : 'Formulario cerrado' }}
-                    </span>
+                    @if($isCompleted)
+                        <span class="sched-open-flag sched-open-flag-done">
+                            <i class="fas fa-circle-check"></i>
+                            Labor documentada
+                        </span>
+                    @else
+                        <span class="sched-open-flag sched-open-flag-{{ $schedule->is_open ? 'on' : 'off' }}">
+                            <i class="fas {{ $schedule->is_open ? 'fa-lock-open' : 'fa-lock' }}"></i>
+                            {{ $schedule->is_open ? 'Formulario abierto' : 'Formulario cerrado' }}
+                        </span>
+                    @endif
                 </div>
 
                 <div class="sched-actions">
-                    <button type="button" class="sched-btn" data-action="entries">
-                        <i class="fas fa-list-check"></i> Ver registros
-                    </button>
+                    @if($schedule->entries_count > 0)
+                        <button type="button" class="sched-btn" data-action="entries">
+                            <i class="fas fa-list-check"></i> Ver registros
+                        </button>
+                    @endif
 
                     @if($publicUrl)
                         <a class="sched-btn" href="{{ $publicUrl }}" target="_blank" rel="noopener" title="Abrir formulario">
@@ -118,13 +164,17 @@
                     @endif
 
                     @if($canManageSchedules)
-                        <button type="button" class="sched-btn" data-action="toggle"
-                                title="{{ $schedule->is_open ? 'Cerrar formulario' : 'Reabrir formulario' }}">
-                            <i class="fas {{ $schedule->is_open ? 'fa-lock' : 'fa-lock-open' }}"></i>
-                        </button>
-                        <button type="button" class="sched-btn" data-action="edit" title="Editar">
-                            <i class="fas fa-pen"></i>
-                        </button>
+                        {{-- Una programación diligenciada es histórico: solo se puede eliminar. --}}
+                        @unless($isCompleted)
+                            <button type="button" class="sched-btn" data-action="toggle"
+                                    title="{{ $schedule->is_open ? 'Cerrar formulario' : 'Reabrir formulario' }}">
+                                <i class="fas {{ $schedule->is_open ? 'fa-lock' : 'fa-lock-open' }}"></i>
+                            </button>
+                            <button type="button" class="sched-btn" data-action="edit" title="Editar">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        @endunless
+
                         <button type="button" class="sched-btn sched-btn-danger" data-action="delete" title="Eliminar">
                             <i class="fas fa-trash"></i>
                         </button>

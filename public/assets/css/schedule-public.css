@@ -480,6 +480,13 @@ body {
     color: var(--sp-muted);
 }
 
+/* Aclara que el QR es de un solo uso, sin competir con el mensaje principal. */
+.state-note {
+    margin-top: 12px;
+    font-size: 13px;
+    opacity: .85;
+}
+
 /* ─── Pie ──────────────────────────────────────────────────────── */
 
 .page-foot {

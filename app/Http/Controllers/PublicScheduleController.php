@@ -20,6 +20,10 @@ use Illuminate\Http\Request;
  * Alcance deliberadamente minimo: solo permite crear una labor sobre
  * una programacion abierta. No expone ni modifica bienes, inventarios
  * ni usuarios.
+ *
+ * El formulario es de un solo uso: al enviarlo, la programacion queda
+ * cerrada y el QR deja de admitir registros. Cada labor nueva necesita
+ * su propia programacion con su propio QR.
  */
 class PublicScheduleController extends Controller
 {
@@ -34,6 +38,7 @@ class PublicScheduleController extends Controller
             'tenant' => $tenant,
             'branding' => $tenant->branding,
             'schedule' => $schedule,
+            'entry' => $schedule->entry,
             'submitted' => (bool) session('schedule_submitted'),
         ]);
     }
@@ -45,7 +50,9 @@ class PublicScheduleController extends Controller
     {
         [, $schedule] = $this->resolve($tenantSlug, $code);
 
-        if (! $schedule->is_open) {
+        // Un QR solo se diligencia una vez: el segundo envio se rechaza
+        // aunque alguien conserve el enlace o reenvie el formulario.
+        if ($schedule->isCompleted() || ! $schedule->is_open) {
             return back()->withErrors([
                 'work_name' => 'Esta programación ya no admite nuevos registros.',
             ])->withInput();
@@ -75,6 +82,9 @@ class PublicScheduleController extends Controller
             'ip_address' => $request->ip(),
             'user_agent' => substr((string) $request->userAgent(), 0, 500),
         ]);
+
+        // El QR queda consumido: la programacion no vuelve a recibir labores.
+        $schedule->forceFill(['is_open' => false])->save();
 
         ActivityLogger::custom(
             'create',

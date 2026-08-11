@@ -97,7 +97,7 @@ database/
 | `Report` | Reports |
 | `ReportFolder` | Report folder organization |
 | `Task` | Task/to-do items |
-| `InventorySchedule` | Programaciones: nombre + ubicacion opcional + codigo publico |
+| `InventorySchedule` | Programaciones: nombre + ubicaciones opcionales (pivote) + codigo publico de un solo uso |
 | `InventoryScheduleEntry` | Labores documentadas desde el formulario publico |
 | `ActivityLog` | Activity logging |
 
@@ -194,8 +194,8 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `ReportController`: genera PDFs persistidos en storage local por carpeta. Soporta reportes de inventario, grupo, todos los inventarios, bienes, seriales y bienes dados de baja. Usa branding por tenant y `SimplePdfService`.
 - `ReportFolderController`: CRUD basico de carpetas de reportes y vistas para listar reportes por carpeta.
 - `TaskController`: CRUD de tareas del dashboard con validacion de fecha no pasada y toggle `pending/completed`.
-- `InventoryScheduleController`: modulo "Programacion de inventarios". Una programacion solo captura el **nombre** con el que se identifica la labor y, opcionalmente, el **inventario** que hace de ubicacion (dropdown con todos los inventarios de la sede). Todo lo demas lo aporta la persona externa desde el formulario publico. La tarjeta del listado muestra el nombre junto al QR y al enlace ya listos para escanear o copiar, sin modal intermedio. Crear, editar y eliminar exige rol `administrador` o super administrador; el listado es visible para cualquier usuario de la sede. Redirige al portal si no hay tenant activo: no tiene catalogo central.
-- `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: solo inserta una labor sobre una programacion abierta, con `throttle` en el POST.
+- `InventoryScheduleController`: modulo "Programacion de inventarios". Una programacion solo captura el **nombre** con el que se identifica la labor y, opcionalmente, **una o varias ubicaciones** (casillas con todos los inventarios de la sede, guardadas en la pivote `inventory_schedule_inventory`). Todo lo demas lo aporta la persona externa desde el formulario publico. **El QR es de un solo uso:** mientras la programacion sigue pendiente, la tarjeta muestra el QR y el enlace listos para escanear o copiar; en cuanto alguien diligencia el formulario, ese bloque se sustituye por la labor documentada y la programacion queda cerrada, sin opcion de reabrir ni editar (solo eliminar). Para un mantenimiento nuevo se crea otra programacion, que genera su propio QR. Crear, editar y eliminar exige rol `administrador` o super administrador; el listado es visible para cualquier usuario de la sede. Redirige al portal si no hay tenant activo: no tiene catalogo central.
+- `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: solo inserta una labor sobre una programacion abierta, con `throttle` en el POST. Tras insertarla cierra la programacion (`is_open = false`) y rechaza cualquier envio posterior, de modo que un mismo QR nunca se diligencia dos veces.
 - `UserController`: administracion de usuarios exclusiva para `administrador`; impide cambiar el propio rol y bloquear la eliminacion del usuario base o del usuario autenticado.
 - `ProfileController`: perfil del usuario autenticado; actualiza datos basicos y contrasena propia con respuestas JSON.
 - `AssetImageController`: sirve imagenes de bienes desde storage de forma segura, evita path traversal y cae en una imagen por defecto cuando no existe el archivo.

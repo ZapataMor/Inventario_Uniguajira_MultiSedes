@@ -28,16 +28,40 @@
                        placeholder="Ej: Mantenimiento preventivo sala de sistemas">
             </div>
 
-            <div>
-                <label for="{{ $prefix }}Inventory">Ubicación (opcional):</label>
-                <select id="{{ $prefix }}Inventory" name="inventory_id">
-                    <option value="">Sin ubicación asignada</option>
-                    @foreach($inventories as $inventory)
-                        <option value="{{ $inventory->id }}">
-                            {{ $inventory->group?->name ? $inventory->group->name . ' · ' : '' }}{{ $inventory->name }}
-                        </option>
-                    @endforeach
-                </select>
+            {{--
+                Una misma labor puede cubrir varias ubicaciones, así que la
+                selección es múltiple. Se usan casillas y no un <select multiple>
+                porque la lista suele ser larga y necesita búsqueda.
+            --}}
+            <div class="sched-locations-field">
+                <label>Ubicaciones (opcional):</label>
+
+                @if($inventories->isEmpty())
+                    <p class="sched-locations-empty">
+                        Todavía no hay inventarios registrados en esta sede.
+                    </p>
+                @else
+                    <input type="text" class="sched-locations-search"
+                           data-locations-search
+                           placeholder="Buscar ubicación...">
+
+                    <div class="sched-locations-list" data-locations-list>
+                        @foreach($inventories as $inventory)
+                            @php
+                                $label = ($inventory->group?->name ? $inventory->group->name . ' · ' : '') . $inventory->name;
+                            @endphp
+                            <label class="sched-location-option"
+                                   data-location-search="{{ Str::lower($label) }}">
+                                <input type="checkbox" name="inventory_ids[]" value="{{ $inventory->id }}">
+                                <span>{{ $label }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <p class="sched-locations-hint" data-locations-count>
+                        Ninguna ubicación seleccionada.
+                    </p>
+                @endif
             </div>
 
             <div class="form-actions">
