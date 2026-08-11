@@ -6,11 +6,12 @@
  * actualizar la barra de control correspondiente al tipo de elemento seleccionado.
  *
  * Reglas de comportamiento:
- * - Solo se puede tener un elemento seleccionado a la vez
+ * - Por defecto solo se puede tener un elemento seleccionado a la vez
+ * - Un contenedor marcado con `data-multi-select` permite seleccionar varios
  * - Al seleccionar un elemento se muestra su barra de control específica
  * - Un elemento seleccionado se puede deseleccionar haciendo clic en él nuevamente
  * - La selección se limpia al hacer clic fuera de cualquier elemento seleccionable
- * - La barra de control muestra el nombre del elemento seleccionado
+ * - La barra de control muestra el nombre del elemento, o el total si hay varios
  *
  * La implementación incluye protección contra deselección accidental cuando hay modales activos,
  * permitiendo interacciones simultáneas entre el sistema de modales y el sistema de selección.
@@ -20,8 +21,12 @@
  */
 
 
-// Variable para almacenar el elemento seleccionado
+// Variable para almacenar el elemento seleccionado.
+// En contenedores multi-selección apunta al último marcado.
 let selectedItem = null;
+
+// Todos los elementos seleccionados. En modo simple tiene 0 o 1 elementos.
+let selectedItems = [];
 
 // Variable para controlar si se permite la deselección
 let allowDeselection = true;
@@ -88,32 +93,87 @@ function clearMultiSelection() {
 
 Object.assign(window, { toggleMultiSelectItem, updateBatchBar, clearMultiSelection });
 
+/**
+ * Un contenedor con `data-multi-select` acumula selección en lugar de
+ * reemplazarla. Fuera de él el comportamiento sigue siendo de uno a la vez.
+ */
+function allowsMultiSelect(element) {
+    return element.closest('[data-multi-select]') !== null;
+}
+
+// Deja `selectedItem` apuntando al último elemento marcado.
+function syncSelectedItem() {
+    selectedItem = selectedItems.length ? selectedItems[selectedItems.length - 1] : null;
+}
+
 // Función para seleccionar un elemento
 function toggleSelectItem(element) {
     // Si se hace clic en un botón dentro del elemento, no hacer nada
     if (event.target.tagName === 'BUTTON') return;
 
-    const itemId = element.dataset.id;
-    const itemName = element.dataset.name;
     const type = element.dataset.type;
 
     // Si el elemento ya está seleccionado, lo deseleccionamos
     if (element.classList.contains('selected')) {
         element.classList.remove('selected');
-        selectedItem = null;
+        selectedItems = selectedItems.filter(i => i.element !== element);
     } else {
-        // Deseleccionar el elemento anteriormente seleccionado (si existe)
-        if (selectedItem) {
-            selectedItem.element.classList.remove('selected');
+        // En modo simple, seleccionar uno descarta el anterior
+        if (!allowsMultiSelect(element)) {
+            selectedItems.forEach(i => i.element.classList.remove('selected'));
+            selectedItems = [];
         }
 
-        // Seleccionar este elemento
         element.classList.add('selected');
-        selectedItem = { id: itemId, name: itemName, type: type, element: element };
+        selectedItems.push({
+            id: element.dataset.id,
+            name: element.dataset.name,
+            type: type,
+            element: element,
+        });
     }
 
+    syncSelectedItem();
     updateControlBar(type);
-    // console.log(selectedItem); // Depuración: mostrar el elemento seleccionado
+}
+
+/**
+ * Marca todas las tarjetas visibles de un contenedor multi-selección.
+ * Si ya estaban todas marcadas, limpia la selección.
+ */
+function toggleSelectAllItems(containerSelector) {
+    const root = document.querySelector(containerSelector);
+    if (!root) return;
+
+    const cards = Array.from(root.querySelectorAll('.card-item'))
+        .filter(card => card.style.display !== 'none');
+
+    if (!cards.length) return;
+
+    const type = cards[0].dataset.type;
+    const todasMarcadas = cards.every(card => card.classList.contains('selected'));
+
+    // Se reconstruye la selección de este contenedor desde cero para no
+    // duplicar entradas si ya había tarjetas marcadas a mano.
+    cards.forEach(card => {
+        card.classList.remove('selected');
+        selectedItems = selectedItems.filter(i => i.element !== card);
+    });
+
+    if (!todasMarcadas) {
+        cards.forEach(card => {
+            card.classList.add('selected');
+            selectedItems.push({
+                id: card.dataset.id,
+                name: card.dataset.name,
+                type: card.dataset.type,
+                element: card,
+            });
+        });
+    }
+
+    syncSelectedItem();
+    updateControlBar(type);
 }
 
 // Función para actualizar la barra de control
@@ -123,11 +183,15 @@ function updateControlBar(type) {
         return;
     }
 
-    if (selectedItem && selectedItem.type === type) {
+    const items = selectedItems.filter(i => i.type === type);
+
+    if (items.length) {
         controlBar.classList.add('visible');
         const nameElement = controlBar.querySelector('.selected-name');
         if (nameElement) {
-            nameElement.textContent = selectedItem.name;
+            nameElement.textContent = items.length === 1
+                ? items[0].name
+                : `${items.length} seleccionados`;
         }
     } else {
         controlBar.classList.remove('visible');
@@ -135,18 +199,27 @@ function updateControlBar(type) {
 
     // Hook opcional: permite que módulos externos reaccionen al cambio de selección
     if (typeof window._onSelectionUpdate === 'function') {
-        window._onSelectionUpdate(type, selectedItem);
+        window._onSelectionUpdate(type, selectedItem, items);
     }
+
+    // Evento equivalente al hook anterior. Existe para que varios módulos
+    // puedan reaccionar a la vez sin pisarse `window._onSelectionUpdate`.
+    document.dispatchEvent(new CustomEvent('selection:update', {
+        detail: { type, item: selectedItem, items },
+    }));
 }
 
 // Función para limpiar la selección
 function deselectItem() {
-    if (selectedItem) {
-        selectedItem.element.classList.remove('selected');
-        const type = selectedItem.type;
-        selectedItem = null;
-        updateControlBar(type);
-    }
+    if (!selectedItems.length) return;
+
+    const type = selectedItems[0].type;
+
+    selectedItems.forEach(i => i.element.classList.remove('selected'));
+    selectedItems = [];
+    selectedItem = null;
+
+    updateControlBar(type);
 }
 
 // Manejador de eventos para clicks fuera de los elementos

@@ -154,6 +154,61 @@
     font-weight: 500;
 }
 
+/* ── Acciones que dependen de cuántos elementos hay seleccionados ────────── */
+
+/*
+ * `.control-btn` fija `display: flex`, que le gana a la regla del navegador
+ * para `[hidden]`. Sin esto, ocultar un botón de la barra no surtiría efecto.
+ */
+.control-btn[hidden] {
+    display: none;
+}
+
+/* ── Barra "Seleccionar todos" ───────────────────────────────────────────── */
+
+/*
+ * Vive fuera de la barra de control a propósito: esa barra solo aparece
+ * cuando ya hay algo seleccionado, así que el botón quedaría inalcanzable.
+ */
+.serial-select-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin: 12px 0 4px;
+}
+
+.select-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 13px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.select-all-btn:hover {
+    border-color: #4285f4;
+    background: #e8f0fe;
+    color: #1a56db;
+}
+
+.select-all-btn i {
+    font-size: 12px;
+}
+
+.serial-select-hint {
+    color: #94a3b8;
+    font-size: 12.5px;
+}
+
 /* ── Existing selected styles ────────────────────────────────────────────── */
 .card-item.selected::before {
     content: '';

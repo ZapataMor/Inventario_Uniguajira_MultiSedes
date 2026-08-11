@@ -137,6 +137,7 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 - Records: DELETE clean, GET export
 - Tasks: POST create, PUT update, PATCH toggle, DELETE destroy
 - Schedules: POST create/update/toggle-open, GET {id}/entries, DELETE delete
+- Maintenances: POST create/batch-create, GET equipment/{id} y {inventoryId}/{assetId}, DELETE {id}
 
 ## Activity Logging
 
@@ -194,6 +195,7 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `ReportController`: genera PDFs persistidos en storage local por carpeta. Soporta reportes de inventario, grupo, todos los inventarios, bienes, seriales y bienes dados de baja. Usa branding por tenant y `SimplePdfService`.
 - `ReportFolderController`: CRUD basico de carpetas de reportes y vistas para listar reportes por carpeta.
 - `TaskController`: CRUD de tareas del dashboard con validacion de fecha no pasada y toggle `pending/completed`.
+- `MaintenanceController`: historial de mantenimientos. Lee por serial individual (`equipment_id`) o por bien dentro de un inventario (`inventory_id + asset_id`). Ademas de la creacion unitaria, expone `batchStore()`: registra una misma labor sobre varios seriales marcados en la vista de seriales. Exige minimo dos equipos, que todos pertenezcan al mismo bien y rol `administrador`; inserta una fila por equipo dentro de una transaccion y deja un `ActivityLogger::custom` con los seriales afectados.
 - `InventoryScheduleController`: modulo "Programacion de inventarios". Una programacion solo captura el **nombre** con el que se identifica la labor y, opcionalmente, **una o varias ubicaciones** (casillas con todos los inventarios de la sede, guardadas en la pivote `inventory_schedule_inventory`). Todo lo demas lo aporta la persona externa desde el formulario publico. **El QR es de un solo uso:** mientras la programacion sigue pendiente, la tarjeta muestra el QR y el enlace listos para escanear o copiar; en cuanto alguien diligencia el formulario, ese bloque se sustituye por la labor documentada y la programacion queda cerrada, sin opcion de reabrir ni editar (solo eliminar). Para un mantenimiento nuevo se crea otra programacion, que genera su propio QR. Crear, editar y eliminar exige rol `administrador` o super administrador; el listado es visible para cualquier usuario de la sede. Redirige al portal si no hay tenant activo: no tiene catalogo central.
 - `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: solo inserta una labor sobre una programacion abierta, con `throttle` en el POST. Tras insertarla cierra la programacion (`is_open = false`) y rechaza cualquier envio posterior, de modo que un mismo QR nunca se diligencia dos veces.
 - `UserController`: administracion de usuarios exclusiva para `administrador`; impide cambiar el propio rol y bloquear la eliminacion del usuario base o del usuario autenticado.

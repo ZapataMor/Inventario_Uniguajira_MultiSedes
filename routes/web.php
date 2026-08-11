@@ -249,6 +249,7 @@ Route::prefix('api/maintenances')->group(function () {
     Route::get('/equipment/{equipmentId}', [MaintenanceController::class, 'indexByEquipment'])->name('maintenances.byEquipment');
     Route::get('/{inventoryId}/{assetId}', [MaintenanceController::class, 'index'])->name('maintenances.index');
     Route::post('/create', [MaintenanceController::class, 'store'])->name('maintenances.store');
+    Route::post('/batch-create', [MaintenanceController::class, 'batchStore'])->name('maintenances.batchStore');
     Route::delete('/{id}', [MaintenanceController::class, 'destroy'])->name('maintenances.destroy');
 });
 
