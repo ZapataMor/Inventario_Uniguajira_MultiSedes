@@ -1,3 +1,14 @@
+/*
+ * YA NO SE USA.
+ *
+ * Estos archivos se enlazan uno por uno desde resources/views/layouts/app.blade.php,
+ * cada uno con su propia version `?v=filemtime`. El @import no permitia versionar
+ * los hijos, asi que un cambio quedaba escondido detras de la cache del navegador
+ * y del CDN.
+ *
+ * Si agregas un CSS nuevo a esta carpeta, registralo en el layout, no aqui.
+ */
+
 @import 'main.css';
 @import 'navbar.css';
 @import 'sidebar.css';

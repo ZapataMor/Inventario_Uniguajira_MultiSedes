@@ -20,8 +20,28 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="{{ asset('assets/css/get.css') }}?v={{ $assetVersion('assets/css/get.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/components.css') }}?v={{ $assetVersion('assets/css/components.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/components/get.css') }}?v={{ $assetVersion('assets/css/components/get.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/responsive/get.css') }}?v={{ $assetVersion('assets/css/responsive/get.css') }}">
+    {{--
+        Los CSS de components/ y responsive/ se enlazan uno por uno, en el mismo
+        orden en que antes los importaba su `get.css`.
+
+        Antes solo el agregador llevaba `?v=` en su URL, y su `filemtime` no
+        cambia cuando cambia un hijo: un ajuste en, por ejemplo, selection.css
+        quedaba invisible detrás de la caché del navegador y del CDN. Con una
+        versión por archivo, cada uno se refresca solo cuando cambia.
+
+        EL ORDEN DEFINE LA CASCADA: al agregar un archivo, ponlo en la posición
+        que le corresponda, no al final por comodidad.
+    --}}
+    @foreach([
+        'main', 'navbar', 'sidebar', 'userMenu', 'tasks', 'toast', 'modals',
+        'selection', 'autocomplete', 'modals.inventory', 'modals.filter', 'inputImage',
+    ] as $componentStyle)
+        <link rel="stylesheet" href="{{ asset("assets/css/components/{$componentStyle}.css") }}?v={{ $assetVersion("assets/css/components/{$componentStyle}.css") }}">
+    @endforeach
+
+    @foreach(['responsive', 'goods', 'inventory'] as $responsiveStyle)
+        <link rel="stylesheet" href="{{ asset("assets/css/responsive/{$responsiveStyle}.css") }}?v={{ $assetVersion("assets/css/responsive/{$responsiveStyle}.css") }}">
+    @endforeach
     <link rel="stylesheet" href="{{ asset('assets/css/schedules.css') }}?v={{ $assetVersion('assets/css/schedules.css') }}">
     @stack('styles')
 
