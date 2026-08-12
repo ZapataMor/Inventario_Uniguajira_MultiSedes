@@ -99,6 +99,7 @@ database/
 | `Task` | Task/to-do items |
 | `InventorySchedule` | Programaciones: nombre + ubicaciones opcionales (pivote) + codigo publico de un solo uso |
 | `InventoryScheduleEntry` | Labores documentadas desde el formulario publico |
+| `InventoryScheduleEntryImage` | Evidencias fotograficas de una labor, con descripcion opcional |
 | `ActivityLog` | Activity logging |
 
 ## Database Views (via migrations)
@@ -126,6 +127,9 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 **Web (publico, sin auth):**
 - `GET|POST /programacion/{tenantSlug}/{code}` - Formulario externo de una programacion.
   El slug de la sede viaja en la URL porque el visitante no tiene sesion ni tenant resuelto.
+- `POST /programacion/{tenantSlug}/{code}/evidencias` - Sube una foto y devuelve su token.
+- `GET /programacion/{tenantSlug}/{code}/evidencias/{imageId}` - Sirve una evidencia ya registrada.
+- `GET /programacion/{tenantSlug}/{code}/comprobante` - Descarga el comprobante en PDF.
 
 **API (selected):**
 - Users: POST create/update, DELETE destroy
@@ -136,7 +140,8 @@ All routes live in `routes/web.php`. API endpoints are grouped under the `/api` 
 - Removed: GET filter/filter-options/export/stats, DELETE destroy
 - Records: DELETE clean, GET export
 - Tasks: POST create, PUT update, PATCH toggle, DELETE destroy
-- Schedules: POST create/update/toggle-open, GET {id}/entries, DELETE delete
+- Schedules: POST create/update/toggle-open, GET {id}/entries y {id}/receipt, DELETE delete
+- Schedules (evidencias): GET /schedules/evidencias/{imageId}
 - Maintenances: POST create/batch-create, GET equipment/{id} y {inventoryId}/{assetId}, DELETE {id}
 
 ## Activity Logging
@@ -197,7 +202,9 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `TaskController`: CRUD de tareas del dashboard con validacion de fecha no pasada y toggle `pending/completed`.
 - `MaintenanceController`: historial de mantenimientos. Lee por serial individual (`equipment_id`) o por bien dentro de un inventario (`inventory_id + asset_id`). Ademas de la creacion unitaria, expone `batchStore()`: registra una misma labor sobre varios seriales marcados en la vista de seriales. Exige minimo dos equipos, que todos pertenezcan al mismo bien y rol `administrador`; inserta una fila por equipo dentro de una transaccion y deja un `ActivityLogger::custom` con los seriales afectados.
 - `InventoryScheduleController`: modulo "Programacion de inventarios". Una programacion solo captura el **nombre** con el que se identifica la labor y, opcionalmente, **una o varias ubicaciones** (casillas con todos los inventarios de la sede, guardadas en la pivote `inventory_schedule_inventory`). Todo lo demas lo aporta la persona externa desde el formulario publico. **El QR es de un solo uso:** mientras la programacion sigue pendiente, la tarjeta muestra el QR y el enlace listos para escanear o copiar; en cuanto alguien diligencia el formulario, ese bloque se sustituye por la labor documentada y la programacion queda cerrada, sin opcion de reabrir ni editar (solo eliminar). Para un mantenimiento nuevo se crea otra programacion, que genera su propio QR. Crear, editar y eliminar exige rol `administrador` o super administrador; el listado es visible para cualquier usuario de la sede. Redirige al portal si no hay tenant activo: no tiene catalogo central.
-- `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: solo inserta una labor sobre una programacion abierta, con `throttle` en el POST. Tras insertarla cierra la programacion (`is_open = false`) y rechaza cualquier envio posterior, de modo que un mismo QR nunca se diligencia dos veces.
+- **Comprobante de la labor:** una vez diligenciado el formulario, la labor genera un comprobante en PDF (folio `CMP-{codigo}-{id}`, branding institucional, nombre de la sede, datos del trabajo y evidencias fotograficas). Lo construye `ScheduleReceiptService` y se descarga desde dos sitios con el mismo documento: la persona externa lo ve en pantalla apenas envia el formulario, y el personal de la sede lo baja desde la tarjeta o el modal de detalle. El boton solo existe cuando la programacion ya fue diligenciada.
+- **Evidencias fotograficas:** el formulario publico admite tantas fotos como haga falta, cada una con descripcion opcional. No se envian con el POST del formulario: el navegador las reduce (max. 1600 px, JPEG) y las sube de a una a `POST /programacion/{slug}/{code}/evidencias`, que devuelve un token; el envio final solo lleva tokens y descripciones. Ese escalonamiento es lo que evita chocar contra `post_max_size` y `max_file_uploads` de PHP. Los archivos viven en el storage de la sede (`tenants/{slug}/schedules/{scheduleId}/`) y `ScheduleEvidenceService` los normaliza con GD. Al eliminar una programacion hay que purgar su carpeta: las filas caen en cascada pero los archivos no.
+- `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: inserta una labor sobre una programacion abierta, recibe sus evidencias y entrega el comprobante, todo con `throttle`. Tras insertar la labor cierra la programacion (`is_open = false`) y rechaza cualquier envio posterior, de modo que un mismo QR nunca se diligencia dos veces; el comprobante y las evidencias si siguen siendo descargables con el mismo enlace.
 - `UserController`: administracion de usuarios exclusiva para `administrador`; impide cambiar el propio rol y bloquear la eliminacion del usuario base o del usuario autenticado.
 - `ProfileController`: perfil del usuario autenticado; actualiza datos basicos y contrasena propia con respuestas JSON.
 - `AssetImageController`: sirve imagenes de bienes desde storage de forma segura, evita path traversal y cae en una imagen por defecto cuando no existe el archivo.
@@ -264,6 +271,13 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - En la practica, varias pantallas y controladores leen desde estas vistas en lugar de recomponer joins complejos en cada request.
 - `activity_logs` actua como capa de auditoria transversal y conserva accion, modelo afectado, descripcion, IP, agente de usuario y snapshots `old_values/new_values`.
 - `report_folders` y `reports` separan la organizacion logica de reportes de los archivos PDF generados en storage.
+
+### Inventory Schedules Flow
+
+- `inventory_schedules` guarda la programacion (nombre + codigo publico) y `inventory_schedule_inventory` la relaciona con sus ubicaciones.
+- `inventory_schedule_entries` guarda la labor que documenta la persona externa. Al existir una entrada, la programacion queda cerrada de forma definitiva.
+- `inventory_schedule_entry_images` guarda las evidencias de esa labor: ruta relativa en el storage de la sede, descripcion opcional y orden de adjuntado. Ese orden es el que respeta el comprobante en PDF.
+- Los binarios de las evidencias **no** estan en base de datos: viven en `storage/app/tenants/{slug}/schedules/{scheduleId}/`. Borrar una programacion elimina las filas en cascada, pero la carpeta hay que purgarla explicitamente (`ScheduleEvidenceService::purge()`).
 
 ## Multi-Sede And Portal Context
 

@@ -9,6 +9,7 @@
 
         return $modifiedAt ?: time();
     };
+    $routeParams = ['tenantSlug' => $tenant->slug, 'code' => $schedule->code];
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -60,26 +61,33 @@
             @endif
         </div>
 
-        @if($submitted)
+        @if($entry)
             {{--
-                El formulario es de un solo uso: no se ofrece registrar otra
-                labor. Para eso se genera una programacion nueva con su QR.
+                El formulario es de un solo uso: una vez diligenciado, en su
+                lugar queda el comprobante de la labor. Se muestra igual si la
+                persona acaba de enviarlo o si vuelve a abrir el enlace más
+                tarde, para que siempre pueda descargar su constancia.
             --}}
-            <div class="state state-success" data-success-state>
+            <div class="state state-success state-compact" data-success-state>
                 <i class="fas fa-circle-check"></i>
-                <h3>¡Registro enviado!</h3>
-                <p>Gracias. La labor quedó documentada y ya es visible para el equipo de inventario.</p>
+                <h3>{{ $submitted ? '¡Registro enviado!' : 'Labor ya documentada' }}</h3>
+                <p>
+                    @if($submitted)
+                        Gracias. La labor quedó documentada y ya es visible para el equipo de inventario.
+                    @else
+                        Esta programación fue diligenciada por {{ $entry->responsible_name }}.
+                        Puedes volver a descargar el comprobante cuando lo necesites.
+                    @endif
+                </p>
                 <p class="state-note">Este código QR ya fue utilizado y no admite más registros.</p>
             </div>
-        @elseif($entry)
-            <div class="state state-closed">
-                <i class="fas fa-circle-check"></i>
-                <h3>Programación ya diligenciada</h3>
-                <p>
-                    Esta labor fue documentada el {{ $entry->created_at?->format('d/m/Y H:i') }}
-                    por {{ $entry->responsible_name }}. Cada código QR se usa una sola vez.
-                </p>
-            </div>
+
+            @include('schedules.public.receipt', [
+                'entry' => $entry,
+                'sedeLabel' => \App\Services\Schedules\ScheduleReceiptService::sedeLabel($sedeName),
+                'timezone' => $timezone,
+                'routeParams' => $routeParams,
+            ])
         @elseif(! $schedule->is_open)
             <div class="state state-closed">
                 <i class="fas fa-lock"></i>
@@ -87,8 +95,9 @@
                 <p>Esta programación ya no admite nuevos registros. Comunícate con el área de inventario.</p>
             </div>
         @else
-            <form class="form" method="POST"
-                  action="{{ route('schedules.public.store', ['tenantSlug' => $tenant->slug, 'code' => $schedule->code]) }}">
+            <form class="form" method="POST" data-schedule-form
+                  data-evidence-endpoint="{{ route('schedules.public.evidence', $routeParams) }}"
+                  action="{{ route('schedules.public.store', $routeParams) }}">
                 @csrf
 
                 <p class="form-lead">Cuéntanos qué trabajo realizaste.</p>
@@ -138,7 +147,33 @@
                               placeholder="Detalles del trabajo, materiales usados, novedades encontradas...">{{ old('description') }}</textarea>
                 </div>
 
-                <button type="submit" class="btn btn-primary">
+                {{--
+                    Las fotos se suben una a una en cuanto se seleccionan, y el
+                    formulario solo envía los tokens resultantes. Así se pueden
+                    adjuntar todas las que hagan falta sin chocar contra los
+                    límites de tamaño de petición de PHP.
+                --}}
+                <div class="field evidence" data-evidence>
+                    <label>Evidencias fotográficas (opcional)</label>
+                    <p class="field-hint">
+                        Adjunta todas las fotos que necesites. Cada una puede llevar
+                        una descripción, también opcional.
+                    </p>
+
+                    <input type="file" accept="image/*" multiple hidden data-evidence-input>
+
+                    <button type="button" class="btn btn-ghost" data-evidence-add>
+                        <i class="fas fa-camera"></i> Añadir imágenes
+                    </button>
+
+                    <p class="evidence-empty" data-evidence-empty>
+                        Todavía no has adjuntado imágenes.
+                    </p>
+
+                    <ul class="evidence-list" data-evidence-list></ul>
+                </div>
+
+                <button type="submit" class="btn btn-primary" data-submit>
                     <i class="fas fa-paper-plane"></i> Enviar registro
                 </button>
             </form>
@@ -151,61 +186,17 @@
     </footer>
 </main>
 
-<script>
-    (() => {
-        const splash = document.querySelector('[data-splash]');
-        const box = document.querySelector('[data-splash-box]');
-        const sweep = document.querySelector('[data-splash-sweep]');
+{{-- Visor a pantalla completa de las evidencias del comprobante --}}
+<div class="viewer" data-viewer hidden>
+    <button type="button" class="viewer-close" data-viewer-close aria-label="Cerrar">
+        <i class="fas fa-xmark"></i>
+    </button>
+    <figure class="viewer-figure">
+        <img src="" alt="" data-viewer-image>
+        <figcaption data-viewer-caption></figcaption>
+    </figure>
+</div>
 
-        if (! splash) {
-            return;
-        }
-
-        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        const dismiss = () => {
-            if (splash.dataset.state === 'off') {
-                return;
-            }
-
-            splash.dataset.state = 'off';
-            box?.setAttribute('data-state', 'exit');
-            window.setTimeout(() => splash.remove(), 800);
-        };
-
-        if (reduce) {
-            dismiss();
-            return;
-        }
-
-        window.setTimeout(() => sweep?.setAttribute('data-active', 'true'), 700);
-        window.setTimeout(dismiss, 2600);
-
-        // Permite saltar la animación con un toque o una tecla.
-        splash.addEventListener('click', dismiss);
-        document.addEventListener('keydown', dismiss, { once: true });
-    })();
-
-    (() => {
-        const started = document.getElementById('started_at');
-        const finished = document.getElementById('finished_at');
-
-        if (! started || ! finished) {
-            return;
-        }
-
-        // La finalización nunca puede ser anterior al inicio.
-        const syncMin = () => {
-            finished.min = started.value || '';
-
-            if (finished.value && started.value && finished.value < started.value) {
-                finished.value = started.value;
-            }
-        };
-
-        started.addEventListener('change', syncMin);
-        syncMin();
-    })();
-</script>
+<script src="{{ asset('assets/js/schedule-public.js') }}?v={{ $assetVersion('assets/js/schedule-public.js') }}"></script>
 </body>
 </html>

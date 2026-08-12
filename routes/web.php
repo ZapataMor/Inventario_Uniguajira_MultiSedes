@@ -100,6 +100,19 @@ Route::prefix('programacion')->group(function () {
     Route::post('{tenantSlug}/{code}', [PublicScheduleController::class, 'store'])
         ->middleware('throttle:12,1')
         ->name('schedules.public.store');
+
+    // Las evidencias se suben de a una, antes de enviar el formulario:
+    // por eso el limite es mas alto que el del envio final.
+    Route::post('{tenantSlug}/{code}/evidencias', [PublicScheduleController::class, 'uploadEvidence'])
+        ->middleware('throttle:120,1')
+        ->name('schedules.public.evidence');
+
+    Route::get('{tenantSlug}/{code}/evidencias/{imageId}', [PublicScheduleController::class, 'image'])
+        ->whereNumber('imageId')
+        ->name('schedules.public.image');
+
+    Route::get('{tenantSlug}/{code}/comprobante', [PublicScheduleController::class, 'receipt'])
+        ->name('schedules.public.receipt');
 })->where(['tenantSlug' => '[A-Za-z0-9_-]+', 'code' => '[A-Za-z0-9]+']);
 
 Route::middleware('auth')->group(function () {
@@ -124,11 +137,16 @@ Route::prefix('api/tasks')->group(function () {
 
 Route::get('schedules', [InventoryScheduleController::class, 'index'])->name('schedules.index');
 
+Route::get('schedules/evidencias/{imageId}', [InventoryScheduleController::class, 'image'])
+    ->whereNumber('imageId')
+    ->name('schedules.image');
+
 Route::prefix('api/schedules')->group(function () {
     Route::post('create', [InventoryScheduleController::class, 'store'])->name('schedules.store');
     Route::post('update', [InventoryScheduleController::class, 'update'])->name('schedules.update');
     Route::post('toggle-open', [InventoryScheduleController::class, 'toggleOpen'])->name('schedules.toggleOpen');
     Route::get('{id}/entries', [InventoryScheduleController::class, 'entries'])->name('schedules.entries');
+    Route::get('{id}/receipt', [InventoryScheduleController::class, 'receipt'])->name('schedules.receipt');
     Route::delete('delete/{id}', [InventoryScheduleController::class, 'destroy'])->name('schedules.destroy');
 });
 

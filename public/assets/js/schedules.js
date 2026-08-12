@@ -286,6 +286,39 @@
 
     // ─── Modal de labores documentadas ─────────────────────────────
 
+    /**
+     * Galería de evidencias de una labor. Cada miniatura abre el visor.
+     */
+    const renderEntryImages = (images) => {
+        if (!images || !images.length) {
+            return '<p class="sched-entry-no-shots">Esta labor no tiene evidencias fotográficas.</p>';
+        }
+
+        const cards = images.map((image, index) => `
+            <li class="sched-shot">
+                <button type="button" class="sched-shot-open"
+                        data-sched-viewer-open
+                        data-src="${escapeHtml(image.url)}"
+                        data-caption="${escapeHtml(image.description || '')}">
+                    <img src="${escapeHtml(image.url)}"
+                         alt="Evidencia ${index + 1}" loading="lazy">
+                    <span class="sched-shot-zoom"><i class="fas fa-magnifying-glass-plus"></i></span>
+                </button>
+                <p class="sched-shot-caption${image.description ? '' : ' sched-shot-caption-empty'}">
+                    ${escapeHtml(image.description || 'Sin descripción')}
+                </p>
+            </li>
+        `).join('');
+
+        return `
+            <p class="sched-entry-shots-label">
+                <i class="fas fa-images"></i>
+                Evidencias fotográficas (${images.length})
+            </p>
+            <ul class="sched-shot-grid">${cards}</ul>
+        `;
+    };
+
     const renderEntries = (entries) => {
         const body = document.querySelector('[data-entries-body]');
 
@@ -302,6 +335,7 @@
                     <h3 class="sched-entry-name">${escapeHtml(entry.work_name)}</h3>
                     <span class="sched-entry-duration">${escapeHtml(entry.duration)}</span>
                 </div>
+                ${entry.receipt_code ? `<p class="sched-entry-folio">Comprobante ${escapeHtml(entry.receipt_code)}</p>` : ''}
                 ${entry.description ? `<p class="sched-entry-description">${escapeHtml(entry.description)}</p>` : ''}
                 <ul class="sched-entry-meta">
                     <li><i class="fas fa-user"></i> ${escapeHtml(entry.responsible_name)}</li>
@@ -309,6 +343,7 @@
                     <li><i class="fas fa-flag-checkered"></i> Fin: ${escapeHtml(entry.finished_at)}</li>
                     <li><i class="fas fa-clock"></i> Registrado: ${escapeHtml(entry.registered_at)}</li>
                 </ul>
+                <div class="sched-entry-shots">${renderEntryImages(entry.images)}</div>
             </article>
         `).join('');
     };
@@ -316,9 +351,11 @@
     const openEntriesModal = (data) => {
         const body = document.querySelector('[data-entries-body]');
         const title = document.querySelector('[data-entries-title]');
+        const receipt = document.querySelector('[data-entries-receipt]');
 
         if (title) title.textContent = data.title || '';
         if (body) body.innerHTML = '<p class="sched-entries-loading">Cargando registros...</p>';
+        receipt?.classList.add('hidden');
 
         mostrarModal('#modalProgramacionRegistros');
 
@@ -326,12 +363,49 @@
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
         })
             .then((response) => response.json())
-            .then((payload) => renderEntries(payload.entries || []))
+            .then((payload) => {
+                renderEntries(payload.entries || []);
+
+                // El comprobante solo se ofrece si el formulario ya fue diligenciado.
+                if (receipt && payload.receipt_url) {
+                    receipt.href = payload.receipt_url;
+                    receipt.classList.remove('hidden');
+                }
+            })
             .catch(() => {
                 if (body) {
                     body.innerHTML = '<p class="sched-entries-empty">No se pudieron cargar los registros.</p>';
                 }
             });
+    };
+
+    // ─── Visor de evidencias ───────────────────────────────────────
+
+    const closeViewer = () => {
+        const viewer = document.querySelector('[data-sched-viewer]');
+
+        if (!viewer || viewer.hidden) return;
+
+        viewer.hidden = true;
+        viewer.querySelector('[data-sched-viewer-image]').src = '';
+        document.body.classList.remove('sched-viewer-open');
+    };
+
+    const openViewer = (trigger) => {
+        const viewer = document.querySelector('[data-sched-viewer]');
+
+        if (!viewer) return;
+
+        const image = viewer.querySelector('[data-sched-viewer-image]');
+        const caption = viewer.querySelector('[data-sched-viewer-caption]');
+        const text = trigger.dataset.caption || '';
+
+        image.src = trigger.dataset.src;
+        image.alt = text || 'Evidencia fotográfica';
+        caption.textContent = text;
+        caption.hidden = text === '';
+        viewer.hidden = false;
+        document.body.classList.add('sched-viewer-open');
     };
 
     // ─── Eliminación ───────────────────────────────────────────────
@@ -404,21 +478,50 @@
         window.schedulesListenersBound = true;
 
         document.addEventListener('click', (event) => {
+            const viewerTrigger = event.target.closest('[data-sched-viewer-open]');
+
+            if (viewerTrigger) {
+                openViewer(viewerTrigger);
+                return;
+            }
+
+            const viewer = document.querySelector('[data-sched-viewer]');
+
+            if (viewer && !viewer.hidden
+                && (event.target === viewer || event.target.closest('[data-sched-viewer-close]'))) {
+                closeViewer();
+                return;
+            }
+
             const actionButton = event.target.closest('[data-schedule-card] [data-action]');
 
-            if (!actionButton) return;
+            if (actionButton) {
+                const data = readCard(actionButton.closest('[data-schedule-card]'));
 
-            const data = readCard(actionButton.closest('[data-schedule-card]'));
+                switch (actionButton.dataset.action) {
+                    case 'copy': copyLink(data.element); break;
+                    case 'download': downloadQr(data); break;
+                    case 'print': printQr(data); break;
+                    case 'toggle': toggleOpen(data); break;
+                    case 'entries': openEntriesModal(data); break;
+                    case 'edit': openEditModal(data); break;
+                    case 'delete': deleteSchedule(data); break;
+                }
 
-            switch (actionButton.dataset.action) {
-                case 'copy': copyLink(data.element); break;
-                case 'download': downloadQr(data); break;
-                case 'print': printQr(data); break;
-                case 'toggle': toggleOpen(data); break;
-                case 'entries': openEntriesModal(data); break;
-                case 'edit': openEditModal(data); break;
-                case 'delete': deleteSchedule(data); break;
+                return;
             }
+
+            // Clic en el cuerpo de una tarjeta ya diligenciada: abre el
+            // detalle, que es donde se consultan las evidencias.
+            const card = event.target.closest('.sched-card-clickable');
+
+            if (card && !event.target.closest('button, a, input, textarea, select, label')) {
+                openEntriesModal(readCard(card));
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeViewer();
         });
 
         document.addEventListener('input', (event) => {

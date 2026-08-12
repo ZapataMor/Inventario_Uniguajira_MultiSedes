@@ -487,6 +487,432 @@ body {
     opacity: .85;
 }
 
+/* Cuando debajo va el comprobante, el mensaje deja de ser el cierre
+   visual de la tarjeta y cede espacio al documento. */
+.state-compact {
+    padding-bottom: 26px;
+}
+
+/* ─── Evidencias fotográficas (formulario) ─────────────────────── */
+
+.field-hint {
+    margin: -2px 0 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--sp-muted);
+}
+
+.evidence .btn-ghost {
+    margin-top: 0;
+    width: 100%;
+}
+
+.evidence-empty {
+    margin: 12px 0 0;
+    padding: 14px;
+    border: 1px dashed var(--sp-border);
+    border-radius: 12px;
+    background: #fbfcfe;
+    color: var(--sp-muted);
+    font-size: 13px;
+    text-align: center;
+}
+
+.evidence-list {
+    list-style: none;
+    display: grid;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding: 0;
+}
+
+.evidence-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 11px;
+    border: 1px solid var(--sp-border);
+    border-radius: 14px;
+    background: #fbfcfe;
+    transition: border-color .18s ease, background-color .18s ease;
+}
+
+.evidence-item[data-state="ready"] {
+    border-color: #bbf7d0;
+    background: #f7fdf9;
+}
+
+.evidence-item[data-state="error"] {
+    border-color: #fecdd3;
+    background: #fff5f6;
+}
+
+.evidence-thumb {
+    position: relative;
+    flex-shrink: 0;
+    width: 68px;
+    height: 68px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #eef2f8;
+}
+
+.evidence-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.evidence-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 20, 40, .55);
+    color: #fff;
+    font-size: 18px;
+}
+
+.evidence-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.evidence-name {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 7px;
+    font-size: 12.5px;
+    color: var(--sp-muted);
+}
+
+.evidence-file {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--sp-ink);
+    font-weight: 600;
+}
+
+.evidence-size {
+    flex-shrink: 0;
+}
+
+.evidence-caption {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--sp-border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--sp-ink);
+    font-family: inherit;
+    font-size: 14px;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.evidence-caption:focus {
+    outline: none;
+    border-color: var(--sp-blue);
+    box-shadow: 0 0 0 3px rgba(43, 92, 255, .14);
+}
+
+.evidence-caption:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
+.evidence-status {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--sp-muted);
+}
+
+.evidence-item[data-state="ready"] .evidence-status {
+    color: var(--sp-success);
+}
+
+.evidence-item[data-state="error"] .evidence-status {
+    color: var(--sp-danger);
+}
+
+.evidence-remove {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--sp-border);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--sp-muted);
+    cursor: pointer;
+    transition: border-color .16s ease, color .16s ease, background-color .16s ease;
+}
+
+.evidence-remove:hover {
+    border-color: var(--sp-danger);
+    background: #fff1f2;
+    color: var(--sp-danger);
+}
+
+.btn:disabled {
+    opacity: .7;
+    cursor: progress;
+    transform: none;
+}
+
+/* ─── Comprobante en pantalla ──────────────────────────────────── */
+
+.receipt {
+    padding: 22px 26px 28px;
+    border-top: 1px solid var(--sp-border);
+    background: linear-gradient(180deg, rgba(5, 150, 105, .05), rgba(255, 255, 255, 0) 140px);
+}
+
+.receipt-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed var(--sp-border);
+}
+
+.receipt-kicker {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--sp-muted);
+}
+
+.receipt-code {
+    margin: 4px 0 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--sp-ink);
+    letter-spacing: .02em;
+}
+
+.receipt-sede {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.receipt-data {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 18px;
+    margin: 18px 0 0;
+}
+
+.receipt-data dt {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--sp-muted);
+}
+
+.receipt-data dd {
+    margin: 4px 0 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--sp-ink);
+    overflow-wrap: anywhere;
+}
+
+.receipt-note {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid var(--sp-border);
+    border-left: 3px solid var(--sp-success);
+    border-radius: 12px;
+    background: #fbfcfe;
+}
+
+.receipt-note-label,
+.receipt-shots-label {
+    margin: 0 0 7px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--sp-muted);
+}
+
+.receipt-note p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--sp-text);
+    white-space: pre-line;
+}
+
+.receipt-shots {
+    margin-top: 22px;
+}
+
+.shot-grid {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+}
+
+.shot-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.shot-open {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid var(--sp-border);
+    border-radius: 12px;
+    background: #eef2f8;
+    overflow: hidden;
+    cursor: zoom-in;
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.shot-open:hover {
+    border-color: var(--sp-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 28px -18px rgba(20, 28, 60, .5);
+}
+
+.shot-open img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.shot-zoom {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(13, 20, 40, .62);
+    color: #fff;
+    font-size: 12px;
+}
+
+.shot-caption {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--sp-text);
+    overflow-wrap: anywhere;
+}
+
+.shot-caption-empty {
+    color: #9aa5b8;
+    font-style: italic;
+}
+
+.receipt-download {
+    margin-top: 24px;
+}
+
+.receipt-hint {
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    text-align: center;
+    color: var(--sp-muted);
+}
+
+/* ─── Visor a pantalla completa ────────────────────────────────── */
+
+body.viewer-open {
+    overflow: hidden;
+}
+
+.viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(9, 14, 30, .88);
+    cursor: zoom-out;
+}
+
+.viewer[hidden] {
+    display: none;
+}
+
+.viewer-figure {
+    margin: 0;
+    max-width: 100%;
+    max-height: 100%;
+    text-align: center;
+    cursor: default;
+}
+
+.viewer-figure img {
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: 12px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .7);
+}
+
+.viewer-figure figcaption {
+    margin-top: 14px;
+    color: #e2e8f0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.viewer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color .16s ease;
+}
+
+.viewer-close:hover {
+    background: rgba(255, 255, 255, .18);
+}
+
 /* ─── Pie ──────────────────────────────────────────────────────── */
 
 .page-foot {
@@ -517,9 +943,20 @@ body {
     }
 
     .card-head,
-    .form {
+    .form,
+    .receipt {
         padding-left: 18px;
         padding-right: 18px;
+    }
+
+    .receipt-data {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .shot-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
     }
 
     .card-title {

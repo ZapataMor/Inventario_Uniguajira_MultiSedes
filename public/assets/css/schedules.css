@@ -293,6 +293,56 @@
     border-color: #a7f3d0;
 }
 
+/* Una tarjeta diligenciada abre su detalle al hacer clic en ella. */
+.sched-card-clickable {
+    cursor: pointer;
+}
+
+/* ─── Adelanto de evidencias en la tarjeta ─────────────────────── */
+
+.sched-record-shots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #a7f3d0;
+}
+
+.sched-record-shots img {
+    width: 46px;
+    height: 46px;
+    border: 1px solid #d1fae5;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #fff;
+}
+
+.sched-record-shots-more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border: 1px solid #d1fae5;
+    border-radius: 8px;
+    background: #fff;
+    color: #047857;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.sched-record-shots-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 4px;
+    color: #047857;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 /* ─── Pie de la tarjeta ────────────────────────────────────────── */
 
 .sched-card-foot {
@@ -470,11 +520,24 @@
 
 /* ─── Registros documentados ───────────────────────────────────── */
 
-.sched-modal-title {
+.sched-modal-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     margin: -6px 0 16px;
+}
+
+.sched-modal-title {
+    margin: 0;
     font-size: 15px;
     font-weight: 600;
     color: #1e293b;
+}
+
+.sched-modal-receipt.hidden {
+    display: none;
 }
 
 .sched-entries {
@@ -548,6 +611,184 @@
 
 .sched-entry-meta i {
     color: #94a3b8;
+}
+
+.sched-entry-folio {
+    display: inline-block;
+    margin: 8px 0 0;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #047857;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+}
+
+/* ─── Evidencias fotográficas del detalle ──────────────────────── */
+
+.sched-entry-shots {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.sched-entry-shots-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0 0 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.sched-entry-shots-label i {
+    color: #059669;
+}
+
+.sched-entry-no-shots {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+    font-style: italic;
+}
+
+.sched-shot-grid {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+}
+
+.sched-shot {
+    display: flex;
+    flex-direction: column;
+}
+
+.sched-shot-open {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 11px;
+    background: #eef2f8;
+    overflow: hidden;
+    cursor: zoom-in;
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.sched-shot-open:hover {
+    border-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 26px -16px rgba(15, 23, 42, .5);
+}
+
+.sched-shot-open img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.sched-shot-zoom {
+    position: absolute;
+    right: 7px;
+    bottom: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: rgba(15, 23, 42, .62);
+    color: #fff;
+    font-size: 11px;
+}
+
+.sched-shot-caption {
+    margin: 7px 0 0;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: #475569;
+    overflow-wrap: anywhere;
+}
+
+.sched-shot-caption-empty {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* ─── Visor a pantalla completa ────────────────────────────────── */
+
+body.sched-viewer-open {
+    overflow: hidden;
+}
+
+.sched-viewer {
+    position: fixed;
+    inset: 0;
+    /* Por encima del modal que lo invoca. */
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 26px;
+    background: rgba(9, 14, 30, .9);
+    cursor: zoom-out;
+}
+
+.sched-viewer[hidden] {
+    display: none;
+}
+
+.sched-viewer-figure {
+    margin: 0;
+    max-width: 100%;
+    max-height: 100%;
+    text-align: center;
+    cursor: default;
+}
+
+.sched-viewer-figure img {
+    max-width: 100%;
+    max-height: 78vh;
+    border-radius: 12px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .7);
+}
+
+.sched-viewer-figure figcaption {
+    margin-top: 14px;
+    color: #e2e8f0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.sched-viewer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color .16s ease;
+}
+
+.sched-viewer-close:hover {
+    background: rgba(255, 255, 255, .18);
 }
 
 /* ─── Responsive ───────────────────────────────────────────────── */

@@ -38,9 +38,10 @@
                 $isCompleted = $entry !== null;
                 $publicUrl = $isCompleted ? null : $schedule->publicUrl();
                 $locations = $schedule->location_labels;
+                $images = $entry?->images ?? collect();
             @endphp
             <article
-                class="sched-card{{ $isCompleted ? ' sched-card-done' : '' }}"
+                class="sched-card{{ $isCompleted ? ' sched-card-done sched-card-clickable' : '' }}"
                 data-schedule-card
                 data-id="{{ $schedule->id }}"
                 data-code="{{ $schedule->code }}"
@@ -96,8 +97,31 @@
                             <li><i class="fas fa-user"></i> {{ $entry->responsible_name }}</li>
                             <li><i class="fas fa-play"></i> Inicio: {{ $entry->started_at?->format('d/m/Y H:i') }}</li>
                             <li><i class="fas fa-flag-checkered"></i> Fin: {{ $entry->finished_at?->format('d/m/Y H:i') }}</li>
-                            <li><i class="fas fa-clock"></i> Registrado: {{ $entry->created_at?->format('d/m/Y H:i') }}</li>
+                            <li><i class="fas fa-clock"></i> Registrado: {{ $entry->registeredAtLabel($timezone) }}</li>
                         </ul>
+
+                        {{--
+                            Adelanto de las evidencias: la tarjeta insinúa que hay
+                            fotos y el detalle completo se abre al hacer clic en ella.
+                        --}}
+                        @if($images->isNotEmpty())
+                            <div class="sched-record-shots">
+                                @foreach($images->take(4) as $image)
+                                    <img src="{{ route('schedules.image', $image->id) }}"
+                                         alt="{{ $image->description ?: 'Evidencia fotográfica' }}"
+                                         loading="lazy">
+                                @endforeach
+
+                                @if($images->count() > 4)
+                                    <span class="sched-record-shots-more">+{{ $images->count() - 4 }}</span>
+                                @endif
+
+                                <span class="sched-record-shots-label">
+                                    <i class="fas fa-images"></i>
+                                    {{ $images->count() }} {{ $images->count() === 1 ? 'imagen' : 'imágenes' }}
+                                </span>
+                            </div>
+                        @endif
                     </div>
                 @elseif($publicUrl)
                     <div class="sched-share">
@@ -149,6 +173,15 @@
                         <button type="button" class="sched-btn" data-action="entries">
                             <i class="fas fa-list-check"></i> Ver registros
                         </button>
+                    @endif
+
+                    {{-- El comprobante solo existe cuando el formulario ya fue diligenciado. --}}
+                    @if($isCompleted)
+                        <a class="sched-btn sched-btn-primary"
+                           href="{{ route('schedules.receipt', $schedule->id) }}"
+                           title="Descargar comprobante en PDF">
+                            <i class="fas fa-file-arrow-down"></i> Comprobante
+                        </a>
                     @endif
 
                     @if($publicUrl)
