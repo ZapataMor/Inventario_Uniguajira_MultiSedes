@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Labor documentada por una persona externa desde el formulario publico.
+ *
+ * Corresponde al reporte del servicio del formato RA-F-33: equipo
+ * intervenido (si aplica), accion realizada, materiales y quien la hizo.
  */
 class InventoryScheduleEntry extends Model
 {
@@ -17,9 +20,13 @@ class InventoryScheduleEntry extends Model
 
     protected $fillable = [
         'inventory_schedule_id',
-        'work_name',
-        'description',
-        'responsible_name',
+        'is_equipment',
+        'equipment_name',
+        'equipment_model',
+        'equipment_brand',
+        'action',
+        'materials',
+        'performed_by',
         'started_at',
         'finished_at',
         'ip_address',
@@ -27,6 +34,7 @@ class InventoryScheduleEntry extends Model
     ];
 
     protected $casts = [
+        'is_equipment' => 'boolean',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
@@ -70,6 +78,24 @@ class InventoryScheduleEntry extends Model
     public function registeredAtLabel(string $timezone = 'America/Bogota'): string
     {
         return $this->created_at?->copy()->setTimezone($timezone)->format('d/m/Y H:i') ?? '—';
+    }
+
+    /**
+     * Equipo intervenido en una sola linea: "Nombre · Marca · Modelo".
+     */
+    public function getEquipmentLabelAttribute(): ?string
+    {
+        if (! $this->is_equipment) {
+            return null;
+        }
+
+        $parts = array_filter([
+            $this->equipment_name,
+            $this->equipment_brand ? 'Marca '.$this->equipment_brand : null,
+            $this->equipment_model ? 'Modelo '.$this->equipment_model : null,
+        ]);
+
+        return $parts === [] ? null : implode(' · ', $parts);
     }
 
     /**

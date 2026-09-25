@@ -72,14 +72,19 @@ class PublicScheduleController extends Controller
         // aunque alguien conserve el enlace o reenvie el formulario.
         if ($schedule->isCompleted() || ! $schedule->is_open) {
             return back()->withErrors([
-                'work_name' => 'Esta programación ya no admite nuevos registros.',
+                'action' => 'Esta programación ya no admite nuevos registros.',
             ])->withInput();
         }
 
+        // Reporte del servicio del formato RA-F-33.
         $data = $request->validate([
-            'work_name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'responsible_name' => ['required', 'string', 'max:255'],
+            'is_equipment' => ['required', 'boolean'],
+            'equipment_name' => ['nullable', 'string', 'max:60', 'required_if:is_equipment,1'],
+            'equipment_model' => ['nullable', 'string', 'max:60'],
+            'equipment_brand' => ['nullable', 'string', 'max:60'],
+            'action' => ['required', 'string', 'max:700'],
+            'materials' => ['required', 'string', 'max:200'],
+            'performed_by' => ['required', 'string', 'max:120'],
             'started_at' => ['required', 'date'],
             'finished_at' => ['required', 'date', 'after_or_equal:started_at'],
             // Las fotos ya viajaron una a una: aqui solo llegan sus tokens
@@ -89,19 +94,29 @@ class PublicScheduleController extends Controller
             'images.*.description' => ['nullable', 'string', 'max:250'],
             'images.*.original_name' => ['nullable', 'string', 'max:240'],
         ], [
-            'work_name.required' => 'Escribe el nombre del trabajo realizado.',
-            'responsible_name.required' => 'Escribe el nombre del responsable.',
+            'is_equipment.required' => 'Indica si el mantenimiento se le hizo a un equipo.',
+            'equipment_name.required_if' => 'Escribe el nombre del equipo.',
+            'action.required' => 'Narra la acción realizada.',
+            'materials.required' => 'Escribe los materiales utilizados.',
+            'performed_by.required' => 'Escribe quién realizó la actividad.',
             'started_at.required' => 'Indica la fecha y hora en que iniciaste.',
             'finished_at.required' => 'Indica la fecha y hora en que terminaste.',
             'finished_at.after_or_equal' => 'La fecha de finalización no puede ser anterior a la de inicio.',
             'images.*.description.max' => 'Cada descripción de imagen admite máximo 250 caracteres.',
         ]);
 
+        $isEquipment = $request->boolean('is_equipment');
+
         $entry = InventoryScheduleEntry::create([
             'inventory_schedule_id' => $schedule->id,
-            'work_name' => $data['work_name'],
-            'description' => $data['description'] ?? null,
-            'responsible_name' => $data['responsible_name'],
+            // Los datos del equipo solo se guardan si la labor fue sobre uno.
+            'is_equipment' => $isEquipment,
+            'equipment_name' => $isEquipment ? $data['equipment_name'] : null,
+            'equipment_model' => $isEquipment ? ($data['equipment_model'] ?? null) : null,
+            'equipment_brand' => $isEquipment ? ($data['equipment_brand'] ?? null) : null,
+            'action' => $data['action'],
+            'materials' => $data['materials'],
+            'performed_by' => $data['performed_by'],
             'started_at' => $data['started_at'],
             'finished_at' => $data['finished_at'],
             'ip_address' => $request->ip(),
@@ -115,7 +130,7 @@ class PublicScheduleController extends Controller
 
         ActivityLogger::custom(
             'create',
-            "Registro externo en la programación: {$schedule->title} ({$data['work_name']})",
+            "Registro externo en la programación: {$schedule->title} (realizada por {$data['performed_by']})",
             [
                 'model' => 'InventorySchedule',
                 'model_id' => $schedule->id,

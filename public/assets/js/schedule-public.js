@@ -4,11 +4,12 @@
  * Formulario público de la "Programación de mantenimientos".
  * Página independiente del aplicativo: no depende de los helpers internos.
  *
- * Se ocupa de tres cosas:
+ * Se ocupa de cuatro cosas:
  *   1. la animación de inicio (igual a la del acceso);
- *   2. las evidencias fotográficas, que se suben de a una antes de enviar
+ *   2. los datos del equipo, que solo aparecen si la labor fue sobre uno;
+ *   3. las evidencias fotográficas, que se suben de a una antes de enviar
  *      el formulario para que no haya límite práctico de imágenes;
- *   3. el visor a pantalla completa del comprobante.
+ *   4. el visor a pantalla completa del comprobante.
  */
 
 (() => {
@@ -65,6 +66,35 @@
 
         started.addEventListener('change', syncMin);
         syncMin();
+    };
+
+    // ─── Datos del equipo ──────────────────────────────────────────
+
+    /**
+     * Nombre, modelo y marca solo se piden si la labor fue sobre un equipo.
+     * Ocultos quedan deshabilitados para que no viajen con el formulario.
+     */
+    const initEquipment = () => {
+        const toggles = document.querySelectorAll('[data-equipment-toggle]');
+        const fields = document.querySelector('[data-equipment-fields]');
+
+        if (!toggles.length || !fields) return;
+
+        const sync = () => {
+            const selected = document.querySelector('[data-equipment-toggle]:checked');
+            const show = selected?.value === '1';
+
+            fields.hidden = !show;
+            fields.querySelectorAll('input').forEach((input) => {
+                input.disabled = !show;
+            });
+
+            const name = document.getElementById('equipment_name');
+            if (name) name.required = show;
+        };
+
+        toggles.forEach((toggle) => toggle.addEventListener('change', sync));
+        sync();
     };
 
     // ─── Evidencias fotográficas ───────────────────────────────────
@@ -349,6 +379,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         initSplash();
         initDateRange();
+        initEquipment();
         initEvidence();
         initViewer();
     });

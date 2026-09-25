@@ -967,3 +967,82 @@ body.viewer-open {
         width: 82vw;
     }
 }
+
+/* ─── Reporte del servicio (formato RA-F-33) ───────────────────── */
+
+.card-request {
+    margin: 8px 0 0;
+    color: var(--sp-muted);
+    font-size: 14px;
+}
+
+.card-request strong {
+    color: var(--sp-ink);
+}
+
+.field-choice {
+    border: 0;
+    margin: 0 0 16px;
+    padding: 0;
+    min-width: 0;
+}
+
+.field-choice legend {
+    margin-bottom: 8px;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sp-ink);
+}
+
+.choice-row {
+    display: flex;
+    gap: 10px;
+}
+
+.field .choice {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 11px 14px;
+    border: 1px solid var(--sp-border);
+    border-radius: 12px;
+    background: #fbfcfe;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .18s ease, background-color .18s ease;
+}
+
+.field .choice:has(input:checked) {
+    border-color: var(--sp-blue);
+    background: #eef3ff;
+    color: var(--sp-blue-dark);
+}
+
+.field .choice input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--sp-blue);
+}
+
+.equipment {
+    margin: 0 0 16px;
+    padding: 14px 14px 0;
+    border: 1px dashed var(--sp-border);
+    border-radius: 14px;
+    background: #f9fafc;
+}
+
+.equipment[hidden] {
+    display: none;
+}
+
+.receipt-note-list {
+    margin: 0;
+    white-space: pre-line;
+}

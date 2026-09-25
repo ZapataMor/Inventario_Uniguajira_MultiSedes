@@ -49,6 +49,14 @@
             <span class="badge">Programación</span>
             <h2 class="card-title">{{ $schedule->title }}</h2>
 
+            {{-- Resumen de la solicitud para que quien ejecuta sepa qué se pidió. --}}
+            @if($schedule->requester_name)
+                <p class="card-request">
+                    Solicitado por <strong>{{ $schedule->requester_name }}</strong>
+                    · {{ $schedule->requester_dependency }}
+                </p>
+            @endif
+
             @if($schedule->location_labels)
                 <ul class="card-meta">
                     @foreach($schedule->location_labels as $location)
@@ -75,8 +83,8 @@
                     @if($submitted)
                         Gracias. La labor quedó documentada y ya es visible para el equipo de inventario.
                     @else
-                        Esta programación fue diligenciada por {{ $entry->responsible_name }}.
-                        Puedes volver a descargar el comprobante cuando lo necesites.
+                        Esta programación fue diligenciada por {{ $entry->performed_by ?: 'otra persona' }}.
+                        Puedes volver a descargar el formato cuando lo necesites.
                     @endif
                 </p>
                 <p class="state-note">Este código QR ya fue utilizado y no admite más registros.</p>
@@ -100,7 +108,7 @@
                   action="{{ route('schedules.public.store', $routeParams) }}">
                 @csrf
 
-                <p class="form-lead">Cuéntanos qué trabajo realizaste.</p>
+                <p class="form-lead">Reporta el servicio que realizaste.</p>
 
                 @if(isset($errors) && $errors->any())
                     <div class="alert">
@@ -113,18 +121,63 @@
                     </div>
                 @endif
 
-                <div class="field">
-                    <label for="work_name">Nombre del trabajo realizado <span class="req">*</span></label>
-                    <input type="text" id="work_name" name="work_name" maxlength="255" required
-                           value="{{ old('work_name') }}"
-                           placeholder="Ej: Mantenimiento a equipos de cómputo, limpieza a aires acondicionados...">
+                {{-- Los datos del equipo solo aparecen si la labor fue sobre uno. --}}
+                <fieldset class="field field-choice">
+                    <legend>¿El mantenimiento se le hizo a un equipo? <span class="req">*</span></legend>
+                    <div class="choice-row">
+                        <label class="choice">
+                            <input type="radio" name="is_equipment" value="1" required data-equipment-toggle
+                                   @checked(old('is_equipment') === '1')>
+                            <span>Sí</span>
+                        </label>
+                        <label class="choice">
+                            <input type="radio" name="is_equipment" value="0" required data-equipment-toggle
+                                   @checked(old('is_equipment') === '0')>
+                            <span>No</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <div class="equipment" data-equipment-fields hidden>
+                    <div class="field">
+                        <label for="equipment_name">Nombre del equipo <span class="req">*</span></label>
+                        <input type="text" id="equipment_name" name="equipment_name" maxlength="60"
+                               value="{{ old('equipment_name') }}"
+                               placeholder="Ej: Aire acondicionado, computador de escritorio">
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field">
+                            <label for="equipment_model">Modelo</label>
+                            <input type="text" id="equipment_model" name="equipment_model" maxlength="60"
+                                   value="{{ old('equipment_model') }}">
+                        </div>
+
+                        <div class="field">
+                            <label for="equipment_brand">Marca</label>
+                            <input type="text" id="equipment_brand" name="equipment_brand" maxlength="60"
+                                   value="{{ old('equipment_brand') }}">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="field">
-                    <label for="responsible_name">Nombre del responsable <span class="req">*</span></label>
-                    <input type="text" id="responsible_name" name="responsible_name" maxlength="255" required
-                           value="{{ old('responsible_name') }}"
-                           placeholder="Nombre completo de quien ejecutó la labor">
+                    <label for="action">Acción realizada <span class="req">*</span></label>
+                    <textarea id="action" name="action" rows="5" maxlength="700" required
+                              placeholder="Narra lo que se hizo durante el servicio">{{ old('action') }}</textarea>
+                </div>
+
+                <div class="field">
+                    <label for="materials">Materiales <span class="req">*</span></label>
+                    <textarea id="materials" name="materials" rows="3" maxlength="200" required
+                              placeholder="Materiales utilizados. Si no se usó ninguno, escribe «Ninguno».">{{ old('materials') }}</textarea>
+                </div>
+
+                <div class="field">
+                    <label for="performed_by">Actividad realizada por <span class="req">*</span></label>
+                    <input type="text" id="performed_by" name="performed_by" maxlength="120" required
+                           value="{{ old('performed_by') }}"
+                           placeholder="Nombre completo de quien realizó la actividad">
                 </div>
 
                 <div class="field-row">
@@ -139,12 +192,6 @@
                         <input type="datetime-local" id="finished_at" name="finished_at" required
                                value="{{ old('finished_at') }}">
                     </div>
-                </div>
-
-                <div class="field">
-                    <label for="description">Observaciones (opcional)</label>
-                    <textarea id="description" name="description" rows="4" maxlength="2000"
-                              placeholder="Detalles del trabajo, materiales usados, novedades encontradas...">{{ old('description') }}</textarea>
                 </div>
 
                 {{--

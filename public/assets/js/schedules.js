@@ -27,10 +27,13 @@
         isOpen: card.dataset.open === '1',
         isCompleted: card.dataset.completed === '1',
         url: card.dataset.url,
-        inventoryIds: (card.dataset.inventoryIds || '')
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean),
+        payload: (() => {
+            try {
+                return JSON.parse(card.dataset.payload || '{}');
+            } catch (error) {
+                return {};
+            }
+        })(),
         element: card,
     });
 
@@ -116,10 +119,10 @@
         }
     };
 
-    // ─── Selector múltiple de ubicaciones ──────────────────────────
+    // ─── Localización: bloque → salones ────────────────────────────
 
     /**
-     * Refresca el contador de ubicaciones marcadas dentro de un formulario.
+     * Refresca el contador de salones marcados dentro de un formulario.
      */
     const updateLocationsCount = (form) => {
         const counter = form.querySelector('[data-locations-count]');
@@ -129,37 +132,197 @@
         const total = form.querySelectorAll('input[name="inventory_ids[]"]:checked').length;
 
         counter.textContent = total === 0
-            ? 'Ninguna ubicación seleccionada.'
-            : `${total} ${total === 1 ? 'ubicación seleccionada' : 'ubicaciones seleccionadas'}.`;
+            ? 'Ningún salón seleccionado.'
+            : `${total} ${total === 1 ? 'salón seleccionado' : 'salones seleccionados'}.`;
     };
 
     /**
-     * Filtra la lista de ubicaciones por el texto escrito en el buscador.
+     * Muestra solo los salones del bloque elegido que coinciden con la
+     * búsqueda. Los de otros bloques se desmarcan: la localización es
+     * siempre un bloque y sus salones, nunca una mezcla.
      */
-    const filterLocations = (form) => {
+    const syncRooms = (form) => {
+        const blockId = form.querySelector('[data-block-select]')?.value || '';
+        const field = form.querySelector('[data-rooms-field]');
         const term = (form.querySelector('[data-locations-search]')?.value || '').toLowerCase().trim();
 
-        form.querySelectorAll('[data-location-search]').forEach((option) => {
+        if (field) field.hidden = blockId === '';
+
+        form.querySelectorAll('[data-group-id]').forEach((option) => {
+            const inBlock = option.dataset.groupId === blockId;
             const match = term === '' || (option.dataset.locationSearch || '').includes(term);
 
-            option.style.display = match ? '' : 'none';
+            if (!inBlock) {
+                option.querySelector('input').checked = false;
+            }
+
+            option.hidden = !(inBlock && match);
         });
+
+        updateLocationsCount(form);
+    };
+
+    // ─── Tipo de servicio: casilla "Otros" ─────────────────────────
+
+    const syncServiceOther = (form) => {
+        const toggle = form.querySelector('[data-service-other-toggle]');
+        const field = form.querySelector('[data-service-other-field]');
+        const input = field?.querySelector('input');
+
+        if (!toggle || !field || !input) return;
+
+        field.hidden = !toggle.checked;
+        input.disabled = !toggle.checked;
+        input.required = toggle.checked;
+    };
+
+    // ─── Etapas del formulario ─────────────────────────────────────
+
+    const STAGE_COUNT = 3;
+
+    const currentStage = (form) => Number(form.dataset.stage || 1);
+
+    const showStageError = (form, stage, message) => {
+        const error = form.querySelector(`[data-stage="${stage}"] [data-stage-error]`);
+
+        if (!error) return;
+
+        error.textContent = message || '';
+        error.hidden = !message;
+    };
+
+    const goToStage = (form, stage) => {
+        form.dataset.stage = String(stage);
+
+        form.querySelectorAll('[data-stage]').forEach((section) => {
+            section.hidden = Number(section.dataset.stage) !== stage;
+        });
+
+        form.querySelectorAll('[data-stage-step]').forEach((step) => {
+            const number = Number(step.dataset.stageStep);
+
+            step.classList.toggle('is-active', number === stage);
+            step.classList.toggle('is-done', number < stage);
+        });
+
+        form.querySelector('[data-stage-prev]').hidden = stage === 1;
+        form.querySelector('[data-stage-next]').hidden = stage === STAGE_COUNT;
+        form.querySelector('[data-stage-submit]').hidden = stage !== STAGE_COUNT;
+
+        showStageError(form, stage, '');
+
+        // El modal hace scroll propio: al cambiar de etapa se vuelve arriba.
+        form.closest('.modal-content')?.scrollTo({ top: 0 });
+
+        const firstField = form.querySelector(`[data-stage="${stage}"] input:not([type="hidden"]):not([disabled])`);
+        window.setTimeout(() => firstField?.focus(), 60);
     };
 
     /**
-     * Deja marcadas solo las ubicaciones indicadas.
+     * Valida los campos visibles de una etapa. El navegador no puede
+     * señalar campos de etapas ocultas, por eso se valida al avanzar.
      */
-    const setSelectedLocations = (form, ids) => {
-        const selected = new Set((ids || []).map(String));
+    const validateStage = (form, stage) => {
+        const section = form.querySelector(`[data-stage="${stage}"]`);
 
-        form.querySelectorAll('input[name="inventory_ids[]"]').forEach((checkbox) => {
-            checkbox.checked = selected.has(checkbox.value);
+        if (!section) return true;
+
+        const fields = section.querySelectorAll('input, select, textarea');
+
+        for (const field of fields) {
+            if (field.disabled || field.type === 'hidden') continue;
+            if (field.closest('[hidden]')) continue;
+
+            if (!field.checkValidity()) {
+                field.reportValidity();
+                return false;
+            }
+        }
+
+        if (stage === 2) {
+            const anyService = section.querySelector('input[name="service_types[]"]:checked, [data-service-other-toggle]:checked');
+
+            if (!anyService) {
+                showStageError(form, stage, 'Marca al menos un tipo de servicio.');
+                return false;
+            }
+        }
+
+        if (stage === 3 && form.querySelector('[data-block-select]')) {
+            if (!section.querySelector('input[name="inventory_ids[]"]:checked')) {
+                showStageError(form, stage, 'Selecciona al menos un salón o sala del bloque.');
+                return false;
+            }
+        }
+
+        showStageError(form, stage, '');
+
+        return true;
+    };
+
+    const todayValue = () => {
+        const now = new Date();
+        const pad = (value) => String(value).padStart(2, '0');
+
+        return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    };
+
+    /**
+     * Deja el formulario en blanco y en la primera etapa.
+     */
+    const resetWizard = (form) => {
+        form.reset();
+
+        form.querySelectorAll('[data-default-today]').forEach((input) => {
+            input.value = todayValue();
         });
 
         const search = form.querySelector('[data-locations-search]');
         if (search) search.value = '';
 
-        filterLocations(form);
+        syncServiceOther(form);
+        syncRooms(form);
+        goToStage(form, 1);
+    };
+
+    /**
+     * Precarga el formulario de edición con los datos de la tarjeta.
+     */
+    const fillWizard = (form, payload) => {
+        const setValue = (name, value) => {
+            const field = form.elements.namedItem(name);
+
+            if (field && 'value' in field) field.value = value ?? '';
+        };
+
+        const checkValues = (name, values) => {
+            const selected = new Set((values || []).map(String));
+
+            form.querySelectorAll(`input[name="${name}"]`).forEach((input) => {
+                input.checked = selected.has(input.value);
+            });
+        };
+
+        setValue('id', payload.id);
+        setValue('requester_name', payload.requester_name);
+        setValue('requester_position', payload.requester_position);
+        setValue('requester_dependency', payload.requester_dependency);
+        setValue('filing_number', payload.filing_number);
+        setValue('requested_at', payload.requested_at || todayValue());
+
+        checkValues('service_types[]', payload.service_types);
+
+        const otherToggle = form.querySelector('[data-service-other-toggle]');
+        if (otherToggle) otherToggle.checked = Boolean(payload.service_other);
+        setValue('service_other', payload.service_other);
+        syncServiceOther(form);
+
+        checkValues('activity_type', payload.activity_type ? [payload.activity_type] : []);
+        checkValues('maintenance_type', payload.maintenance_type ? [payload.maintenance_type] : []);
+
+        setValue('group_id', payload.group_id);
+        syncRooms(form);
+        checkValues('inventory_ids[]', payload.inventory_ids);
         updateLocationsCount(form);
     };
 
@@ -170,8 +333,7 @@
 
         if (!form) return;
 
-        form.reset();
-        setSelectedLocations(form, []);
+        resetWizard(form);
         mostrarModal('#modalCrearProgramacion');
     };
 
@@ -180,9 +342,8 @@
 
         if (!form) return;
 
-        document.getElementById('editarProgramacionId').value = data.id;
-        document.getElementById('editarProgramacionTitle').value = data.title || '';
-        setSelectedLocations(form, data.inventoryIds);
+        resetWizard(form);
+        fillWizard(form, data.payload);
 
         mostrarModal('#modalEditarProgramacion');
     };
@@ -332,13 +493,14 @@
         body.innerHTML = entries.map((entry) => `
             <article class="sched-entry">
                 <div class="sched-entry-head">
-                    <h3 class="sched-entry-name">${escapeHtml(entry.work_name)}</h3>
+                    <h3 class="sched-entry-name">Acción realizada</h3>
                     <span class="sched-entry-duration">${escapeHtml(entry.duration)}</span>
                 </div>
-                ${entry.receipt_code ? `<p class="sched-entry-folio">Comprobante ${escapeHtml(entry.receipt_code)}</p>` : ''}
-                ${entry.description ? `<p class="sched-entry-description">${escapeHtml(entry.description)}</p>` : ''}
+                ${entry.action ? `<p class="sched-entry-description">${escapeHtml(entry.action)}</p>` : ''}
+                ${entry.equipment ? `<p class="sched-entry-extra"><strong>Equipo:</strong> ${escapeHtml(entry.equipment)}</p>` : ''}
+                ${entry.materials ? `<p class="sched-entry-extra"><strong>Materiales:</strong> ${escapeHtml(entry.materials)}</p>` : ''}
                 <ul class="sched-entry-meta">
-                    <li><i class="fas fa-user"></i> ${escapeHtml(entry.responsible_name)}</li>
+                    <li><i class="fas fa-user"></i> Realizada por: ${escapeHtml(entry.performed_by || '—')}</li>
                     <li><i class="fas fa-play"></i> Inicio: ${escapeHtml(entry.started_at)}</li>
                     <li><i class="fas fa-flag-checkered"></i> Fin: ${escapeHtml(entry.finished_at)}</li>
                     <li><i class="fas fa-clock"></i> Registrado: ${escapeHtml(entry.registered_at)}</li>
@@ -457,11 +619,10 @@
                     ocultarModal(`#${modal.id}`);
                 }
 
-                form.reset();
-                setSelectedLocations(form, []);
+                resetWizard(form);
                 refreshSchedules();
             })
-            .catch(() => showToast({ success: false, message: 'No se pudo guardar la programación.' }))
+            .catch(() => showToast({ success: false, message: 'No se pudo guardar el mantenimiento.' }))
             .finally(() => {
                 if (submitButton) {
                     submitButton.disabled = false;
@@ -513,6 +674,20 @@
 
             // Clic en el cuerpo de una tarjeta ya diligenciada: abre el
             // detalle, que es donde se consultan las evidencias.
+            const wizard = event.target.closest('[data-schedule-wizard]');
+
+            if (wizard && event.target.closest('[data-stage-next]')) {
+                const stage = currentStage(wizard);
+
+                if (validateStage(wizard, stage)) goToStage(wizard, Math.min(stage + 1, STAGE_COUNT));
+                return;
+            }
+
+            if (wizard && event.target.closest('[data-stage-prev]')) {
+                goToStage(wizard, Math.max(currentStage(wizard) - 1, 1));
+                return;
+            }
+
             const card = event.target.closest('.sched-card-clickable');
 
             if (card && !event.target.closest('button, a, input, textarea, select, label')) {
@@ -533,16 +708,35 @@
             if (event.target?.matches('[data-locations-search]')) {
                 const form = event.target.closest('form');
 
-                if (form) filterLocations(form);
+                if (form) syncRooms(form);
             }
         });
 
         document.addEventListener('change', (event) => {
-            if (!event.target?.matches('input[name="inventory_ids[]"]')) return;
+            const form = event.target?.closest('[data-schedule-wizard]');
 
-            const form = event.target.closest('form');
+            if (!form) return;
 
-            if (form) updateLocationsCount(form);
+            if (event.target.matches('[data-block-select]')) {
+                const search = form.querySelector('[data-locations-search]');
+                if (search) search.value = '';
+
+                syncRooms(form);
+                showStageError(form, 3, '');
+                return;
+            }
+
+            if (event.target.matches('[data-service-other-toggle]')) {
+                syncServiceOther(form);
+            }
+
+            if (event.target.matches('input[name="inventory_ids[]"]')) {
+                updateLocationsCount(form);
+            }
+
+            if (event.target.matches('input[type="checkbox"]')) {
+                showStageError(form, currentStage(form), '');
+            }
         });
 
         document.addEventListener('submit', (event) => {
@@ -551,6 +745,17 @@
             if (!form) return;
 
             event.preventDefault();
+
+            // Enter en una etapa intermedia avanza en vez de enviar.
+            const stage = currentStage(form);
+
+            if (!validateStage(form, stage)) return;
+
+            if (stage < STAGE_COUNT) {
+                goToStage(form, stage + 1);
+                return;
+            }
+
             submitScheduleForm(form);
         });
     };

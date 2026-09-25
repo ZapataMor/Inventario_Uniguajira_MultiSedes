@@ -25,15 +25,59 @@ class InventorySchedule extends Model
 {
     use HasFactory, UsesTenantConnection;
 
+    /**
+     * Tipos de servicio del formato RA-F-33 ("Marque con una X").
+     * "otros" no esta aqui: se guarda aparte, como texto libre.
+     */
+    public const SERVICE_TYPES = [
+        'acometida_electrica' => 'Acometida eléctrica',
+        'baterias_sanitarias' => 'Baterías sanitarias',
+        'equipos_telefonicos' => 'Equipos telefónicos',
+        'interruptores' => 'Interruptores',
+        'paredes' => 'Paredes',
+        'tableros' => 'Tableros',
+        'ventiladores' => 'Ventiladores',
+        'breaker' => 'Breaker',
+        'aires_acondicionados' => 'Aires acondicionados',
+        'lamparas' => 'Lámparas',
+        'escritorios' => 'Escritorios',
+        'toma_corriente' => 'Toma corriente',
+        'puertas' => 'Puertas',
+        'cortinas' => 'Cortinas',
+        'mesas' => 'Mesas',
+        'sillas' => 'Sillas',
+    ];
+
+    public const ACTIVITY_TYPES = [
+        'mantenimiento' => 'Mantenimiento',
+        'servicio_general' => 'Servicio en general',
+    ];
+
+    public const MAINTENANCE_TYPES = [
+        'preventivo' => 'Preventivo',
+        'correctivo' => 'Correctivo',
+    ];
+
     protected $fillable = [
         'code',
         'title',
+        'requester_name',
+        'requester_position',
+        'requester_dependency',
+        'filing_number',
+        'requested_at',
+        'service_types',
+        'service_other',
+        'activity_type',
+        'maintenance_type',
         'is_open',
         'created_by',
     ];
 
     protected $casts = [
         'is_open' => 'boolean',
+        'service_types' => 'array',
+        'requested_at' => 'date',
     ];
 
     // ─── Relaciones ──────────────────────────────────────────────
@@ -98,6 +142,97 @@ class InventorySchedule extends Model
     public function isShareable(): bool
     {
         return ! $this->isCompleted();
+    }
+
+    /**
+     * Nombre con el que se identifica el mantenimiento en tarjetas,
+     * busquedas y comprobantes. Se arma con lo que se diligencio en la
+     * solicitud, asi no hay que escribirlo a mano.
+     *
+     * @param  array<int, string>  $serviceLabels
+     */
+    public static function buildTitle(string $activityType, ?string $maintenanceType, array $serviceLabels): string
+    {
+        $activity = self::ACTIVITY_TYPES[$activityType] ?? 'Mantenimiento';
+        $type = self::MAINTENANCE_TYPES[$maintenanceType ?? ''] ?? null;
+
+        $title = $type ? $activity.' '.mb_strtolower($type) : $activity;
+
+        if ($serviceLabels !== []) {
+            $title .= ' · '.implode(', ', $serviceLabels);
+        }
+
+        return mb_strimwidth($title, 0, 255, '…');
+    }
+
+    /**
+     * Servicios solicitados en texto legible, incluido "Otros: ...".
+     *
+     * @return array<int, string>
+     */
+    public function getServiceLabelsAttribute(): array
+    {
+        return self::serviceLabelsFor($this->service_types ?? [], $this->service_other);
+    }
+
+    /**
+     * @param  array<int, string>  $types
+     * @return array<int, string>
+     */
+    public static function serviceLabelsFor(array $types, ?string $other): array
+    {
+        $labels = collect($types)
+            ->map(fn ($type) => self::SERVICE_TYPES[$type] ?? null)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (filled($other)) {
+            $labels[] = 'Otros: '.trim($other);
+        }
+
+        return $labels;
+    }
+
+    public function getActivityLabelAttribute(): ?string
+    {
+        return self::ACTIVITY_TYPES[$this->activity_type ?? ''] ?? null;
+    }
+
+    public function getMaintenanceTypeLabelAttribute(): ?string
+    {
+        return self::MAINTENANCE_TYPES[$this->maintenance_type ?? ''] ?? null;
+    }
+
+    /**
+     * Bloque (grupo) al que pertenecen los salones de la programacion.
+     */
+    public function getBlockIdAttribute(): ?int
+    {
+        return $this->inventories->first()?->group_id;
+    }
+
+    /**
+     * Valores con los que se precarga el modal de edicion.
+     *
+     * @return array<string, mixed>
+     */
+    public function formPayload(): array
+    {
+        return [
+            'id' => $this->id,
+            'requester_name' => $this->requester_name,
+            'requester_position' => $this->requester_position,
+            'requester_dependency' => $this->requester_dependency,
+            'filing_number' => $this->filing_number,
+            'requested_at' => $this->requested_at?->format('Y-m-d'),
+            'service_types' => $this->service_types ?? [],
+            'service_other' => $this->service_other,
+            'activity_type' => $this->activity_type,
+            'maintenance_type' => $this->maintenance_type,
+            'group_id' => $this->block_id,
+            'inventory_ids' => $this->inventories->pluck('id')->all(),
+        ];
     }
 
     /**

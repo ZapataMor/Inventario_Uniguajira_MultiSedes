@@ -12,14 +12,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Modulo "Programacion de mantenimientos".
  *
- * Una programacion solo guarda el nombre con el que se identifica la labor
- * y, opcionalmente, las ubicaciones donde se hara. A partir de ahi se genera
- * el codigo publico que alimenta el QR y el enlace del formulario externo.
+ * Al crear un mantenimiento se diligencia la solicitud de servicio del
+ * formato RA-F-33 en tres etapas: informacion del solicitante, tipos de
+ * servicio solicitados y descripcion de la actividad (con el bloque y los
+ * salones donde se hara). A partir de ahi se genera el codigo publico que
+ * alimenta el QR y el enlace del formulario externo.
  * Las labores documentadas por personas externas entran por
  * PublicScheduleController.
  *
@@ -61,7 +65,11 @@ class InventoryScheduleController extends Controller
         $schedules = InventorySchedule::query()
             ->with(['inventories.group', 'entry.images'])
             ->withCount('entries')
-            ->when($search !== '', fn ($query) => $query->where('title', 'like', "%{$search}%"))
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search) {
+                $query->where('title', 'like', "%{$search}%")
+                    ->orWhere('requester_name', 'like', "%{$search}%")
+                    ->orWhere('requester_dependency', 'like', "%{$search}%");
+            }))
             ->orderByDesc('id')
             ->get();
 
@@ -93,8 +101,7 @@ class InventoryScheduleController extends Controller
 
         $data = $this->validateSchedule($request);
 
-        $schedule = InventorySchedule::create([
-            'title' => $data['title'],
+        $schedule = InventorySchedule::create($data['attributes'] + [
             'code' => InventorySchedule::generateCode(),
             'is_open' => true,
             'created_by' => Auth::id(),
@@ -132,12 +139,12 @@ class InventoryScheduleController extends Controller
 
         $data = $this->validateSchedule($request);
 
-        $oldValues = [
-            'title' => $schedule->title,
+        $oldValues = $schedule->only(array_keys($data['attributes'])) + [
             'inventory_ids' => $schedule->inventories->pluck('id')->all(),
         ];
+        $oldValues['requested_at'] = $schedule->requested_at?->format('Y-m-d');
 
-        $schedule->update(['title' => $data['title']]);
+        $schedule->update($data['attributes']);
         $schedule->inventories()->sync($data['inventory_ids']);
 
         ActivityLogger::updated(
@@ -145,10 +152,7 @@ class InventoryScheduleController extends Controller
             $schedule->id,
             $schedule->title,
             $oldValues,
-            [
-                'title' => $schedule->title,
-                'inventory_ids' => $data['inventory_ids'],
-            ]
+            $data['attributes'] + ['inventory_ids' => $data['inventory_ids']]
         );
 
         return response()->json([
@@ -208,9 +212,10 @@ class InventoryScheduleController extends Controller
                 return [
                     'id' => $entry->id,
                     'receipt_code' => $entry->receipt_code,
-                    'work_name' => $entry->work_name,
-                    'description' => $entry->description,
-                    'responsible_name' => $entry->responsible_name,
+                    'equipment' => $entry->equipment_label,
+                    'action' => $entry->action,
+                    'materials' => $entry->materials,
+                    'performed_by' => $entry->performed_by,
                     'started_at' => $entry->started_at?->format('d/m/Y H:i'),
                     'finished_at' => $entry->finished_at?->format('d/m/Y H:i'),
                     'duration' => $entry->duration_label,
@@ -304,21 +309,92 @@ class InventoryScheduleController extends Controller
 
     /**
      * Reglas compartidas por store() y update().
+     *
+     * Devuelve los atributos listos para guardar (incluido el nombre, que
+     * se arma a partir de la solicitud) y los salones seleccionados.
+     *
+     * @return array{attributes: array<string, mixed>, inventory_ids: array<int, int>}
      */
     private function validateSchedule(Request $request): array
     {
         $data = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'inventory_ids' => ['nullable', 'array'],
+            // Etapa 1: informacion del solicitante
+            'requester_name' => ['required', 'string', 'max:120'],
+            'requester_position' => ['required', 'string', 'max:120'],
+            'requester_dependency' => ['required', 'string', 'max:120'],
+            'filing_number' => ['nullable', 'string', 'max:30'],
+            'requested_at' => ['required', 'date'],
+
+            // Etapa 2: tipo de servicio solicitado
+            'service_types' => ['nullable', 'array'],
+            'service_types.*' => ['string', Rule::in(array_keys(InventorySchedule::SERVICE_TYPES))],
+            'service_other_enabled' => ['nullable', 'boolean'],
+            'service_other' => ['nullable', 'string', 'max:150', 'required_if:service_other_enabled,1'],
+
+            // Etapa 3: descripcion de la actividad
+            'activity_type' => ['required', Rule::in(array_keys(InventorySchedule::ACTIVITY_TYPES))],
+            'maintenance_type' => ['required', Rule::in(array_keys(InventorySchedule::MAINTENANCE_TYPES))],
+            'group_id' => ['required', 'integer', 'exists:groups,id'],
+            'inventory_ids' => ['required', 'array', 'min:1'],
             'inventory_ids.*' => ['integer', 'exists:inventories,id'],
         ], [
-            'title.required' => 'El nombre de la programación es obligatorio.',
+            'requester_name.required' => 'Escribe el nombre del solicitante.',
+            'requester_position.required' => 'Escribe el cargo del solicitante.',
+            'requester_dependency.required' => 'Escribe la dependencia del solicitante.',
+            'requested_at.required' => 'Indica la fecha de la solicitud.',
+            'service_other.required_if' => 'Describe el otro servicio solicitado.',
+            'activity_type.required' => 'Indica el nombre de la actividad.',
+            'maintenance_type.required' => 'Indica el tipo de mantenimiento.',
+            'group_id.required' => 'Selecciona el bloque.',
+            'inventory_ids.required' => 'Selecciona al menos un salón o sala del bloque.',
+            'inventory_ids.min' => 'Selecciona al menos un salón o sala del bloque.',
             'inventory_ids.*.exists' => 'Alguna de las ubicaciones seleccionadas ya no existe.',
         ]);
 
-        $data['inventory_ids'] = array_values(array_unique($data['inventory_ids'] ?? []));
+        $serviceTypes = array_values(array_unique($data['service_types'] ?? []));
+        $serviceOther = $request->boolean('service_other_enabled')
+            ? trim((string) ($data['service_other'] ?? ''))
+            : null;
 
-        return $data;
+        if ($serviceTypes === [] && blank($serviceOther)) {
+            throw ValidationException::withMessages([
+                'service_types' => 'Marca al menos un tipo de servicio o describe otro.',
+            ]);
+        }
+
+        $inventoryIds = array_values(array_unique(array_map('intval', $data['inventory_ids'])));
+
+        // Los salones deben pertenecer al bloque elegido: la seleccion es
+        // "bloque y luego sus salones", no una mezcla de varios bloques.
+        $outsideBlock = Inventory::whereIn('id', $inventoryIds)
+            ->where('group_id', '!=', $data['group_id'])
+            ->exists();
+
+        if ($outsideBlock) {
+            throw ValidationException::withMessages([
+                'inventory_ids' => 'Los salones seleccionados deben pertenecer al bloque elegido.',
+            ]);
+        }
+
+        return [
+            'attributes' => [
+                'title' => InventorySchedule::buildTitle(
+                    $data['activity_type'],
+                    $data['maintenance_type'],
+                    InventorySchedule::serviceLabelsFor($serviceTypes, $serviceOther)
+                ),
+                'requester_name' => trim($data['requester_name']),
+                'requester_position' => trim($data['requester_position']),
+                'requester_dependency' => trim($data['requester_dependency']),
+                'filing_number' => filled($data['filing_number'] ?? null) ? trim($data['filing_number']) : null,
+                'requested_at' => $data['requested_at'],
+                'service_types' => $serviceTypes,
+                'service_other' => filled($serviceOther) ? $serviceOther : null,
+                'activity_type' => $data['activity_type'],
+                'maintenance_type' => $data['maintenance_type'],
+            ],
+            'inventory_ids' => $inventoryIds,
+        ];
     }
 
     /**

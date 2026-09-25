@@ -19,7 +19,7 @@
     <div id="schedules-topbar">
         <x-generals.top-bar
             id="searchSchedule"
-            placeholder="Buscar programación por nombre"
+            placeholder="Buscar por nombre, solicitante o dependencia"
             canCreate="false"
         >
             @if($canManageSchedules)
@@ -49,8 +49,16 @@
                 data-open="{{ $schedule->is_open ? '1' : '0' }}"
                 data-completed="{{ $isCompleted ? '1' : '0' }}"
                 data-url="{{ $publicUrl }}"
-                data-inventory-ids="{{ implode(',', $schedule->inventories->pluck('id')->all()) }}"
-                data-search="{{ Str::lower($schedule->title . ' ' . implode(' ', $locations) . ' ' . ($entry->work_name ?? '') . ' ' . ($entry->responsible_name ?? '')) }}"
+                data-payload="{{ json_encode($schedule->formPayload()) }}"
+                data-search="{{ Str::lower(implode(' ', [
+                    $schedule->title,
+                    implode(' ', $locations),
+                    $schedule->requester_name,
+                    $schedule->requester_dependency,
+                    $schedule->filing_number,
+                    $entry->performed_by ?? '',
+                    $entry->equipment_name ?? '',
+                ])) }}"
             >
                 {{--
                     Encabezado fijo: nombre y ubicaciones siempre impresos en la tarjeta.
@@ -59,6 +67,32 @@
                 --}}
                 <div class="sched-card-head">
                     <h2 class="sched-card-title">{{ $schedule->title }}</h2>
+
+                    @if($schedule->requester_name)
+                        <p class="sched-card-request">
+                            Solicitado por <strong>{{ $schedule->requester_name }}</strong>
+                            ({{ $schedule->requester_position }}, {{ $schedule->requester_dependency }})
+                            @if($schedule->requested_at)
+                                · {{ $schedule->requested_at->format('d/m/Y') }}
+                            @endif
+                            @if($schedule->filing_number)
+                                · Rad. {{ $schedule->filing_number }}
+                            @endif
+                        </p>
+                    @endif
+
+                    @if($schedule->activity_label || $schedule->service_labels)
+                        <ul class="sched-card-tags">
+                            @if($schedule->activity_label)
+                                <li class="sched-tag-main">
+                                    {{ $schedule->activity_label }}{{ $schedule->maintenance_type_label ? ' · ' . $schedule->maintenance_type_label : '' }}
+                                </li>
+                            @endif
+                            @foreach($schedule->service_labels as $service)
+                                <li>{{ $service }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
 
                     @if($locations)
                         <ul class="sched-card-locations">
@@ -87,14 +121,17 @@
                             <span class="sched-record-duration">{{ $entry->duration_label }}</span>
                         </div>
 
-                        <h3 class="sched-record-name">{{ $entry->work_name }}</h3>
+                        <h3 class="sched-record-name">Acción realizada</h3>
 
-                        @if($entry->description)
-                            <p class="sched-record-description">{{ $entry->description }}</p>
+                        @if($entry->action)
+                            <p class="sched-record-description">{{ Str::limit($entry->action, 220) }}</p>
                         @endif
 
                         <ul class="sched-record-meta">
-                            <li><i class="fas fa-user"></i> {{ $entry->responsible_name }}</li>
+                            <li><i class="fas fa-user"></i> Realizada por: {{ $entry->performed_by ?: '—' }}</li>
+                            @if($entry->equipment_label)
+                                <li><i class="fas fa-screwdriver-wrench"></i> {{ $entry->equipment_label }}</li>
+                            @endif
                             <li><i class="fas fa-play"></i> Inicio: {{ $entry->started_at?->format('d/m/Y H:i') }}</li>
                             <li><i class="fas fa-flag-checkered"></i> Fin: {{ $entry->finished_at?->format('d/m/Y H:i') }}</li>
                             <li><i class="fas fa-clock"></i> Registrado: {{ $entry->registeredAtLabel($timezone) }}</li>
@@ -175,12 +212,12 @@
                         </button>
                     @endif
 
-                    {{-- El comprobante solo existe cuando el formulario ya fue diligenciado. --}}
+                    {{-- El formato RA-F-33 solo se descarga cuando la labor ya fue documentada. --}}
                     @if($isCompleted)
                         <a class="sched-btn sched-btn-primary"
                            href="{{ route('schedules.receipt', $schedule->id) }}"
-                           title="Descargar comprobante en PDF">
-                            <i class="fas fa-file-arrow-down"></i> Comprobante
+                           title="Descargar el formato RA-F-33 diligenciado (PDF)">
+                            <i class="fas fa-file-arrow-down"></i> Formato PDF
                         </a>
                     @endif
 

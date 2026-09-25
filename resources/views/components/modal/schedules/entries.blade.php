@@ -15,7 +15,7 @@
 
             <a class="sched-btn sched-btn-primary sched-modal-receipt hidden"
                href="#" data-entries-receipt>
-                <i class="fas fa-file-arrow-down"></i> Descargar comprobante
+                <i class="fas fa-file-arrow-down"></i> Descargar formato RA-F-33
             </a>
         </div>
 

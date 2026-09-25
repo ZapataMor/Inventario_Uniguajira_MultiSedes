@@ -809,3 +809,234 @@ body.sched-viewer-open {
         width: 100%;
     }
 }
+
+/* ─── Solicitud de servicio por etapas (modal) ─────────────────── */
+
+/* Las clases con `display` propio no deben ganarle al atributo hidden. */
+.sched-wizard [hidden] {
+    display: none !important;
+}
+
+.sched-steps {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 20px;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+}
+
+.sched-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+
+.sched-step-number {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 12px;
+}
+
+.sched-step.is-active {
+    border-color: #059669;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.sched-step.is-active .sched-step-number,
+.sched-step.is-done .sched-step-number {
+    background: #059669;
+    color: #fff;
+}
+
+.sched-step.is-done {
+    color: #047857;
+}
+
+.sched-stage-title {
+    margin: 0 0 4px;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.sched-stage-hint {
+    margin: 0 0 12px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.sched-wizard .sched-field {
+    display: flex;
+    flex-direction: column;
+    margin-top: 14px;
+}
+
+.sched-wizard .sched-field input:not([type="checkbox"]):not([type="radio"]),
+.sched-wizard .sched-field select {
+    width: 100%;
+}
+
+.sched-field-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.sched-field-label {
+    margin-bottom: 8px;
+    color: #444;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.sched-req {
+    color: #e11d48;
+}
+
+/* Casillas y opciones tipo "píldora" */
+.sched-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 8px;
+}
+
+.sched-choice-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.modal-content .sched-choice {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    padding: 9px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color .14s ease, border-color .14s ease;
+}
+
+.sched-choice-row .sched-choice {
+    flex: 1 1 180px;
+}
+
+.modal-content .sched-choice:hover {
+    border-color: #a7f3d0;
+    background: #f0fdf4;
+}
+
+.modal-content .sched-choice:has(input:checked) {
+    border-color: #059669;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.modal-content .sched-choice input {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    padding: 0;
+    accent-color: #059669;
+    cursor: pointer;
+}
+
+.sched-stage-error {
+    margin: 12px 0 0;
+    padding: 9px 12px;
+    border: 1px solid #fecdd3;
+    border-radius: 10px;
+    background: #fff1f2;
+    color: #be123c;
+    font-size: 13px;
+}
+
+.modal-content form.sched-wizard > .sched-stage-nav {
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.sched-stage-nav [data-stage-prev] {
+    margin-right: auto;
+}
+
+.sched-entry-extra {
+    margin: 8px 0 0;
+    color: #475569;
+    font-size: 13.5px;
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.sched-card-request {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.sched-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sched-card-tags li {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sched-card-tags li.sched-tag-main {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+@media (max-width: 600px) {
+    .sched-field-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .sched-step-label {
+        display: none;
+    }
+
+    .sched-step {
+        justify-content: center;
+    }
+}

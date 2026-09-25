@@ -1,15 +1,15 @@
 {{--
-    Comprobante de la labor, tal como lo ve la persona externa apenas
-    termina de diligenciar el formulario (o si vuelve a abrir el enlace).
+    Resumen de la labor, tal como lo ve la persona externa apenas termina
+    de diligenciar el formulario (o si vuelve a abrir el enlace).
 
-    Es un resumen en pantalla del mismo documento que entrega el botón de
-    descarga: la fuente de verdad del PDF es `schedules/pdf/comprobante`.
+    El documento descargable es el formato RA-F-33 diligenciado, que arma
+    ScheduleReceiptService sobre la plantilla original.
 --}}
 <section class="receipt">
     <div class="receipt-head">
         <div>
-            <p class="receipt-kicker">Comprobante de labor realizada</p>
-            <p class="receipt-code">{{ $entry->receipt_code }}</p>
+            <p class="receipt-kicker">Reporte del servicio</p>
+            <p class="receipt-code">RA-F-33</p>
         </div>
         <span class="receipt-sede">
             <i class="fas fa-building-columns"></i> {{ $sedeLabel }}
@@ -18,13 +18,15 @@
 
     <dl class="receipt-data">
         <div>
-            <dt>Trabajo realizado</dt>
-            <dd>{{ $entry->work_name }}</dd>
+            <dt>Actividad realizada por</dt>
+            <dd>{{ $entry->performed_by ?: '—' }}</dd>
         </div>
-        <div>
-            <dt>Responsable</dt>
-            <dd>{{ $entry->responsible_name }}</dd>
-        </div>
+        @if($entry->equipment_label)
+            <div>
+                <dt>Equipo</dt>
+                <dd>{{ $entry->equipment_label }}</dd>
+            </div>
+        @endif
         <div>
             <dt>Inicio</dt>
             <dd>{{ $entry->started_at?->format('d/m/Y H:i') }}</dd>
@@ -43,10 +45,17 @@
         </div>
     </dl>
 
-    @if($entry->description)
+    @if($entry->action)
         <div class="receipt-note">
-            <p class="receipt-note-label">Observaciones</p>
-            <p>{{ $entry->description }}</p>
+            <p class="receipt-note-label">Acción</p>
+            <p class="receipt-note-list">{{ $entry->action }}</p>
+        </div>
+    @endif
+
+    @if($entry->materials)
+        <div class="receipt-note">
+            <p class="receipt-note-label">Materiales</p>
+            <p class="receipt-note-list">{{ $entry->materials }}</p>
         </div>
     @endif
 
@@ -83,10 +92,10 @@
 
     <a class="btn btn-primary receipt-download"
        href="{{ route('schedules.public.receipt', $routeParams) }}">
-        <i class="fas fa-file-arrow-down"></i> Descargar comprobante en PDF
+        <i class="fas fa-file-arrow-down"></i> Descargar formato RA-F-33 (PDF)
     </a>
 
     <p class="receipt-hint">
-        Guarda este comprobante como constancia del trabajo realizado.
+        Guarda este formato como constancia del servicio realizado.
     </p>
 </section>
