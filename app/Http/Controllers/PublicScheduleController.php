@@ -17,7 +17,7 @@ use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Formulario publico de la "Programacion de inventarios".
+ * Formulario publico de la "Programacion de mantenimientos".
  *
  * Se accede sin iniciar sesion, escaneando el QR o abriendo el enlace.
  * El slug de la sede viaja en la URL para poder activar la conexion

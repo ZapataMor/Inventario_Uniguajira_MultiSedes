@@ -1,7 +1,7 @@
 /**
  * schedules.js
  *
- * Módulo "Programación de inventarios".
+ * Módulo "Programación de mantenimientos".
  * El QR y el enlace se renderizan dentro de cada tarjeta, así que la vista
  * queda lista para escanear o copiar sin abrir ventanas intermedias.
  *

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Modulo "Programacion de inventarios".
+ * Modulo "Programacion de mantenimientos".
  *
  * Una programacion solo guarda el nombre con el que se identifica la labor
  * y, opcionalmente, las ubicaciones donde se hara. A partir de ahi se genera

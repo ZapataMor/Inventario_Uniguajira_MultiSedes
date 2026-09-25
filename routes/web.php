@@ -47,7 +47,7 @@ Route::middleware('auth')->group(function () {
  * Orden de las rutas:
  * 1. Home
  * 2. Tareas
- * 2.1 Programacion de inventarios
+ * 2.1 Programacion de mantenimientos
  * 3. Bienes
  * 4. Excel upload
  * 5. Grupos
@@ -131,7 +131,7 @@ Route::prefix('api/tasks')->group(function () {
 
 
 /**
- * 2.1 Programacion de inventarios
+ * 2.1 Programacion de mantenimientos
  * ----------------------------------------------------------------------------
  */
 

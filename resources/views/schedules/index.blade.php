@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Programación de inventarios')
+@section('title', 'Programación de mantenimientos')
 
 @section('content')
 @php
@@ -9,7 +9,7 @@
 @endphp
 
 <div class="container content">
-    <h1>Programación de inventarios</h1>
+    <h1>Programación de mantenimientos</h1>
     <p class="sched-intro">
         Cada programación genera su propio código QR y enlace público, y se diligencia una sola vez.
         Cuando la persona externa envía el formulario, el QR desaparece de la tarjeta y en su lugar

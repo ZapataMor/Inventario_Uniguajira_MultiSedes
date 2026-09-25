@@ -1,7 +1,7 @@
 /**
  * schedule-public.js
  *
- * Formulario público de la "Programación de inventarios".
+ * Formulario público de la "Programación de mantenimientos".
  * Página independiente del aplicativo: no depende de los helpers internos.
  *
  * Se ocupa de tres cosas:

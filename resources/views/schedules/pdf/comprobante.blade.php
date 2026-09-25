@@ -212,7 +212,7 @@
         <td>
             <h1 class="doc-title">COMPROBANTE DE LABOR REALIZADA</h1>
             <p class="doc-subtitle">
-                Constancia del trabajo documentado en la programación de inventarios.
+                Constancia del trabajo documentado en la programación de mantenimientos.
             </p>
         </td>
         <td width="200" align="right">
