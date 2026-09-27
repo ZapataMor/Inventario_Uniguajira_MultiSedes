@@ -21,10 +21,19 @@ use setasign\Fpdi\Fpdi;
  * de la plantilla y se midieron sobre ella. Si el formato cambia de
  * revision, hay que volver a exportar la plantilla y medirlas de nuevo.
  *
- * Las firmas y "Actividad recibida por" quedan en blanco por ahora.
+ * Firmas:
+ *  - "Actividad realizada por": la firma que la persona externa dibujo en
+ *    el formulario publico. Va siempre que exista.
+ *  - "Actividad recibida por": nombre y firma de quien descarga desde la
+ *    sede. Solo se estampa en la descarga firmada; la vista previa y la
+ *    copia de la persona externa la dejan en blanco.
  */
 class ScheduleReceiptService
 {
+    public function __construct(
+        private readonly ScheduleSignatureService $signatures,
+    ) {}
+
     private const TEMPLATE = 'pdf-templates/ra-f-33-solicitud-de-servicio.pdf';
 
     private const FONT = 'Helvetica';
@@ -49,6 +58,17 @@ class ScheduleReceiptService
         'location' => [135.0, 346.1, 740.0],
         'materials' => [125.5, 399.9, 738.0],
         'performed_by' => [189.0, 431.3, 462.0],
+        'received_by' => [189.0, 458.1, 462.0],
+    ];
+
+    /**
+     * Espacio de cada firma: [x0, y0, x1, y1]. Cubre la linea "FIRMA____"
+     * (x 529-713) sin invadir la barra "REPORTE DEL SERVICIO" (termina en
+     * y 425.6), la otra firma ni el borde inferior de la tabla (y 469.4).
+     */
+    private const SIGNATURE_AREAS = [
+        'performed' => [531.0, 426.5, 711.0, 446.0],
+        'received' => [531.0, 448.0, 711.0, 468.8],
     ];
 
     /**
@@ -102,22 +122,40 @@ class ScheduleReceiptService
 
     /**
      * Respuesta de descarga del formato diligenciado.
+     *
+     * @param  array{name: string, signature: string}|null  $receiver  quien recibe
+     *                                                                 (firma en PNG)
      */
-    public function download(InventorySchedule $schedule, ?Tenant $tenant = null): Response
+    public function download(InventorySchedule $schedule, ?Tenant $tenant = null, ?array $receiver = null): Response
+    {
+        return $this->respond($schedule, $receiver, 'attachment');
+    }
+
+    /**
+     * El mismo documento, pero para verlo en el navegador (vista previa).
+     */
+    public function preview(InventorySchedule $schedule): Response
+    {
+        return $this->respond($schedule, null, 'inline');
+    }
+
+    private function respond(InventorySchedule $schedule, ?array $receiver, string $disposition): Response
     {
         $fileName = 'RA-F-33-solicitud-de-servicio-'.Str::slug($schedule->code).'.pdf';
 
-        return new Response($this->render($schedule), 200, [
+        return new Response($this->render($schedule, $receiver), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
+            'Content-Disposition' => $disposition.'; filename="'.$fileName.'"',
             'Cache-Control' => 'private, no-store',
         ]);
     }
 
     /**
      * Binario del PDF: la plantilla con los datos escritos encima.
+     *
+     * @param  array{name: string, signature: string}|null  $receiver
      */
-    public function render(InventorySchedule $schedule): string
+    public function render(InventorySchedule $schedule, ?array $receiver = null): string
     {
         $entry = $schedule->relationLoaded('entry') && $schedule->entry
             ? $schedule->entry
@@ -177,10 +215,60 @@ class ScheduleReceiptService
         $this->paragraph($pdf, self::ACTION_LINES, $entry->action);
         $this->line($pdf, 'materials', $this->singleLine($entry->materials));
 
-        // Reporte del servicio (firmas y "recibida por" quedan pendientes)
+        // Reporte del servicio
         $this->line($pdf, 'performed_by', $entry->performed_by);
 
+        if ($performerSignature = $this->signatures->performerFile($schedule)) {
+            $this->signature($pdf, self::SIGNATURE_AREAS['performed'], $performerSignature);
+        }
+
+        if ($receiver !== null) {
+            $this->line($pdf, 'received_by', $receiver['name']);
+            $this->signatureFromBinary($pdf, self::SIGNATURE_AREAS['received'], $receiver['signature']);
+        }
+
         return $pdf->Output('S');
+    }
+
+    /**
+     * Estampa una firma (PNG con transparencia) dentro de su espacio,
+     * conservando la proporcion y centrada sobre la linea.
+     *
+     * @param  array{0: float, 1: float, 2: float, 3: float}  $area
+     */
+    private function signature(Fpdi $pdf, array $area, string $file): void
+    {
+        $info = @getimagesize($file);
+
+        if (! $info || $info[0] < 1 || $info[1] < 1) {
+            return;
+        }
+
+        [$x0, $y0, $x1, $y1] = $area;
+        $scale = min(($x1 - $x0) / $info[0], ($y1 - $y0) / $info[1]);
+        $width = $info[0] * $scale;
+        $height = $info[1] * $scale;
+
+        $pdf->Image(
+            $file,
+            $x0 + (($x1 - $x0) - $width) / 2,
+            $y1 - $height,
+            $width,
+            $height,
+            'PNG'
+        );
+    }
+
+    private function signatureFromBinary(Fpdi $pdf, array $area, string $png): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'firma');
+
+        try {
+            file_put_contents($file, $png);
+            $this->signature($pdf, $area, $file);
+        } finally {
+            @unlink($file);
+        }
     }
 
     /**

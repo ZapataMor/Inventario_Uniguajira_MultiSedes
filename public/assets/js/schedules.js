@@ -517,7 +517,12 @@
 
         if (title) title.textContent = data.title || '';
         if (body) body.innerHTML = '<p class="sched-entries-loading">Cargando registros...</p>';
-        receipt?.classList.add('hidden');
+
+        if (receipt) {
+            receipt.classList.add('hidden');
+            receipt.dataset.scheduleId = data.id;
+            receipt.dataset.scheduleTitle = data.title || '';
+        }
 
         mostrarModal('#modalProgramacionRegistros');
 
@@ -528,9 +533,8 @@
             .then((payload) => {
                 renderEntries(payload.entries || []);
 
-                // El comprobante solo se ofrece si el formulario ya fue diligenciado.
-                if (receipt && payload.receipt_url) {
-                    receipt.href = payload.receipt_url;
+                // El formato solo se ofrece si el formulario ya fue diligenciado.
+                if (receipt && payload.can_download) {
                     receipt.classList.remove('hidden');
                 }
             })
@@ -568,6 +572,238 @@
         caption.hidden = text === '';
         viewer.hidden = false;
         document.body.classList.add('sched-viewer-open');
+    };
+
+    // ─── Formato RA-F-33: vista previa y descarga firmada ──────────
+
+    const PDFJS_VERSION = '3.11.174';
+    const PDFJS_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}`;
+
+    let pdfjsLoader = null;
+
+    /**
+     * pdf.js se carga solo la primera vez que se abre el modal. Se usa en
+     * lugar de un <iframe> porque los navegadores de celular no muestran
+     * PDFs incrustados.
+     */
+    const loadPdfJs = () => {
+        if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+
+        if (!pdfjsLoader) {
+            pdfjsLoader = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+
+                script.src = `${PDFJS_BASE}/pdf.min.js`;
+                script.onload = () => {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS_BASE}/pdf.worker.min.js`;
+                    resolve(window.pdfjsLib);
+                };
+                script.onerror = () => {
+                    pdfjsLoader = null;
+                    reject(new Error('No se pudo cargar el visor de PDF.'));
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+
+        return pdfjsLoader;
+    };
+
+    const signModal = () => document.getElementById('modalFirmarFormato');
+
+    const renderPreview = async (scheduleId) => {
+        const modal = signModal();
+        const container = modal.querySelector('[data-sign-preview]');
+        const status = modal.querySelector('[data-sign-preview-status]');
+        const previewUrl = `/api/schedules/${scheduleId}/receipt/preview`;
+
+        container.querySelectorAll('canvas').forEach((canvas) => canvas.remove());
+        status.hidden = false;
+        status.textContent = 'Cargando vista previa...';
+
+        try {
+            const pdfjs = await loadPdfJs();
+            const pdf = await pdfjs.getDocument({ url: previewUrl, withCredentials: true }).promise;
+            const page = await pdf.getPage(1);
+
+            // El modal pudo cerrarse o cambiar de programación mientras cargaba.
+            if (modal.dataset.scheduleId !== String(scheduleId)) return;
+
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            const width = Math.max(container.clientWidth, 280);
+            const base = page.getViewport({ scale: 1 });
+            const viewport = page.getViewport({ scale: (width / base.width) * ratio });
+            const canvas = document.createElement('canvas');
+
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            canvas.className = 'sched-sign-page';
+
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+            status.hidden = true;
+            container.appendChild(canvas);
+        } catch (error) {
+            console.error('Vista previa del formato:', error);
+            status.innerHTML = `No se pudo mostrar la vista previa aquí.
+                <a href="${previewUrl}" target="_blank" rel="noopener">Abrir en otra pestaña</a>.`;
+        }
+    };
+
+    /**
+     * Firma dibujada, o la guardada si se marcó la casilla.
+     */
+    const syncSignState = () => {
+        const modal = signModal();
+
+        if (!modal) return;
+
+        const useSaved = modal.querySelector('[data-sign-use-saved]')?.checked || false;
+        const pad = modal.signaturePad;
+
+        modal.querySelector('[data-sign-draw]').hidden = useSaved;
+        modal.querySelector('[data-sign-saved-preview]').hidden = !useSaved;
+        modal.querySelector('[data-sign-placeholder]').hidden = Boolean(pad && !pad.isEmpty());
+        modal.querySelector('[data-sign-submit]').disabled = !useSaved && (!pad || pad.isEmpty());
+        modal.querySelector('[data-sign-error]').hidden = true;
+    };
+
+    const openReceiptModal = (scheduleId, title) => {
+        const modal = signModal();
+
+        if (!modal || !scheduleId) return;
+
+        modal.dataset.scheduleId = String(scheduleId);
+        modal.querySelector('[data-sign-title]').textContent = title || '';
+
+        const useSaved = modal.querySelector('[data-sign-use-saved]');
+        if (useSaved) useSaved.checked = false;
+        modal.querySelector('[data-sign-save]').checked = false;
+
+        mostrarModal('#modalFirmarFormato');
+
+        // El lienzo se crea al abrir: dentro de un modal oculto no tiene tamaño.
+        if (!modal.signaturePad && typeof window.SignaturePad !== 'undefined') {
+            modal.signaturePad = new window.SignaturePad(modal.querySelector('[data-sign-canvas]'), {
+                onChange: syncSignState,
+            });
+        }
+
+        modal.signaturePad?.clear();
+        syncSignState();
+        renderPreview(scheduleId);
+    };
+
+    const fileNameFrom = (response) => {
+        const header = response.headers.get('Content-Disposition') || '';
+        const match = header.match(/filename="?([^";]+)"?/i);
+
+        return match ? match[1] : 'RA-F-33-solicitud-de-servicio.pdf';
+    };
+
+    const submitSignedReceipt = async () => {
+        const modal = signModal();
+        const scheduleId = modal.dataset.scheduleId;
+        const submit = modal.querySelector('[data-sign-submit]');
+        const error = modal.querySelector('[data-sign-error]');
+        const useSaved = modal.querySelector('[data-sign-use-saved]')?.checked || false;
+        const saveSignature = modal.querySelector('[data-sign-save]').checked;
+        const pad = modal.signaturePad;
+
+        if (!useSaved && (!pad || pad.isEmpty())) {
+            error.textContent = 'Firma en el recuadro para descargar el formato.';
+            error.hidden = false;
+            return;
+        }
+
+        const body = new FormData();
+        const drawn = useSaved ? '' : pad.toDataURL();
+
+        body.append('use_saved', useSaved ? '1' : '0');
+
+        if (!useSaved) {
+            body.append('signature', drawn);
+            body.append('save_signature', saveSignature ? '1' : '0');
+        }
+
+        const originalText = submit.innerHTML;
+        submit.disabled = true;
+        submit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparando PDF...';
+
+        try {
+            const response = await fetch(`/api/schedules/${scheduleId}/receipt`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    Accept: 'application/pdf, application/json',
+                },
+                body,
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                const message = payload.errors
+                    ? Object.values(payload.errors).flat()[0]
+                    : (payload.message || 'No se pudo generar el formato.');
+
+                error.textContent = message;
+                error.hidden = false;
+                return;
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+
+            link.href = url;
+            link.download = fileNameFrom(response);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+            // La firma recién guardada queda disponible sin recargar la página.
+            if (!useSaved && saveSignature) {
+                modal.querySelector('[data-sign-saved-image]').src = drawn;
+                modal.querySelector('[data-sign-saved-block]').hidden = false;
+            }
+
+            showToast({ success: true, message: 'Formato firmado y descargado.' });
+            ocultarModal('#modalFirmarFormato');
+        } catch (exception) {
+            error.textContent = 'Se perdió la conexión. Inténtalo de nuevo.';
+            error.hidden = false;
+        } finally {
+            submit.innerHTML = originalText;
+            syncSignState();
+        }
+    };
+
+    const forgetSavedSignature = () => {
+        const modal = signModal();
+
+        fetch('/api/schedules/signature', {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                Accept: 'application/json',
+            },
+        })
+            .then((response) => response.json())
+            .then((payload) => {
+                showToast(payload);
+
+                if (!payload.success) return;
+
+                const useSaved = modal.querySelector('[data-sign-use-saved]');
+                if (useSaved) useSaved.checked = false;
+                modal.querySelector('[data-sign-saved-block]').hidden = true;
+                syncSignState();
+            })
+            .catch(() => showToast({ success: false, message: 'No se pudo eliminar la firma guardada.' }));
     };
 
     // ─── Eliminación ───────────────────────────────────────────────
@@ -665,6 +901,7 @@
                     case 'print': printQr(data); break;
                     case 'toggle': toggleOpen(data); break;
                     case 'entries': openEntriesModal(data); break;
+                    case 'receipt': openReceiptModal(data.id, data.title); break;
                     case 'edit': openEditModal(data); break;
                     case 'delete': deleteSchedule(data); break;
                 }
@@ -674,6 +911,24 @@
 
             // Clic en el cuerpo de una tarjeta ya diligenciada: abre el
             // detalle, que es donde se consultan las evidencias.
+            const entriesReceipt = event.target.closest('[data-entries-receipt]');
+
+            if (entriesReceipt) {
+                ocultarModal('#modalProgramacionRegistros');
+                openReceiptModal(entriesReceipt.dataset.scheduleId, entriesReceipt.dataset.scheduleTitle);
+                return;
+            }
+
+            if (event.target.closest('[data-sign-clear]')) {
+                signModal()?.signaturePad?.clear();
+                return;
+            }
+
+            if (event.target.closest('[data-sign-forget]')) {
+                forgetSavedSignature();
+                return;
+            }
+
             const wizard = event.target.closest('[data-schedule-wizard]');
 
             if (wizard && event.target.closest('[data-stage-next]')) {
@@ -713,6 +968,11 @@
         });
 
         document.addEventListener('change', (event) => {
+            if (event.target?.matches('[data-sign-use-saved]')) {
+                syncSignState();
+                return;
+            }
+
             const form = event.target?.closest('[data-schedule-wizard]');
 
             if (!form) return;
@@ -740,6 +1000,12 @@
         });
 
         document.addEventListener('submit', (event) => {
+            if (event.target.closest('[data-sign-form]')) {
+                event.preventDefault();
+                submitSignedReceipt();
+                return;
+            }
+
             const form = event.target.closest('#formCrearProgramacion, #formEditarProgramacion');
 
             if (!form) return;

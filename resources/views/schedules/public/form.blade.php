@@ -220,6 +220,31 @@
                     <ul class="evidence-list" data-evidence-list></ul>
                 </div>
 
+                {{--
+                    Firma de quien realizó la actividad: va sobre la línea
+                    "FIRMA" de "Actividad realizada por" en el formato RA-F-33.
+                --}}
+                <div class="field signature" data-signature>
+                    <label>Firma de quien realizó la actividad <span class="req">*</span></label>
+                    <p class="field-hint">Firma con el dedo o con el mouse dentro del recuadro.</p>
+
+                    <div class="signature-box">
+                        <canvas class="signature-canvas" data-signature-canvas
+                                aria-label="Recuadro para firmar"></canvas>
+                        <span class="signature-placeholder" data-signature-placeholder>Firma aquí</span>
+                        <span class="signature-baseline" aria-hidden="true"></span>
+                    </div>
+
+                    <div class="signature-actions">
+                        <button type="button" class="btn btn-ghost btn-small" data-signature-clear>
+                            <i class="fas fa-eraser"></i> Borrar firma
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="performer_signature" data-signature-input>
+                    <p class="signature-error" data-signature-error hidden>Firma en el recuadro antes de enviar.</p>
+                </div>
+
                 <button type="submit" class="btn btn-primary" data-submit>
                     <i class="fas fa-paper-plane"></i> Enviar registro
                 </button>
@@ -244,6 +269,7 @@
     </figure>
 </div>
 
+<script src="{{ asset('assets/js/helpers/signature-pad.js') }}?v={{ $assetVersion('assets/js/helpers/signature-pad.js') }}"></script>
 <script src="{{ asset('assets/js/schedule-public.js') }}?v={{ $assetVersion('assets/js/schedule-public.js') }}"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@ use App\Models\InventorySchedule;
 use App\Models\InventoryScheduleEntryImage;
 use App\Services\Schedules\ScheduleEvidenceService;
 use App\Services\Schedules\ScheduleReceiptService;
+use App\Services\Schedules\ScheduleSignatureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -36,6 +37,7 @@ class InventoryScheduleController extends Controller
     public function __construct(
         private readonly ScheduleEvidenceService $evidence,
         private readonly ScheduleReceiptService $receipts,
+        private readonly ScheduleSignatureService $signatures,
     ) {}
 
     /**
@@ -80,7 +82,11 @@ class InventoryScheduleController extends Controller
         $filters = ['search' => $search];
         $timezone = tenant()?->branding?->timezone_value ?? 'America/Bogota';
 
-        $data = compact('schedules', 'inventories', 'filters', 'timezone');
+        // Firma guardada de quien consulta: permite descargar el formato
+        // marcando "Firmar con firma guardada" en lugar de volver a firmar.
+        $savedSignature = $this->signatures->savedDataUrl(Auth::user());
+
+        $data = compact('schedules', 'inventories', 'filters', 'timezone', 'savedSignature');
 
         if ($request->ajax()) {
             /** @var \Illuminate\View\View $view */
@@ -201,9 +207,8 @@ class InventoryScheduleController extends Controller
         return response()->json([
             'success' => true,
             'schedule' => $this->formatSchedule($schedule),
-            'receipt_url' => $schedule->isCompleted()
-                ? route('schedules.receipt', $schedule->id)
-                : null,
+            // El formato se descarga firmado desde el modal de firma.
+            'can_download' => $schedule->isCompleted(),
             'entries' => $schedule->entries->map(function ($entry) use ($schedule, $timezone) {
                 // El folio se deriva del codigo de la programacion: se
                 // enlaza a mano para no consultarla una vez por labor.
@@ -232,20 +237,89 @@ class InventoryScheduleController extends Controller
     }
 
     /**
-     * GET /api/schedules/{id}/receipt
+     * GET /api/schedules/{id}/receipt/preview
      *
-     * Comprobante en PDF de la labor documentada. Es el mismo documento
-     * que descarga la persona externa al terminar el formulario.
+     * Vista previa del formato RA-F-33 diligenciado, sin la firma de quien
+     * recibe. Es lo que se muestra antes de firmar para descargar.
      */
-    public function receipt(int $id): Response
+    public function receiptPreview(int $id): Response
     {
-        $schedule = InventorySchedule::with(['inventories.group', 'entry.images'])->findOrFail($id);
+        $schedule = InventorySchedule::with(['inventories.group', 'entry'])->findOrFail($id);
 
-        // Descargar el comprobante es una lectura: igual que los reportes,
-        // no se audita para no llenar el historial de ruido.
         abort_if(! $schedule->isCompleted(), 404);
 
-        return $this->receipts->download($schedule);
+        return $this->receipts->preview($schedule);
+    }
+
+    /**
+     * POST /api/schedules/{id}/receipt
+     *
+     * Descarga del formato firmado por quien lo recibe en la sede. Se firma
+     * dibujando en el lienzo o con la firma guardada del usuario; al dibujar
+     * se puede pedir que esa firma quede guardada para las proximas veces.
+     */
+    public function receipt(Request $request, int $id): Response
+    {
+        $schedule = InventorySchedule::with(['inventories.group', 'entry'])->findOrFail($id);
+
+        abort_if(! $schedule->isCompleted(), 404);
+
+        $user = Auth::user();
+
+        $request->validate([
+            'use_saved' => ['nullable', 'boolean'],
+            'save_signature' => ['nullable', 'boolean'],
+            'signature' => ['nullable', 'string'],
+        ]);
+
+        if ($request->boolean('use_saved')) {
+            $file = $this->signatures->savedFile($user);
+
+            if ($file === null) {
+                throw ValidationException::withMessages([
+                    'signature' => 'No tienes una firma guardada. Firma en el recuadro.',
+                ]);
+            }
+
+            $signature = (string) file_get_contents($file);
+        } else {
+            $signature = $this->signatures->decode($request->input('signature'), 'signature');
+
+            if ($request->boolean('save_signature')) {
+                $this->signatures->save($user, $signature);
+            }
+        }
+
+        // Firmar el formato si se audita: deja constancia de quien lo recibio.
+        ActivityLogger::custom(
+            'update',
+            "Firmó y descargó el formato RA-F-33 de la programación: {$schedule->title}",
+            [
+                'model' => 'InventorySchedule',
+                'model_id' => $schedule->id,
+                'new_values' => ['recibida_por' => $user->name],
+            ]
+        );
+
+        return $this->receipts->download($schedule, null, [
+            'name' => (string) $user->name,
+            'signature' => $signature,
+        ]);
+    }
+
+    /**
+     * DELETE /api/schedules/signature
+     *
+     * Olvida la firma guardada del usuario autenticado.
+     */
+    public function forgetSignature(): JsonResponse
+    {
+        $this->signatures->forget(Auth::user());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tu firma guardada se eliminó.',
+        ]);
     }
 
     /**

@@ -212,13 +212,15 @@
                         </button>
                     @endif
 
-                    {{-- El formato RA-F-33 solo se descarga cuando la labor ya fue documentada. --}}
+                    {{--
+                        El formato RA-F-33 solo existe cuando la labor ya fue
+                        documentada. Se abre en vista previa y se descarga firmado.
+                    --}}
                     @if($isCompleted)
-                        <a class="sched-btn sched-btn-primary"
-                           href="{{ route('schedules.receipt', $schedule->id) }}"
-                           title="Descargar el formato RA-F-33 diligenciado (PDF)">
-                            <i class="fas fa-file-arrow-down"></i> Formato PDF
-                        </a>
+                        <button type="button" class="sched-btn sched-btn-primary" data-action="receipt"
+                                title="Ver y firmar el formato RA-F-33 para descargarlo">
+                            <i class="fas fa-file-signature"></i> Formato PDF
+                        </button>
                     @endif
 
                     @if($publicUrl)
@@ -270,6 +272,7 @@
     @endif
 
     <x-modal.schedules.entries />
+    <x-modal.schedules.receipt-sign :saved-signature="$savedSignature" />
 
     @once
         <script>

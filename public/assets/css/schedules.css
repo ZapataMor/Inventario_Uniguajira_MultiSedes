@@ -1040,3 +1040,217 @@ body.sched-viewer-open {
         justify-content: center;
     }
 }
+
+/* ─── Formato RA-F-33: vista previa y firma (modal) ────────────── */
+
+.modal-content.sched-sign-modal {
+    /* Deja libre el ancho de la barra lateral, que queda encima del modal. */
+    width: min(1120px, calc(100vw - 140px));
+    max-width: none;
+}
+
+.sched-sign-modal [hidden] {
+    display: none !important;
+}
+
+.sched-sign-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+    gap: 20px;
+    align-items: start;
+    margin-top: 12px;
+}
+
+.sched-sign-preview {
+    min-height: 240px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.sched-sign-page {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, .12);
+}
+
+.sched-sign-preview-status {
+    margin: 90px 0;
+    color: #64748b;
+    font-size: 14px;
+    text-align: center;
+}
+
+.sched-sign-preview-status a {
+    color: #047857;
+    font-weight: 600;
+}
+
+.modal-content form.sched-sign-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.modal-content form.sched-sign-panel > div {
+    display: block;
+}
+
+.sched-sign-heading {
+    margin: 0;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.sched-sign-hint,
+.sched-sign-label {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.sched-sign-hint strong {
+    color: #1e293b;
+}
+
+.sched-sign-saved {
+    padding: 12px;
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    background: #ecfdf5;
+}
+
+.modal-content .sched-sign-check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 0;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-content .sched-sign-check input {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    padding: 0;
+    accent-color: #059669;
+}
+
+.sched-sign-saved-preview {
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #fff;
+    text-align: center;
+}
+
+.sched-sign-saved-preview img {
+    max-width: 100%;
+    max-height: 90px;
+}
+
+.sched-sign-link {
+    margin-top: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #be123c;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.sched-sign-box {
+    position: relative;
+    height: 170px;
+    margin-top: 6px;
+    border: 1px dashed #94a3b8;
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+}
+
+/* Sin touch-action el dedo desplazaría el modal en vez de firmar. */
+.sched-sign-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+}
+
+.sched-sign-placeholder {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cbd5e1;
+    font-size: 20px;
+    font-style: italic;
+    pointer-events: none;
+    user-select: none;
+}
+
+.sched-sign-baseline {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 38px;
+    z-index: 1;
+    border-bottom: 1px solid #cbd5e1;
+    pointer-events: none;
+}
+
+.sched-sign-draw-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.sched-sign-submit {
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 14px;
+}
+
+.sched-sign-submit:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+@media (max-width: 860px) {
+    .sched-sign-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* En celular la barra lateral se oculta: el modal usa casi todo el ancho. */
+@media (max-width: 600px) {
+    .modal-content.sched-sign-modal {
+        width: 95%;
+        padding: 20px 14px;
+    }
+
+    .sched-sign-box {
+        height: 150px;
+    }
+}

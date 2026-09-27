@@ -13,10 +13,10 @@
         <div class="sched-modal-head">
             <p class="sched-modal-title" data-entries-title></p>
 
-            <a class="sched-btn sched-btn-primary sched-modal-receipt hidden"
-               href="#" data-entries-receipt>
-                <i class="fas fa-file-arrow-down"></i> Descargar formato RA-F-33
-            </a>
+            <button type="button" class="sched-btn sched-btn-primary sched-modal-receipt hidden"
+                    data-entries-receipt>
+                <i class="fas fa-file-signature"></i> Ver y firmar formato RA-F-33
+            </button>
         </div>
 
         <div class="sched-entries" data-entries-body>

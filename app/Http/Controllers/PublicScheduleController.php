@@ -9,6 +9,7 @@ use App\Models\InventoryScheduleEntry;
 use App\Models\InventoryScheduleEntryImage;
 use App\Services\Schedules\ScheduleEvidenceService;
 use App\Services\Schedules\ScheduleReceiptService;
+use App\Services\Schedules\ScheduleSignatureService;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -37,6 +38,7 @@ class PublicScheduleController extends Controller
     public function __construct(
         private readonly ScheduleEvidenceService $evidence,
         private readonly ScheduleReceiptService $receipts,
+        private readonly ScheduleSignatureService $signatures,
     ) {}
 
     /**
@@ -85,6 +87,8 @@ class PublicScheduleController extends Controller
             'action' => ['required', 'string', 'max:700'],
             'materials' => ['required', 'string', 'max:200'],
             'performed_by' => ['required', 'string', 'max:120'],
+            // Firma dibujada en el lienzo, como data URL PNG.
+            'performer_signature' => ['required', 'string'],
             'started_at' => ['required', 'date'],
             'finished_at' => ['required', 'date', 'after_or_equal:started_at'],
             // Las fotos ya viajaron una a una: aqui solo llegan sus tokens
@@ -99,11 +103,16 @@ class PublicScheduleController extends Controller
             'action.required' => 'Narra la acción realizada.',
             'materials.required' => 'Escribe los materiales utilizados.',
             'performed_by.required' => 'Escribe quién realizó la actividad.',
+            'performer_signature.required' => 'Firma en el recuadro antes de enviar.',
             'started_at.required' => 'Indica la fecha y hora en que iniciaste.',
             'finished_at.required' => 'Indica la fecha y hora en que terminaste.',
             'finished_at.after_or_equal' => 'La fecha de finalización no puede ser anterior a la de inicio.',
             'images.*.description.max' => 'Cada descripción de imagen admite máximo 250 caracteres.',
         ]);
+
+        // Se valida antes de crear la labor: una firma ilegible no debe
+        // dejar la programacion cerrada sin firma.
+        $signature = $this->signatures->decode($data['performer_signature'], 'performer_signature');
 
         $isEquipment = $request->boolean('is_equipment');
 
@@ -122,6 +131,8 @@ class PublicScheduleController extends Controller
             'ip_address' => $request->ip(),
             'user_agent' => substr((string) $request->userAgent(), 0, 500),
         ]);
+
+        $this->signatures->storePerformer($schedule, $signature);
 
         $totalImages = $this->evidence->attach($entry, $schedule, $data['images'] ?? []);
 

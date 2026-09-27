@@ -4,12 +4,13 @@
  * Formulario público de la "Programación de mantenimientos".
  * Página independiente del aplicativo: no depende de los helpers internos.
  *
- * Se ocupa de cuatro cosas:
+ * Se ocupa de cinco cosas:
  *   1. la animación de inicio (igual a la del acceso);
  *   2. los datos del equipo, que solo aparecen si la labor fue sobre uno;
- *   3. las evidencias fotográficas, que se suben de a una antes de enviar
+ *   3. la firma de quien realizó la actividad (lienzo en signature-pad.js);
+ *   4. las evidencias fotográficas, que se suben de a una antes de enviar
  *      el formulario para que no haya límite práctico de imágenes;
- *   4. el visor a pantalla completa del comprobante.
+ *   5. el visor a pantalla completa del comprobante.
  */
 
 (() => {
@@ -95,6 +96,40 @@
 
         toggles.forEach((toggle) => toggle.addEventListener('change', sync));
         sync();
+    };
+
+    // ─── Firma de quien realizó la actividad ────────────────────────
+
+    const initSignature = () => {
+        const form = document.querySelector('[data-schedule-form]');
+        const field = document.querySelector('[data-signature]');
+
+        if (!form || !field || typeof window.SignaturePad === 'undefined') return;
+
+        const canvas = field.querySelector('[data-signature-canvas]');
+        const input = field.querySelector('[data-signature-input]');
+        const placeholder = field.querySelector('[data-signature-placeholder]');
+        const error = field.querySelector('[data-signature-error]');
+
+        const pad = new window.SignaturePad(canvas, {
+            onChange: (empty) => {
+                placeholder.hidden = !empty;
+                if (!empty) error.hidden = true;
+            },
+        });
+
+        field.querySelector('[data-signature-clear]').addEventListener('click', () => pad.clear());
+
+        form.addEventListener('submit', (event) => {
+            input.value = pad.toDataURL();
+
+            if (input.value !== '') return;
+
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            error.hidden = false;
+            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
     };
 
     // ─── Evidencias fotográficas ───────────────────────────────────
@@ -380,6 +415,9 @@
         initSplash();
         initDateRange();
         initEquipment();
+        // La firma se registra antes que las evidencias: su validación
+        // debe correr primero al enviar el formulario.
+        initSignature();
         initEvidence();
         initViewer();
     });

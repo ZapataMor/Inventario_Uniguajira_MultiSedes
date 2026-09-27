@@ -84,6 +84,7 @@
     <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v={{ $assetVersion('assets/js/helpers/excel-ui.js') }}"></script>
     <script src="{{ asset('assets/js/history-guard.js') }}?v={{ $assetVersion('assets/js/history-guard.js') }}"></script>
     <script src="{{ asset('assets/js/tasks.js') }}?v={{ $assetVersion('assets/js/tasks.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/signature-pad.js') }}?v={{ $assetVersion('assets/js/helpers/signature-pad.js') }}"></script>
     <script src="{{ asset('assets/js/schedules.js') }}?v={{ $assetVersion('assets/js/schedules.js') }}"></script>
 
     <script src="{{ asset('assets/js/goods.js') }}?v={{ $assetVersion('assets/js/goods.js') }}"></script>

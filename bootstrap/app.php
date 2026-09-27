@@ -31,5 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Las firmas viajan como imagen en base64: no se guardan en la
+        // sesion cuando un formulario vuelve con errores (se firma de nuevo).
+        $exceptions->dontFlash(['performer_signature', 'signature']);
     })->create();

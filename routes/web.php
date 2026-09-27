@@ -146,7 +146,10 @@ Route::prefix('api/schedules')->group(function () {
     Route::post('update', [InventoryScheduleController::class, 'update'])->name('schedules.update');
     Route::post('toggle-open', [InventoryScheduleController::class, 'toggleOpen'])->name('schedules.toggleOpen');
     Route::get('{id}/entries', [InventoryScheduleController::class, 'entries'])->name('schedules.entries');
-    Route::get('{id}/receipt', [InventoryScheduleController::class, 'receipt'])->name('schedules.receipt');
+    // El formato se ve sin firmar, pero solo se descarga firmado por quien lo recibe.
+    Route::get('{id}/receipt/preview', [InventoryScheduleController::class, 'receiptPreview'])->name('schedules.receipt.preview');
+    Route::post('{id}/receipt', [InventoryScheduleController::class, 'receipt'])->name('schedules.receipt');
+    Route::delete('signature', [InventoryScheduleController::class, 'forgetSignature'])->name('schedules.signature.forget');
     Route::delete('delete/{id}', [InventoryScheduleController::class, 'destroy'])->name('schedules.destroy');
 });
 
