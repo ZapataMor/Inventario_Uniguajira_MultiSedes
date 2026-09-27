@@ -2,154 +2,9 @@
 
 Sistema de gestion de inventario para la Universidad de la Guajira.
 
-## Tech Stack
-
-- **Backend:** Laravel 12, PHP 8.2+
-- **Frontend:** Livewire 3, Volt, Flux UI, Tailwind CSS 4, Vite
-- **Auth:** Laravel Fortify (with 2FA support)
-- **Database:** MySQL (`inventario_db`)
-- **Testing:** PEST PHP
-- **Code quality:** Laravel Pint
-- **Locale:** Spanish (`es` / `es_CO`)
-
-## Common Commands
-
-```bash
-# Development
-php artisan serve          # Start local server
-npm run dev                # Start Vite dev server (Tailwind hot reload)
-npm run build              # Build assets for production
-
-# Database
-php artisan migrate        # Run pending migrations
-php artisan migrate:fresh --seed  # Reset DB and seed
-
-# Code quality
-./vendor/bin/pint          # Format PHP code (Laravel Pint)
-./vendor/bin/pest          # Run tests
-
-# Utilities
-php artisan tinker         # REPL for the app
-php artisan route:list     # Show all registered routes
-php artisan cache:clear && php artisan config:clear  # Clear caches
-```
-
-## Project Structure
-
-```
-app/
-  Http/Controllers/     # 12 controllers (see below)
-  Models/               # 13 Eloquent models
-  Helpers/              # ActivityLogger.php
-  Listeners/            # LogAuthenticationActivity.php
-  Livewire/             # Livewire components
-  Observers/            # ModelActivityObserver.php
-  Services/             # GoodsInventoryService.php
-  Providers/
-resources/
-  views/
-    components/         # Reusable blade components & modals
-    goods/              # Goods listing & Excel upload
-    home/               # Dashboard
-    inventories/        # Groups, inventories, goods-in-inventory
-    records/            # Activity log views
-    removed/            # Removed goods views
-    reports/            # Report folders
-    users/              # User management views
-    layouts/            # app, navbar, sidebar
-routes/
-  web.php               # ALL routes (web + /api/* prefix)
-database/
-  migrations/           # 19 migration files
-```
-
-## Controllers
-
-| Controller | Responsibility |
-|---|---|
-| `HomeController` | Dashboard |
-| `GoodsController` | Goods/assets CRUD |
-| `GoodsInventoryController` | Goods within an inventory |
-| `GroupController` | Inventory group management |
-| `InventoryController` | Inventory management |
-| `InventoryScheduleController` | Programacion de mantenimientos (QR + enlace publico) |
-| `PublicScheduleController` | Formulario publico (QR/enlace) sin autenticacion |
-| `RecordController` | Activity logs (view, export, clear) |
-| `RemovedController` | Removed goods tracking |
-| `ReportController` | Reports CRUD |
-| `ReportFolderController` | Report folder management |
-| `TaskController` | Task management |
-| `UserController` | User management (API) |
-
-## Models
-
-| Model | Table / Purpose |
-|---|---|
-| `User` | Authentication |
-| `Asset` | Core goods/assets |
-| `AssetEquipment` | Equipment-type asset details |
-| `AssetInventory` | Asset -> Inventory junction |
-| `AssetQuantity` | Quantity tracking per inventory |
-| `AssetRemoved` | Removed assets |
-| `AssetEquipmentRemoved` | Removed equipment tracking |
-| `Group` | Inventory groups |
-| `Inventory` | Inventory records |
-| `Report` | Reports |
-| `ReportFolder` | Report folder organization |
-| `Task` | Task/to-do items |
-| `InventorySchedule` | Mantenimientos: solicitud RA-F-33 (solicitante, servicios, actividad) + bloque/salones (pivote) + codigo publico de un solo uso |
-| `InventoryScheduleEntry` | Reporte del servicio desde el formulario publico: equipo, accion, materiales, realizada por, inicio/fin |
-| `InventoryScheduleEntryImage` | Evidencias fotograficas de una labor, con descripcion opcional |
-| `ActivityLog` | Activity logging |
-
-## Database Views (via migrations)
-
-- `goods_summary_view` - Summary of goods
-- `inventory_goods_view` - Goods within inventories
-- `serial_goods_view` - Serial-tracked goods
-
-## Routes Overview
+## Routes
 
 All routes live in `routes/web.php`. API endpoints are grouped under the `/api` prefix (no separate `api.php` file).
-
-**Web (auth required):**
-- `GET /home` - Dashboard
-- `GET /schedules` - Programacion de mantenimientos
-- `GET /goods` - Goods list
-- `GET /groups` - Inventory groups
-- `GET /group/{groupId}` - Inventories in group
-- `GET /group/{groupId}/inventory/{inventoryId}` - Goods in inventory
-- `GET /reports` - Reports
-- `GET /users` - User management
-- `GET /records` - Activity records
-- `GET /removed` - Removed goods
-
-**Web (publico, sin auth):**
-- `GET|POST /programacion/{tenantSlug}/{code}` - Formulario externo de una programacion.
-  El slug de la sede viaja en la URL porque el visitante no tiene sesion ni tenant resuelto.
-- `POST /programacion/{tenantSlug}/{code}/evidencias` - Sube una foto y devuelve su token.
-- `GET /programacion/{tenantSlug}/{code}/evidencias/{imageId}` - Sirve una evidencia ya registrada.
-- `GET /programacion/{tenantSlug}/{code}/comprobante` - Descarga el formato RA-F-33 diligenciado en PDF.
-
-**API (selected):**
-- Users: POST create/update, DELETE destroy
-- Goods: POST create/batchCreate/update, DELETE destroy, GET json, download template
-- Groups: POST create/rename, DELETE delete
-- Inventories: POST create/rename/updateResponsable/updateEstado, DELETE delete
-- Goods-Inventory: POST create/update-quantity/update-serial/remove-good, DELETE delete-quantity/delete-serial
-- Removed: GET filter/filter-options/export/stats, DELETE destroy
-- Records: DELETE clean, GET export
-- Tasks: POST create, PUT update, PATCH toggle, DELETE destroy
-- Schedules: POST create/update/toggle-open, GET {id}/entries y {id}/receipt, DELETE delete
-- Schedules (evidencias): GET /schedules/evidencias/{imageId}
-- Maintenances: POST create/batch-create, GET equipment/{id} y {inventoryId}/{assetId}, DELETE {id}
-
-## Activity Logging
-
-All major actions (login, logout, create, update, delete, view) are logged via:
-- `app/Helpers/ActivityLogger.php` - Static helper called in controllers
-- `app/Listeners/LogAuthenticationActivity.php` - Auth events (login/logout)
-- `app/Observers/ModelActivityObserver.php` - Model observer
 
 ## Styling Standard
 
@@ -201,11 +56,7 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `ReportFolderController`: CRUD basico de carpetas de reportes y vistas para listar reportes por carpeta.
 - `TaskController`: CRUD de tareas del dashboard con validacion de fecha no pasada y toggle `pending/completed`.
 - `MaintenanceController`: historial de mantenimientos. Lee por serial individual (`equipment_id`) o por bien dentro de un inventario (`inventory_id + asset_id`). Ademas de la creacion unitaria, expone `batchStore()`: registra una misma labor sobre varios seriales marcados en la vista de seriales. Exige minimo dos equipos, que todos pertenezcan al mismo bien y rol `administrador`; inserta una fila por equipo dentro de una transaccion y deja un `ActivityLogger::custom` con los seriales afectados.
-- `InventoryScheduleController`: modulo "Programacion de mantenimientos". Crear un mantenimiento es diligenciar la solicitud de servicio del **formato RA-F-33** en un modal por etapas: (1) informacion del solicitante (nombre, cargo, dependencia, n.º de radicacion opcional, fecha); (2) tipos de servicio solicitados (casillas multiples de `InventorySchedule::SERVICE_TYPES` + "Otros" con texto libre); (3) descripcion de la actividad (`ACTIVITY_TYPES`: mantenimiento / servicio en general; `MAINTENANCE_TYPES`: preventivo / correctivo) y localizacion: se elige un **bloque** (grupo) y luego uno o varios **salones** (inventarios) de ese bloque, guardados en la pivote `inventory_schedule_inventory`. El servidor rechaza salones de otro bloque. El `title` no se escribe a mano: lo arma `InventorySchedule::buildTitle()` con la actividad, el tipo y los servicios. Cada etapa se valida en `schedules.js` al avanzar (el form lleva `novalidate`). Lo demas lo aporta la persona externa desde el formulario publico. **El QR es de un solo uso:** mientras la programacion sigue pendiente, la tarjeta muestra el QR y el enlace listos para escanear o copiar; en cuanto alguien diligencia el formulario, ese bloque se sustituye por la labor documentada y la programacion queda cerrada, sin opcion de reabrir ni editar (solo eliminar). Para un mantenimiento nuevo se crea otra programacion, que genera su propio QR. Crear, editar y eliminar exige rol `administrador` o super administrador; el listado es visible para cualquier usuario de la sede. Redirige al portal si no hay tenant activo: no tiene catalogo central.
-- **Formato RA-F-33 en PDF:** una vez diligenciado el formulario publico, se descarga el formato institucional "Solicitud de servicio" (RA-F-33, rev. 9) lleno. **El formato no se maqueta ni se modifica:** `ScheduleReceiptService` importa con FPDI la plantilla `resources/pdf-templates/ra-f-33-solicitud-de-servicio.pdf` (el .docx original exportado con Word, carta horizontal, 1 pagina) y escribe encima los datos sobre sus lineas y las X en sus casillas, usando coordenadas en puntos medidas sobre la plantilla (constantes `LINES`, `ACTION_LINES`, `SERVICE_BOXES`, etc.). Si cambia la revision del formato hay que reexportar la plantilla (sin object streams, que el parser libre de FPDI no soporta) y volver a medir. Solo se llenan los campos del formato; nada de fechas de inicio/fin, evidencias ni folio. Firmas y "Actividad recibida por" quedan en blanco por ahora. Como el formato es de una sola pagina, los `maxlength`/`max:` de los campos estan ajustados al espacio de cada linea (accion 700, materiales 200, etc.); si un texto no cabe, se reduce la letra antes de recortarlo. Se descarga desde dos sitios con el mismo documento: la persona externa al enviar el formulario, y el personal de la sede desde la tarjeta o el modal de detalle. El boton solo existe cuando la programacion ya fue diligenciada.
-- **Formulario publico (reporte del servicio):** pregunta si la labor fue sobre un equipo (si: nombre obligatorio, modelo y marca opcionales), la accion realizada, los materiales, fecha/hora de inicio y fin, quien realizo la actividad y las evidencias fotograficas.
-- **Evidencias fotograficas:** el formulario publico admite tantas fotos como haga falta, cada una con descripcion opcional. No se envian con el POST del formulario: el navegador las reduce (max. 1600 px, JPEG) y las sube de a una a `POST /programacion/{slug}/{code}/evidencias`, que devuelve un token; el envio final solo lleva tokens y descripciones. Ese escalonamiento es lo que evita chocar contra `post_max_size` y `max_file_uploads` de PHP. Los archivos viven en el storage de la sede (`tenants/{slug}/schedules/{scheduleId}/`) y `ScheduleEvidenceService` los normaliza con GD. Al eliminar una programacion hay que purgar su carpeta: las filas caen en cascada pero los archivos no.
-- `PublicScheduleController`: formulario publico servido sin autenticacion. Resuelve la sede por el slug de la URL y activa la conexion tenant manualmente con `TenantContext::set()`, porque el visitante no tiene sesion. Su alcance es deliberadamente minimo: inserta una labor sobre una programacion abierta, recibe sus evidencias y entrega el comprobante, todo con `throttle`. Tras insertar la labor cierra la programacion (`is_open = false`) y rechaza cualquier envio posterior, de modo que un mismo QR nunca se diligencia dos veces; el comprobante y las evidencias si siguen siendo descargables con el mismo enlace.
+- **Programacion de mantenimientos** (`InventoryScheduleController`, `PublicScheduleController`, formato RA-F-33, firmas y evidencias): el detalle vive en `.claude/rules/programacion-mantenimientos.md`, que se carga al trabajar con los archivos de ese modulo.
 - `UserController`: administracion de usuarios exclusiva para `administrador`; impide cambiar el propio rol y bloquear la eliminacion del usuario base o del usuario autenticado.
 - `ProfileController`: perfil del usuario autenticado; actualiza datos basicos y contrasena propia con respuestas JSON.
 - `AssetImageController`: sirve imagenes de bienes desde storage de forma segura, evita path traversal y cae en una imagen por defecto cuando no existe el archivo.
@@ -237,6 +88,7 @@ All major actions (login, logout, create, update, delete, view) are logged via:
   - `tenant_branding`: branding visual, logos, colores, textos y timezone por sede.
   - `user_tenant`: membresias usuario-sede y rol dentro de cada sede.
 - **Base tenant por sede:** guarda toda la operacion diaria del inventario. Los modelos operativos usan `UsesTenantConnection`, asi que apuntan a la conexion `tenant` resuelta dinamicamente para la sede activa.
+- **Ojo al migrar sedes:** `php artisan migrate:tenants` marca como ejecutada cualquier migracion nueva en bases existentes sin correrla. Para aplicar migraciones nuevas usa `php artisan tenant:migrate --all`.
 
 ### Core Operational Data Flow
 
@@ -273,14 +125,6 @@ All major actions (login, logout, create, update, delete, view) are logged via:
 - `activity_logs` actua como capa de auditoria transversal y conserva accion, modelo afectado, descripcion, IP, agente de usuario y snapshots `old_values/new_values`.
 - `report_folders` y `reports` separan la organizacion logica de reportes de los archivos PDF generados en storage.
 
-### Inventory Schedules Flow
-
-- `inventory_schedules` guarda el mantenimiento: titulo generado, codigo publico y la solicitud RA-F-33 (`requester_*`, `filing_number`, `requested_at`, `service_types` JSON, `service_other`, `activity_type`, `maintenance_type`). Las columnas de la solicitud son nullable porque las programaciones anteriores no las tienen. `inventory_schedule_inventory` la relaciona con sus salones.
-- `inventory_schedule_entries` guarda el reporte del servicio que documenta la persona externa (`is_equipment`, `equipment_*`, `action`, `materials`, `performed_by`, `started_at`, `finished_at`). Al existir una entrada, la programacion queda cerrada de forma definitiva.
-- `inventory_schedule_entry_images` guarda las evidencias de esa labor: ruta relativa en el storage de la sede, descripcion opcional y orden de adjuntado. Se ven en la app y en el formulario publico; no van en el PDF del formato.
-- **Ojo al migrar sedes:** `php artisan migrate:tenants` marca como ejecutada cualquier migracion nueva en bases existentes sin correrla. Para aplicar migraciones nuevas usa `php artisan tenant:migrate --all`.
-- Los binarios de las evidencias **no** estan en base de datos: viven en `storage/app/tenants/{slug}/schedules/{scheduleId}/`. Borrar una programacion elimina las filas en cascada, pero la carpeta hay que purgarla explicitamente (`ScheduleEvidenceService::purge()`).
-
 ## Multi-Sede And Portal Context
 
 - **Division por sedes:** cada sede tiene su propia base de datos operativa. Eso aisla inventarios, bienes, bajas, reportes y actividad de una sede frente a otra.
@@ -298,16 +142,6 @@ All major actions (login, logout, create, update, delete, view) are logged via:
   - cambios en inventario, bienes, bajas, reportes y logs suelen pertenecer a la base tenant;
   - cambios en acceso multi-sede, branding, dominios o seleccion de sede pertenecen a la base central;
   - cuando se agregan modelos o consultas operativas nuevas, normalmente deben usar la conexion tenant, no la central.
-
-## Environment (.env.example)
-
-```
-APP_NAME=Inventario Uniguajira
-APP_LOCALE=es
-DB_CONNECTION=mysql
-DB_DATABASE=inventario_db
-DB_USERNAME=root
-```
 
 ## Git Branches
 
