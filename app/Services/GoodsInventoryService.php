@@ -73,9 +73,11 @@ class GoodsInventoryService
 
     /**
      * Precarga los bienes por nombre y crea en un solo lote los faltantes.
+     * Los nombres que solo difieren en mayusculas ("Monitor" / "monitor")
+     * resuelven al mismo bien en lugar de chocar con el indice unico.
      *
      * @param  array<string, string>  $assetDefinitions  [nombre => tipo]
-     * @return array<string, \App\Models\Asset>
+     * @return array<string, \App\Models\Asset>  indexado por el nombre solicitado
      */
     public function getOrCreateAssetsByName(array $assetDefinitions): array
     {
@@ -84,21 +86,19 @@ class GoodsInventoryService
         }
 
         $assetNames = array_keys($assetDefinitions);
-
-        $existing = Asset::query()
-            ->whereIn('name', $assetNames)
-            ->get(['id', 'name', 'type'])
-            ->keyBy('name');
+        $existing = $this->resolveAssetsByName($assetNames, false);
 
         $now = now();
         $missing = [];
 
         foreach ($assetDefinitions as $name => $type) {
-            if (isset($existing[$name])) {
+            $key = $this->assetNameKey($name);
+
+            if (isset($existing[$name]) || isset($missing[$key])) {
                 continue;
             }
 
-            $missing[] = [
+            $missing[$key] = [
                 'name' => $name,
                 'type' => $type,
                 'created_at' => $now,
@@ -107,16 +107,49 @@ class GoodsInventoryService
         }
 
         if (!empty($missing)) {
-            foreach (array_chunk($missing, 500) as $chunk) {
+            foreach (array_chunk(array_values($missing), 500) as $chunk) {
                 Asset::query()->insertOrIgnore($chunk);
             }
         }
 
-        return Asset::query()
-            ->whereIn('name', $assetNames)
+        return $this->resolveAssetsByName($assetNames, true);
+    }
+
+    /**
+     * Mapea cada nombre solicitado a su bien sin distinguir mayusculas.
+     * Con $queryUnmatched, lo que la colacion de la base iguala y PHP no
+     * (p. ej. tildes) se resuelve con una consulta puntual por nombre.
+     *
+     * @param  array<int, string>  $names
+     * @return array<string, \App\Models\Asset>
+     */
+    private function resolveAssetsByName(array $names, bool $queryUnmatched): array
+    {
+        $byKey = Asset::query()
+            ->whereIn('name', $names)
             ->get(['id', 'name', 'type'])
-            ->keyBy('name')
-            ->all();
+            ->keyBy(fn (Asset $asset) => $this->assetNameKey($asset->name));
+
+        $resolved = [];
+
+        foreach ($names as $name) {
+            $asset = $byKey[$this->assetNameKey($name)] ?? null;
+
+            if (!$asset && $queryUnmatched) {
+                $asset = Asset::query()->where('name', $name)->first(['id', 'name', 'type']);
+            }
+
+            if ($asset) {
+                $resolved[$name] = $asset;
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function assetNameKey(string $name): string
+    {
+        return mb_strtolower(trim($name));
     }
 
     /**
