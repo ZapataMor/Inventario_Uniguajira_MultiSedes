@@ -348,11 +348,14 @@ function locLeerFilasDeDOM() {
 }
 
 async function locEnviarDatos() {
+    const preview = LOC_EXCEL_STATE.preview;
+
+    if (!(await AssetNameReview.confirm({ tbody: preview?.elements.tbody, field: 'bien' }))) return;
+
     const rows = locLeerFilasDeDOM();
 
     if (!rows.length) return;
 
-    const preview = LOC_EXCEL_STATE.preview;
     const button = preview?.elements.submitButton;
 
     if (button) {

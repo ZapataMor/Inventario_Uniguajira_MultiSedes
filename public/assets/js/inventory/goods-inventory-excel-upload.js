@@ -188,12 +188,15 @@ function invLeerFilasDeDOM() {
 }
 
 async function invEnviarDatos() {
+    const preview = INV_EXCEL_STATE.preview;
+
+    if (!(await AssetNameReview.confirm({ tbody: preview?.elements.tbody, field: 'bien' }))) return;
+
     const rows = invLeerFilasDeDOM();
     const inventoryId = document.getElementById('inventory-name')?.getAttribute('data-id');
 
     if (!rows.length || !inventoryId) return;
 
-    const preview = INV_EXCEL_STATE.preview;
     const button = preview?.elements.submitButton;
 
     if (button) {

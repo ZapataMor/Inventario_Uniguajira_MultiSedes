@@ -352,6 +352,8 @@ async function sendGoodsData() {
     const preview = GOODS_EXCEL_STATE.preview;
     if (!preview) return;
 
+    if (!(await AssetNameReview.confirm({ tbody: preview.elements.tbody, field: 'nombre' }))) return;
+
     const { rows, diagnostics } = goodsExcelRefreshPreviewStatus({ clearErrors: false });
     const blockingErrors = diagnostics.flatMap((diagnostic, index) =>
         diagnostic.blocking.map((issue) => `Fila ${rows[index].rowNumber}: ${issue}.`)

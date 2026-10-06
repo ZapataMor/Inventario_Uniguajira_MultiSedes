@@ -197,10 +197,13 @@ function globalExcelResaltarErroresLocalizacion(errors) {
 }
 
 async function globalExcelEnviarDatos() {
+    const preview = GLOBAL_EXCEL_STATE.preview;
+
+    if (!(await AssetNameReview.confirm({ tbody: preview?.elements.tbody, field: 'bien' }))) return;
+
     const rows = globalExcelLeerFilasDeDOM();
     if (!rows.length) return;
 
-    const preview = GLOBAL_EXCEL_STATE.preview;
     const button = preview?.elements.submitButton;
 
     if (button) {
