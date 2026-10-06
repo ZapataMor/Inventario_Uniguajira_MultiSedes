@@ -1,0 +1,229 @@
+/* Modal de bienes que no se pudieron cargar (excel-failed-rows.js) */
+
+.excel-failed-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1030;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background-color: rgba(15, 23, 42, 0.45);
+}
+
+.excel-failed-dialog {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 1180px;
+    max-height: calc(100vh - 32px);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background-color: #ffffff;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    overflow: hidden;
+}
+
+.excel-failed-top {
+    padding: 18px 20px 4px;
+}
+
+.excel-failed-title {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.excel-failed-summary {
+    margin: 6px 0 0;
+    font-size: 14px;
+    color: #475569;
+}
+
+.excel-failed-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+    color: #475569;
+}
+
+.excel-failed-legend li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.excel-failed-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid;
+}
+
+.excel-failed-swatch-error {
+    border-color: #e11d48;
+    background-color: #ffe4e6;
+}
+
+.excel-failed-swatch-duplicate {
+    border-color: #d97706;
+    background-color: #fef3c7;
+}
+
+.excel-failed-body {
+    min-height: 0;
+    padding: 12px 20px;
+    overflow: auto;
+}
+
+.excel-failed-table-scroll {
+    overflow-x: auto;
+}
+
+.excel-failed-table {
+    width: 100%;
+    min-width: 1400px;
+}
+
+.excel-failed-table td {
+    vertical-align: middle;
+}
+
+.excel-failed-reason {
+    display: block;
+    text-align: left;
+    min-width: 180px;
+    max-width: 260px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #be123c;
+}
+
+.excel-failed-table tbody tr.excel-failed-row-error {
+    background-color: #fff1f2;
+}
+
+.excel-failed-table tbody tr.excel-failed-row-duplicate,
+.excel-failed-table tbody tr.excel-failed-ref-row {
+    background-color: #fffbeb;
+}
+
+.excel-failed-table tbody tr.excel-failed-row-duplicate td:first-child,
+.excel-failed-table tbody tr.excel-failed-ref-row td:first-child {
+    border-left: 4px solid #d97706;
+}
+
+.excel-failed-row-duplicate .excel-failed-reason {
+    color: #b45309;
+}
+
+.excel-failed-table tbody tr.excel-failed-group-start td {
+    border-top: 2px solid #d97706;
+}
+
+.excel-failed-ref-row td {
+    text-align: left;
+    font-size: 13px;
+    color: #475569;
+}
+
+.excel-failed-ref-label {
+    display: inline-block;
+    margin-right: 8px;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #b45309;
+    background-color: #fde68a;
+}
+
+/* Celdas marcadas: se aplica al editor de la celda para ganar sobre su fondo blanco. */
+.excel-failed-cell-error [data-field] {
+    border: 1px solid #e11d48;
+    background-color: #ffe4e6;
+    color: #9f1239;
+}
+
+.excel-failed-cell-duplicate [data-field] {
+    border: 1px solid #d97706;
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.excel-failed-cell-edited [data-field] {
+    border: 1px solid #059669;
+    background-color: #ecfdf5;
+}
+
+.excel-failed-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.excel-failed-actions-spacer {
+    flex: 1;
+}
+
+.excel-failed-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    background-color: #ffffff;
+    color: #475569;
+}
+
+.excel-failed-btn:hover {
+    background-color: #f8fafc;
+}
+
+.excel-failed-btn-download {
+    border-color: #059669;
+    color: #047857;
+}
+
+.excel-failed-btn-download:hover {
+    background-color: #ecfdf5;
+}
+
+.excel-failed-btn-submit {
+    border-color: #059669;
+    background-color: #059669;
+    color: #ffffff;
+}
+
+.excel-failed-btn-submit:hover {
+    background-color: #047857;
+}
+
+.excel-failed-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+    .excel-failed-actions-spacer {
+        display: none;
+    }
+
+    .excel-failed-btn {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}

@@ -226,21 +226,21 @@
             overlay.className = 'name-review-overlay';
             overlay.innerHTML = `
                 <div class="name-review-dialog" role="dialog" aria-modal="true" aria-labelledby="nameReviewTitle">
-                    <header class="name-review-header">
+                    <div class="name-review-header">
                         <p class="name-review-tag">Revision de nombres</p>
                         <h3 id="nameReviewTitle" class="name-review-title">Hay bienes con nombres parecidos</h3>
                         <p class="name-review-subtitle">
                             Pueden ser el mismo bien escrito de distintas formas. Elige con que nombre deben quedar
                             o indica que son bienes distintos.
                         </p>
-                    </header>
+                    </div>
                     <div class="name-review-body">
                         ${groups.map(renderGroup).join('')}
                     </div>
-                    <footer class="name-review-footer">
+                    <div class="name-review-footer">
                         <button type="button" class="name-review-btn name-review-btn-cancel" data-action="cancel">Cancelar envio</button>
                         <button type="button" class="name-review-btn name-review-btn-confirm" data-action="confirm">Aplicar y enviar</button>
-                    </footer>
+                    </div>
                 </div>`;
 
             const close = (result) => {

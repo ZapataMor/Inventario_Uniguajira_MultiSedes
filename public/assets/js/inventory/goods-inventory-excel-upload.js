@@ -9,6 +9,38 @@ const INV_EXCEL_STATE = {
     preview: null,
 };
 
+const INV_PREVIEW_HEADERS = [
+    'Bien', 'Tipo', 'Serial', 'Cantidad', 'Marca', 'Modelo', 'Estado',
+    'Descripcion', 'Color', 'Condiciones', 'Fecha ingreso', '',
+];
+
+// Mismo orden y encabezados que la plantilla, para poder volver a subir el archivo.
+const INV_EXPORT_COLUMNS = [
+    { header: 'Bien*', key: 'bien' },
+    { header: 'Tipo*', key: 'tipo' },
+    { header: 'Serial', key: 'serial' },
+    { header: 'Cantidad', key: 'cantidad' },
+    { header: 'Marca', key: 'marca' },
+    { header: 'Modelo', key: 'modelo' },
+    { header: 'Descripcion', key: 'descripcion' },
+    { header: 'Estado', key: 'estado' },
+    { header: 'Color', key: 'color' },
+    { header: 'Condiciones', key: 'condiciones' },
+    { header: 'Fecha Ingreso', key: 'fecha_ingreso' },
+];
+
+// Detalles que solo se guardan en bienes tipo Serial.
+const INV_SERIAL_DETAIL_FIELDS = ['descripcion', 'color', 'condiciones', 'fecha_ingreso'];
+
+function invSerialDetailColumn(field) {
+    return {
+        field,
+        render: ({ values, helpers }) => values.esSerial
+            ? helpers.editable(field, values[field])
+            : helpers.placeholder('-'),
+    };
+}
+
 const INV_EXCEL_COLUMNS = [
     { field: 'bien', type: 'text' },
     { field: 'tipo', type: 'static', value: ({ values }) => values.tipo },
@@ -35,6 +67,7 @@ const INV_EXCEL_COLUMNS = [
             { value: 'inactivo', label: 'inactivo' },
         ],
     },
+    ...INV_SERIAL_DETAIL_FIELDS.map(invSerialDetailColumn),
     { type: 'remove', align: 'center', padding: '4px 10px', title: 'Eliminar fila' },
 ];
 
@@ -49,7 +82,11 @@ function invPrepareRow(row) {
         cantidad: String(row.cantidad ?? '1').trim() || '1',
         marca: String(row.marca ?? '').trim(),
         modelo: String(row.modelo ?? '').trim(),
-        estado: String(row.estado ?? '').trim() === 'inactivo' ? 'inactivo' : 'activo',
+        estado: String(row.estado ?? '').trim().toLowerCase() === 'inactivo' ? 'inactivo' : 'activo',
+        descripcion: String(row.descripcion ?? '').trim(),
+        color: String(row.color ?? '').trim(),
+        condiciones: String(row.condiciones ?? '').trim(),
+        fecha_ingreso: ExcelUI.normalizeDate(row.fecha_ingreso),
     };
 }
 
@@ -161,7 +198,7 @@ function invParsearFilas(jsonData) {
             estado: idx.estado >= 0 ? String(row[idx.estado] ?? 'activo').trim() : 'activo',
             color: idx.color >= 0 ? String(row[idx.color] ?? '').trim() : '',
             condiciones: idx.condiciones >= 0 ? String(row[idx.condiciones] ?? '').trim() : '',
-            fecha_ingreso: idx.fecha >= 0 ? String(row[idx.fecha] ?? '').trim() : '',
+            fecha_ingreso: idx.fecha >= 0 ? ExcelUI.normalizeDate(row[idx.fecha]) : '',
             _rowNum: index + 2,
         });
     });
@@ -169,22 +206,68 @@ function invParsearFilas(jsonData) {
     return rows;
 }
 
+function invMapRow(row) {
+    if (!row.bien) return null;
+
+    const esSerial = row.tipo === 'Serial';
+
+    return {
+        bien: row.bien,
+        tipo: row.tipo,
+        serial: esSerial ? (row.serial ?? '') : null,
+        cantidad: esSerial ? null : (row.cantidad || '1'),
+        marca: row.marca ?? '',
+        modelo: row.modelo ?? '',
+        estado: row.estado ?? 'activo',
+        descripcion: esSerial ? (row.descripcion ?? '') : null,
+        color: esSerial ? (row.color ?? '') : null,
+        condiciones: esSerial ? (row.condiciones ?? '') : null,
+        fecha_ingreso: esSerial ? ExcelUI.normalizeDate(row.fecha_ingreso) : null,
+    };
+}
+
 function invLeerFilasDeDOM() {
-    return INV_EXCEL_STATE.preview?.readRows((row) => {
-        if (!row.bien) return null;
+    return INV_EXCEL_STATE.preview?.readRows(invMapRow) || [];
+}
 
-        const esSerial = row.tipo === 'Serial';
+async function invPostRows(inventoryId, rows) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const response = await fetch(`/api/goods-inventory/batchCreate/${inventoryId}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ rows }),
+    });
 
-        return {
-            bien: row.bien,
-            tipo: row.tipo,
-            serial: esSerial ? (row.serial ?? '') : null,
-            cantidad: esSerial ? null : (row.cantidad || '1'),
-            marca: row.marca ?? '',
-            modelo: row.modelo ?? '',
-            estado: row.estado ?? 'activo',
-        };
-    }) || [];
+    return response.json();
+}
+
+function invIrAlInventario(inventoryId) {
+    const groupId = document.getElementById('inventory-name')?.getAttribute('data-group-id');
+    loadContent(
+        `/group/${groupId}/inventory/${inventoryId}`,
+        { onSuccess: () => initGoodsInventoryFunctions() }
+    );
+}
+
+function invAbrirFallidos(inventoryId, sentRows, data) {
+    ExcelFailedRows.open({
+        headers: INV_PREVIEW_HEADERS,
+        columns: INV_EXCEL_COLUMNS,
+        prepareRow: invPrepareRow,
+        mapRow: invMapRow,
+        submit: (rows) => invPostRows(inventoryId, rows),
+        exportColumns: INV_EXPORT_COLUMNS,
+        sentRows,
+        failures: data.failed_rows,
+        created: data.created,
+        onClose: ({ created }) => {
+            if (created > 0) invIrAlInventario(inventoryId);
+        },
+    });
 }
 
 async function invEnviarDatos() {
@@ -207,30 +290,20 @@ async function invEnviarDatos() {
     preview?.clearErrors();
 
     try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        const response = await fetch(`/api/goods-inventory/batchCreate/${inventoryId}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ rows }),
-        });
-
-        const data = await response.json();
+        const data = await invPostRows(inventoryId, rows);
         showToast(data);
+
+        if (data.failed_rows?.length) {
+            invAbrirFallidos(inventoryId, rows, data);
+            return;
+        }
 
         if (data.errors && data.errors.length) {
             preview?.showErrors(data.errors);
         }
 
         if (data.success) {
-            const groupId = document.getElementById('inventory-name')?.getAttribute('data-group-id');
-            loadContent(
-                `/group/${groupId}/inventory/${inventoryId}`,
-                { onSuccess: () => initGoodsInventoryFunctions() }
-            );
+            invIrAlInventario(inventoryId);
         }
     } catch (error) {
         console.error(error);

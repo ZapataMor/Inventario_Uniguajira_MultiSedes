@@ -12,6 +12,44 @@
         return String(value ?? '').trim();
     }
 
+    function toIsoDate(year, month, day) {
+        const [y, m, d] = [Number(year), Number(month), Number(day)];
+        const date = new Date(Date.UTC(y, m - 1, d));
+
+        if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) {
+            return null;
+        }
+
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    // Convierte fechas de Excel (numero de serie, AAAA-MM-DD o DD/MM/AAAA) a AAAA-MM-DD.
+    // Lo que no se reconoce se devuelve tal cual para que el backend lo rechace
+    // y el usuario lo vea marcado.
+    function normalizeDate(value) {
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
+            return toIsoDate(value.getFullYear(), value.getMonth() + 1, value.getDate());
+        }
+
+        const text = normalizeText(value);
+        if (!text) return '';
+
+        if (/^\d+(\.\d+)?$/.test(text)) {
+            // Al minuto: algunas herramientas guardan la medianoche como 45932.9998.
+            const serial = Math.round(Number(text) * 1440) / 1440;
+            const parsed = serial >= 1 && serial < 2958466 ? window.XLSX?.SSF?.parse_date_code(serial) : null;
+            return (parsed && toIsoDate(parsed.y, parsed.m, parsed.d)) || text;
+        }
+
+        let match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+        if (match) return toIsoDate(match[1], match[2], match[3]) || text;
+
+        match = text.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+        if (match) return toIsoDate(match[3], match[2], match[1]) || text;
+
+        return text;
+    }
+
     function getExtension(fileName) {
         const index = String(fileName ?? '').lastIndexOf('.');
         return index >= 0 ? fileName.substring(index).toLowerCase() : '';
@@ -374,6 +412,7 @@
         getExtension,
         hasValidExtension,
         initUploadArea,
+        normalizeDate,
         normalizeHeaders,
         normalizeText,
         readExcelFile,

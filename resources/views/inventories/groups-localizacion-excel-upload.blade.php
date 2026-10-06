@@ -50,6 +50,10 @@
             ['label' => 'Marca'],
             ['label' => 'Modelo'],
             ['label' => 'Estado'],
+            ['label' => 'Descripción'],
+            ['label' => 'Color'],
+            ['label' => 'Condiciones'],
+            ['label' => 'Fecha ingreso'],
             ['label' => 'Localización'],
             ['label' => ''],
         ]"

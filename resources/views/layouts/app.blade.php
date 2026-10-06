@@ -35,7 +35,7 @@
     @foreach([
         'main', 'navbar', 'sidebar', 'userMenu', 'tasks', 'toast', 'modals',
         'selection', 'autocomplete', 'modals.inventory', 'modals.filter', 'inputImage',
-        'excel-name-review',
+        'excel-name-review', 'excel-failed-rows',
     ] as $componentStyle)
         <link rel="stylesheet" href="{{ asset("assets/css/components/{$componentStyle}.css") }}?v={{ $assetVersion("assets/css/components/{$componentStyle}.css") }}">
     @endforeach
@@ -84,6 +84,7 @@
     <script src="{{ asset('assets/js/helpers/autocomplete.js') }}?v={{ $assetVersion('assets/js/helpers/autocomplete.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/excel-ui.js') }}?v={{ $assetVersion('assets/js/helpers/excel-ui.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/asset-name-review.js') }}?v={{ $assetVersion('assets/js/helpers/asset-name-review.js') }}"></script>
+    <script src="{{ asset('assets/js/helpers/excel-failed-rows.js') }}?v={{ $assetVersion('assets/js/helpers/excel-failed-rows.js') }}"></script>
     <script src="{{ asset('assets/js/history-guard.js') }}?v={{ $assetVersion('assets/js/history-guard.js') }}"></script>
     <script src="{{ asset('assets/js/tasks.js') }}?v={{ $assetVersion('assets/js/tasks.js') }}"></script>
     <script src="{{ asset('assets/js/helpers/signature-pad.js') }}?v={{ $assetVersion('assets/js/helpers/signature-pad.js') }}"></script>

@@ -14,11 +14,35 @@ const LOC_ESTADO_OPTIONS = [
     { value: 'inactivo', label: 'inactivo' },
 ];
 
-const LOC_CACHE_FIELDS = ['serial', 'cantidad', 'marca', 'modelo', 'estado'];
+// Campos que solo aplican a bienes tipo Serial (los de Cantidad solo suman unidades).
+const LOC_SERIAL_FIELDS = ['serial', 'marca', 'modelo', 'estado', 'descripcion', 'color', 'condiciones', 'fecha_ingreso'];
+
+const LOC_CACHE_FIELDS = ['cantidad', ...LOC_SERIAL_FIELDS];
+
+const LOC_PREVIEW_HEADERS = [
+    'Bien', 'Tipo', 'Serial', 'Cantidad', 'Marca', 'Modelo', 'Estado',
+    'Descripcion', 'Color', 'Condiciones', 'Fecha ingreso', 'Localizacion', '',
+];
+
+// Mismo orden y encabezados que la plantilla, para poder volver a subir el archivo.
+const LOC_EXPORT_COLUMNS = [
+    { header: 'Bien*', key: 'bien' },
+    { header: 'Tipo*', key: 'tipo' },
+    { header: 'Serial', key: 'serial' },
+    { header: 'Cantidad', key: 'cantidad' },
+    { header: 'Marca', key: 'marca' },
+    { header: 'Modelo', key: 'modelo' },
+    { header: 'Descripcion', key: 'descripcion' },
+    { header: 'Estado', key: 'estado' },
+    { header: 'Color', key: 'color' },
+    { header: 'Condiciones', key: 'condiciones' },
+    { header: 'Fecha Ingreso', key: 'fecha_ingreso' },
+    { header: 'Localizacion', key: 'localizacion' },
+];
 
 const LOC_CELL = {
     editable(field, value = '') {
-        return `<div class="excel-preview-edit-cell block min-w-[72px] w-full rounded-xl border border-transparent bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:bg-emerald-50/70 focus:ring-4 focus:ring-emerald-100" contenteditable="plaintext-only" data-field="${field}">${value}</div>`;
+        return `<div class="excel-preview-edit-cell block min-w-[72px] w-full rounded-xl border border-transparent bg-white px-3 py-2 text-sm text-slate-700 outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:bg-emerald-50/70 focus:ring-4 focus:ring-emerald-100" contenteditable="plaintext-only" data-field="${field}">${ExcelUI.escapeHtml(value)}</div>`;
     },
     select(field, value, choices = []) {
         const options = choices.map((choice) => {
@@ -28,12 +52,26 @@ const LOC_CELL = {
 
         return `<select class="excel-preview-edit-select w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" data-field="${field}">${options}</select>`;
     },
-    hiddenPlaceholder() {
-        return '<span class="sr-only">No aplica para bienes de tipo cantidad</span>';
+    // data-loc-slot ubica la celda aunque el campo no aplique, sin depender de su posicion.
+    hiddenPlaceholder(field) {
+        return `<span class="sr-only" data-loc-slot="${field}">No aplica para este tipo de bien</span>`;
     },
 };
 
-const COL_INDEX = { serial: 2, cantidad: 3, marca: 4, modelo: 5, estado: 6 };
+function locSerialCell(field, value) {
+    return field === 'estado'
+        ? LOC_CELL.select('estado', value || 'activo', LOC_ESTADO_OPTIONS)
+        : LOC_CELL.editable(field, value ?? '');
+}
+
+function locSerialColumn(field) {
+    return {
+        field,
+        render: ({ values }) => values.esSerial
+            ? locSerialCell(field, values[field])
+            : LOC_CELL.hiddenPlaceholder(field),
+    };
+}
 
 const LOC_EXCEL_COLUMNS = [
     { field: 'bien', type: 'text' },
@@ -46,36 +84,20 @@ const LOC_EXCEL_COLUMNS = [
             { value: 'Cantidad', label: 'Cantidad' },
         ],
     },
-    {
-        field: 'serial',
-        render: ({ values, helpers }) => values.esSerial
-            ? helpers.editable('serial', values.serial)
-            : LOC_CELL.hiddenPlaceholder(),
-    },
+    locSerialColumn('serial'),
     {
         field: 'cantidad',
         render: ({ values, helpers }) => values.esSerial
-            ? LOC_CELL.hiddenPlaceholder()
+            ? LOC_CELL.hiddenPlaceholder('cantidad')
             : helpers.editable('cantidad', values.cantidad),
     },
-    {
-        field: 'marca',
-        render: ({ values, helpers }) => values.esSerial
-            ? helpers.editable('marca', values.marca)
-            : LOC_CELL.hiddenPlaceholder(),
-    },
-    {
-        field: 'modelo',
-        render: ({ values, helpers }) => values.esSerial
-            ? helpers.editable('modelo', values.modelo)
-            : LOC_CELL.hiddenPlaceholder(),
-    },
-    {
-        field: 'estado',
-        render: ({ values }) => values.esSerial
-            ? LOC_CELL.select('estado', values.estado, LOC_ESTADO_OPTIONS)
-            : LOC_CELL.hiddenPlaceholder(),
-    },
+    locSerialColumn('marca'),
+    locSerialColumn('modelo'),
+    locSerialColumn('estado'),
+    locSerialColumn('descripcion'),
+    locSerialColumn('color'),
+    locSerialColumn('condiciones'),
+    locSerialColumn('fecha_ingreso'),
     { field: 'localizacion', type: 'text' },
     { type: 'remove', align: 'center', padding: '4px 10px', title: 'Eliminar fila' },
 ];
@@ -117,52 +139,38 @@ function locCacheVisibleFields(tr) {
 }
 
 function locGetFieldCell(tr, field) {
-    const index = COL_INDEX[field];
-    return typeof index === 'number' ? tr?.querySelectorAll('td')[index] ?? null : null;
+    return tr?.querySelector(`[data-field="${field}"], [data-loc-slot="${field}"]`)?.closest('td') ?? null;
 }
 
 function locRenderTypeFields(tr, tipo) {
     const esSerial = tipo === 'Serial';
-    const serialTd = locGetFieldCell(tr, 'serial');
     const cantidadTd = locGetFieldCell(tr, 'cantidad');
-    const marcaTd = locGetFieldCell(tr, 'marca');
-    const modeloTd = locGetFieldCell(tr, 'modelo');
-    const estadoTd = locGetFieldCell(tr, 'estado');
 
-    if (!serialTd || !cantidadTd || !marcaTd || !modeloTd || !estadoTd) return;
-
-    if (esSerial) {
-        serialTd.innerHTML = LOC_CELL.editable('serial', tr.dataset[locCacheKey('serial')] ?? '');
-        cantidadTd.innerHTML = LOC_CELL.hiddenPlaceholder();
-        marcaTd.innerHTML = LOC_CELL.editable('marca', tr.dataset[locCacheKey('marca')] ?? '');
-        modeloTd.innerHTML = LOC_CELL.editable('modelo', tr.dataset[locCacheKey('modelo')] ?? '');
-        estadoTd.innerHTML = LOC_CELL.select(
-            'estado',
-            tr.dataset[locCacheKey('estado')] ?? 'activo',
-            LOC_ESTADO_OPTIONS,
-        );
-        return;
+    if (cantidadTd) {
+        cantidadTd.innerHTML = esSerial
+            ? LOC_CELL.hiddenPlaceholder('cantidad')
+            : LOC_CELL.editable('cantidad', tr.dataset[locCacheKey('cantidad')] || '1');
     }
 
-    cantidadTd.innerHTML = LOC_CELL.editable('cantidad', tr.dataset[locCacheKey('cantidad')] ?? '1');
-    serialTd.innerHTML = LOC_CELL.hiddenPlaceholder();
-    marcaTd.innerHTML = LOC_CELL.hiddenPlaceholder();
-    modeloTd.innerHTML = LOC_CELL.hiddenPlaceholder();
-    estadoTd.innerHTML = LOC_CELL.hiddenPlaceholder();
+    LOC_SERIAL_FIELDS.forEach((field) => {
+        const td = locGetFieldCell(tr, field);
+        if (!td) return;
+
+        td.innerHTML = esSerial
+            ? locSerialCell(field, tr.dataset[locCacheKey(field)] ?? '')
+            : LOC_CELL.hiddenPlaceholder(field);
+    });
 }
 
-function locSeedRowCaches(rows) {
-    const renderedRows = LOC_EXCEL_STATE.preview?.elements.tbody?.querySelectorAll('tr') ?? [];
+function locSeedRowCaches(rows, tbody = LOC_EXCEL_STATE.preview?.elements.tbody) {
+    const renderedRows = tbody?.querySelectorAll('tr:not(.excel-failed-ref-row)') ?? [];
 
     rows.forEach((row, index) => {
         const tr = renderedRows[index];
         if (!tr) return;
 
-        locWriteFieldCache(tr, 'serial', String(row.serial ?? '').trim());
-        locWriteFieldCache(tr, 'cantidad', String(row.cantidad ?? '1').trim() || '1');
-        locWriteFieldCache(tr, 'marca', String(row.marca ?? '').trim());
-        locWriteFieldCache(tr, 'modelo', String(row.modelo ?? '').trim());
-        locWriteFieldCache(tr, 'estado', locNormalizeEstado(row.estado));
+        const values = locPrepareRow(row);
+        LOC_CACHE_FIELDS.forEach((field) => locWriteFieldCache(tr, field, values[field]));
     });
 }
 
@@ -178,6 +186,10 @@ function locPrepareRow(row) {
         marca: String(row.marca ?? '').trim(),
         modelo: String(row.modelo ?? '').trim(),
         estado: locNormalizeEstado(row.estado),
+        descripcion: String(row.descripcion ?? '').trim(),
+        color: String(row.color ?? '').trim(),
+        condiciones: String(row.condiciones ?? '').trim(),
+        fecha_ingreso: ExcelUI.normalizeDate(row.fecha_ingreso),
         localizacion: String(row.localizacion ?? '').trim(),
     };
 }
@@ -319,7 +331,7 @@ function locParsearFilas(jsonData) {
             estado: idx.estado >= 0 ? String(row[idx.estado] ?? 'activo').trim() : 'activo',
             color: idx.color >= 0 ? String(row[idx.color] ?? '').trim() : '',
             condiciones: idx.condiciones >= 0 ? String(row[idx.condiciones] ?? '').trim() : '',
-            fecha_ingreso: idx.fecha >= 0 ? String(row[idx.fecha] ?? '').trim() : '',
+            fecha_ingreso: idx.fecha >= 0 ? ExcelUI.normalizeDate(row[idx.fecha]) : '',
             localizacion: idx.localizacion >= 0 ? String(row[idx.localizacion] ?? '').trim() : '',
             _rowNum: index + 2,
         });
@@ -328,23 +340,71 @@ function locParsearFilas(jsonData) {
     return rows;
 }
 
+function locMapRow(row, tr) {
+    if (!row.bien) return null;
+
+    const esSerial = row.tipo === 'Serial';
+    const mapped = {
+        bien: row.bien,
+        tipo: row.tipo,
+        cantidad: esSerial ? null : (row.cantidad || tr?.dataset[locCacheKey('cantidad')] || '1'),
+        localizacion: row.localizacion ?? '',
+    };
+
+    LOC_SERIAL_FIELDS.forEach((field) => {
+        mapped[field] = esSerial ? (row[field] ?? tr?.dataset[locCacheKey(field)] ?? '') : null;
+    });
+
+    if (esSerial) {
+        mapped.estado ||= 'activo';
+        mapped.fecha_ingreso = ExcelUI.normalizeDate(mapped.fecha_ingreso);
+    }
+
+    return mapped;
+}
+
 function locLeerFilasDeDOM() {
-    return LOC_EXCEL_STATE.preview?.readRows((row, tr) => {
-        if (!row.bien) return null;
+    return LOC_EXCEL_STATE.preview?.readRows(locMapRow) || [];
+}
 
-        const esSerial = row.tipo === 'Serial';
+async function locPostRows(rows) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const response = await fetch('/api/goods-inventory/batchCreateByLocalizacion', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+        body: JSON.stringify({ rows }),
+    });
 
-        return {
-            bien: row.bien,
-            tipo: row.tipo,
-            serial: esSerial ? (row.serial ?? tr?.dataset[locCacheKey('serial')] ?? '') : null,
-            cantidad: esSerial ? null : (row.cantidad || tr?.dataset[locCacheKey('cantidad')] || '1'),
-            marca: esSerial ? (row.marca ?? tr?.dataset[locCacheKey('marca')] ?? '') : null,
-            modelo: esSerial ? (row.modelo ?? tr?.dataset[locCacheKey('modelo')] ?? '') : null,
-            estado: esSerial ? (row.estado ?? tr?.dataset[locCacheKey('estado')] ?? 'activo') : null,
-            localizacion: row.localizacion ?? '',
-        };
-    }) || [];
+    return response.json();
+}
+
+function locIrAGrupos() {
+    loadContent('/groups', { onSuccess: () => initGroupFunctions() });
+}
+
+function locAbrirFallidos(sentRows, data) {
+    ExcelFailedRows.open({
+        headers: LOC_PREVIEW_HEADERS,
+        columns: LOC_EXCEL_COLUMNS,
+        prepareRow: locPrepareRow,
+        mapRow: locMapRow,
+        submit: locPostRows,
+        exportColumns: LOC_EXPORT_COLUMNS,
+        sentRows,
+        failures: data.failed_rows,
+        created: data.created,
+        onRender: (tbody, rows) => {
+            bindTipoSelect(tbody);
+            locSeedRowCaches(rows, tbody);
+        },
+        onClose: ({ created }) => {
+            if (created > 0) locIrAGrupos();
+        },
+    });
 }
 
 async function locEnviarDatos() {
@@ -366,26 +426,20 @@ async function locEnviarDatos() {
     preview?.clearErrors();
 
     try {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        const response = await fetch('/api/goods-inventory/batchCreateByLocalizacion', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-            },
-            body: JSON.stringify({ rows }),
-        });
-
-        const data = await response.json();
+        const data = await locPostRows(rows);
         showToast(data);
+
+        if (data.failed_rows?.length) {
+            locAbrirFallidos(rows, data);
+            return;
+        }
 
         if (data.errors && data.errors.length) {
             preview?.showErrors(data.errors);
         }
 
         if (data.success) {
-            loadContent('/groups', { onSuccess: () => initGroupFunctions() });
+            locIrAGrupos();
         }
     } catch (error) {
         console.error(error);

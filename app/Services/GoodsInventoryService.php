@@ -222,6 +222,48 @@ class GoodsInventoryService
     }
 
     /**
+     * Igual que getExistingSerialLookup, pero indica a que bien e inventario
+     * pertenece cada serial para poder mostrarlo junto al duplicado.
+     *
+     * @param  array<int, string>  $serials
+     * @return array<string, array{serial:string, bien:string, inventario:string}>
+     */
+    public function getExistingSerialDetails(array $serials): array
+    {
+        $serials = array_values(array_unique(array_filter(
+            array_map(fn ($serial) => trim((string) $serial), $serials)
+        )));
+
+        if (empty($serials)) {
+            return [];
+        }
+
+        $details = [];
+
+        foreach (array_chunk($serials, 500) as $chunk) {
+            AssetEquipment::query()
+                ->join('asset_inventory', 'asset_inventory.id', '=', 'asset_equipments.asset_inventory_id')
+                ->join('assets', 'assets.id', '=', 'asset_inventory.asset_id')
+                ->join('inventories', 'inventories.id', '=', 'asset_inventory.inventory_id')
+                ->whereIn('asset_equipments.serial', $chunk)
+                ->get([
+                    'asset_equipments.serial',
+                    'assets.name as asset_name',
+                    'inventories.name as inventory_name',
+                ])
+                ->each(function ($equipment) use (&$details) {
+                    $details[$this->serialKey($equipment->serial)] = [
+                        'serial' => $equipment->serial,
+                        'bien' => $equipment->asset_name,
+                        'inventario' => $equipment->inventory_name,
+                    ];
+                });
+        }
+
+        return $details;
+    }
+
+    /**
      * Suma cantidades por lote minimizando consultas.
      *
      * @param  array<int, int>  $incrementsByRelationId

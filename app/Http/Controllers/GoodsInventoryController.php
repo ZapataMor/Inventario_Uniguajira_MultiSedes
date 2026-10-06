@@ -1253,25 +1253,30 @@ class GoodsInventoryController extends Controller
 
         $created = 0;
         $errors = [];
+        $failedRows = [];
+        $fail = $this->batchFailureRecorder($errors, $failedRows);
 
         DB::beginTransaction();
         try {
+            $repeatedSerials = $this->repeatedSerialKeys($rows);
+            $existingSerials = $this->service->getExistingSerialDetails(array_column($rows, 'serial'));
             $assetDefinitions = [];
-            $serials = [];
+            $rejected = [];
 
-            foreach ($rows as $row) {
+            foreach ($rows as $i => $row) {
                 $nombre = trim($row['bien'] ?? '');
                 if ($nombre === '') {
                     continue;
                 }
 
+                if ($this->failIfSerialConflict($fail, $i, $row, $repeatedSerials, $existingSerials)
+                    || $this->failIfInvalidEntryDate($fail, $i, $row)) {
+                    $rejected[$i] = true;
+                    continue;
+                }
+
                 $tipo = trim($row['tipo'] ?? 'Serial');
                 $assetDefinitions[$nombre] ??= strtolower($tipo) === 'cantidad' ? 'Cantidad' : 'Serial';
-
-                $serial = trim($row['serial'] ?? '');
-                if ($serial !== '') {
-                    $serials[] = $serial;
-                }
             }
 
             $assetsByName = $this->service->getOrCreateAssetsByName($assetDefinitions);
@@ -1285,13 +1290,15 @@ class GoodsInventoryController extends Controller
             }
 
             $relations = $this->service->ensureAssetInventoryRelations($pairs);
-            $existingSerials = $this->service->getExistingSerialLookup($serials);
-            $newSerials = [];
             $quantityIncrements = [];
             $equipmentsToInsert = [];
             $now = now();
 
             foreach ($rows as $i => $row) {
+                if (isset($rejected[$i])) {
+                    continue;
+                }
+
                 $nombre    = trim($row['bien'] ?? '');
                 $tipo      = trim($row['tipo'] ?? 'Serial');
                 $serial    = trim($row['serial'] ?? '');
@@ -1305,7 +1312,7 @@ class GoodsInventoryController extends Controller
                 $fecha     = trim($row['fecha_ingreso'] ?? '');
 
                 if ($nombre === '') {
-                    $errors[] = "Fila {$i}: nombre vacÃ­o.";
+                    $fail($i, 'bien', 'nombre vacío.');
                     continue;
                 }
 
@@ -1313,32 +1320,24 @@ class GoodsInventoryController extends Controller
                 $asset = $assetsByName[$nombre] ?? null;
 
                 if (!$asset) {
-                    $errors[] = "Fila {$i}: no se pudo resolver el bien '{$nombre}'.";
+                    $fail($i, 'bien', "no se pudo resolver el bien '{$nombre}'.");
                     continue;
                 }
 
                 $relationId = $relations[$inventoryId . ':' . $asset->id] ?? null;
                 if (!$relationId) {
-                    $errors[] = "Fila {$i}: no se pudo preparar la relaciÃ³n inventario-bien para '{$nombre}'.";
+                    $fail($i, 'bien', "no se pudo preparar la relación inventario-bien para '{$nombre}'.");
                     continue;
                 }
 
                 if ($tipoNorm === 'Serial') {
                     if ($serial === '') {
-                        $errors[] = "Fila {$i}: serial vacÃ­o para '{$nombre}'.";
+                        $fail($i, 'serial', "serial vacío para '{$nombre}'.");
                         continue;
                     }
 
                     $validEstados = ['activo', 'inactivo', 'en_mantenimiento'];
                     $estadoFinal  = in_array($estado, $validEstados) ? $estado : 'activo';
-                    $serialKey = $this->service->serialKey($serial);
-
-                    if (isset($existingSerials[$serialKey]) || isset($newSerials[$serialKey])) {
-                        $errors[] = "Fila {$i}: serial '{$serial}' ya existe.";
-                        continue;
-                    }
-
-                    $newSerials[$serialKey] = true;
                     $equipmentsToInsert[] = [
                         'asset_inventory_id' => $relationId,
                         'description' => $desc ?: null,
@@ -1391,10 +1390,11 @@ class GoodsInventoryController extends Controller
         }
 
         return response()->json([
-            'success' => $created > 0,
-            'created' => $created,
-            'errors'  => $errors,
-            'message' => $message,
+            'success'     => $created > 0,
+            'created'     => $created,
+            'errors'      => $errors,
+            'failed_rows' => $failedRows,
+            'message'     => $message,
         ]);
     }
 
@@ -1526,36 +1526,45 @@ class GoodsInventoryController extends Controller
             ->get()
             ->keyBy(fn($inv) => strtolower($inv->name));
 
-        $created = 0;
-        $errors  = [];
+        $created    = 0;
+        $errors     = [];
+        $failedRows = [];
+        $fail       = $this->batchFailureRecorder($errors, $failedRows);
 
         DB::beginTransaction();
         try {
+            $repeatedSerials = $this->repeatedSerialKeys($rows);
+            $existingSerials = $this->service->getExistingSerialDetails(array_column($rows, 'serial'));
+
             // Agrupar filas por inventario resuelto
             $rowsByInventory = [];
             foreach ($rows as $i => $row) {
                 $localizacion = strtolower(trim($row['localizacion'] ?? ''));
                 $nombre       = trim($row['bien'] ?? '');
 
+                if ($this->failIfSerialConflict($fail, $i, $row, $repeatedSerials, $existingSerials)
+                    || $this->failIfInvalidEntryDate($fail, $i, $row)) {
+                    continue;
+                }
+
                 if ($localizacion === '') {
-                    $errors[] = 'Fila ' . ($i + 2) . ": localización vacía para '{$nombre}'.";
+                    $fail($i, 'localizacion', "localización vacía para '{$nombre}'.");
                     continue;
                 }
 
                 $inventory = $inventoriesByName[$localizacion] ?? null;
                 if (!$inventory) {
-                    $errors[] = 'Fila ' . ($i + 2) . ": inventario '{$row['localizacion']}' no encontrado.";
+                    $fail($i, 'localizacion', "inventario '{$row['localizacion']}' no encontrado.");
                     continue;
                 }
 
-                $rowsByInventory[$inventory->id][] = ['row' => $row, 'index' => $i + 2];
+                $rowsByInventory[$inventory->id][] = ['row' => $row, 'index' => $i];
             }
 
             foreach ($rowsByInventory as $inventoryId => $rowItems) {
                 $inventory = Inventory::find($inventoryId);
 
                 $assetDefinitions = [];
-                $serials          = [];
 
                 foreach ($rowItems as $item) {
                     $r      = $item['row'];
@@ -1564,11 +1573,6 @@ class GoodsInventoryController extends Controller
 
                     $tipo = strtolower(trim($r['tipo'] ?? 'Serial')) === 'cantidad' ? 'Cantidad' : 'Serial';
                     $assetDefinitions[$nombre] ??= $tipo;
-
-                    $serial = $tipo === 'Serial' ? trim($r['serial'] ?? '') : '';
-                    if ($serial !== '') {
-                        $serials[] = $serial;
-                    }
                 }
 
                 $assetsByName = $this->service->getOrCreateAssetsByName($assetDefinitions);
@@ -1578,16 +1582,14 @@ class GoodsInventoryController extends Controller
                     $pairs[] = ['inventory_id' => $inventoryId, 'asset_id' => $asset->id];
                 }
 
-                $relations       = $this->service->ensureAssetInventoryRelations($pairs);
-                $existingSerials = $this->service->getExistingSerialLookup($serials);
-                $newSerials          = [];
+                $relations           = $this->service->ensureAssetInventoryRelations($pairs);
                 $quantityIncrements  = [];
                 $equipmentsToInsert  = [];
                 $now                 = now();
 
                 foreach ($rowItems as $item) {
                     $r         = $item['row'];
-                    $rowNum    = $item['index'];
+                    $index     = $item['index'];
                     $nombre    = trim($r['bien'] ?? '');
                     $tipo      = trim($r['tipo'] ?? 'Serial');
                     $cantidad  = intval($r['cantidad'] ?? 1);
@@ -1609,32 +1611,25 @@ class GoodsInventoryController extends Controller
                     $asset    = $assetsByName[$nombre] ?? null;
 
                     if (!$asset) {
-                        $errors[] = "Fila {$rowNum}: no se pudo resolver el bien '{$nombre}'.";
+                        $fail($index, 'bien', "no se pudo resolver el bien '{$nombre}'.");
                         continue;
                     }
 
                     $relationId = $relations[$inventoryId . ':' . $asset->id] ?? null;
                     if (!$relationId) {
-                        $errors[] = "Fila {$rowNum}: no se pudo preparar la relación para '{$nombre}'.";
+                        $fail($index, 'bien', "no se pudo preparar la relación para '{$nombre}'.");
                         continue;
                     }
 
                     if ($tipoNorm === 'Serial') {
                         if ($serial === '') {
-                            $errors[] = "Fila {$rowNum}: serial vacío para '{$nombre}'.";
+                            $fail($index, 'serial', "serial vacío para '{$nombre}'.");
                             continue;
                         }
 
                         $validEstados = ['activo', 'inactivo', 'en_mantenimiento'];
                         $estadoFinal  = in_array($estado, $validEstados) ? $estado : 'activo';
-                        $serialKey    = $this->service->serialKey($serial);
 
-                        if (isset($existingSerials[$serialKey]) || isset($newSerials[$serialKey])) {
-                            $errors[] = "Fila {$rowNum}: serial '{$serial}' ya existe.";
-                            continue;
-                        }
-
-                        $newSerials[$serialKey]  = true;
                         $equipmentsToInsert[] = [
                             'asset_inventory_id'   => $relationId,
                             'description'          => $desc ?: null,
@@ -1685,11 +1680,120 @@ class GoodsInventoryController extends Controller
         }
 
         return response()->json([
-            'success' => $created > 0,
-            'created' => $created,
-            'errors'  => $errors,
-            'message' => $message,
+            'success'     => $created > 0,
+            'created'     => $created,
+            'errors'      => $errors,
+            'failed_rows' => $failedRows,
+            'message'     => $message,
         ]);
+    }
+
+
+    /**
+     * Devuelve una funcion que registra una fila rechazada en las dos formas que
+     * consume el frontend: el texto de `errors` y el detalle de `failed_rows`
+     * (indice de la fila enviada y campo que impidio la carga).
+     */
+    private function batchFailureRecorder(array &$errors, array &$failedRows): \Closure
+    {
+        return function (int $index, string $field, string $message, array $extra = []) use (&$errors, &$failedRows) {
+            $errors[] = 'Fila ' . ($index + 2) . ": {$message}";
+            $failedRows[] = array_merge([
+                'index'   => $index,
+                'fields'  => [$field],
+                'type'    => 'error',
+                'message' => $message,
+            ], $extra);
+        };
+    }
+
+    /**
+     * Claves de los seriales que se repiten dentro de la misma carga. Ninguna de
+     * esas filas se carga: el usuario decide cual corregir.
+     *
+     * @return array<string, true>
+     */
+    private function repeatedSerialKeys(array $rows): array
+    {
+        $counts = [];
+
+        foreach ($rows as $row) {
+            if (strtolower(trim($row['tipo'] ?? 'Serial')) === 'cantidad') {
+                continue;
+            }
+
+            $serial = trim((string) ($row['serial'] ?? ''));
+            if ($serial === '') {
+                continue;
+            }
+
+            $key = $this->service->serialKey($serial);
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+        }
+
+        return array_fill_keys(array_keys(array_filter($counts, fn ($count) => $count > 1)), true);
+    }
+
+    /**
+     * Rechaza la fila si su serial esta repetido en el archivo o ya registrado.
+     * Ambos casos se marcan como `duplicate` con el mismo `group` para que el
+     * frontend muestre juntas las filas en conflicto.
+     */
+    private function failIfSerialConflict(\Closure $fail, int $index, array $row, array $repeatedSerials, array $existingSerials): bool
+    {
+        if (strtolower(trim($row['tipo'] ?? 'Serial')) === 'cantidad') {
+            return false;
+        }
+
+        $serial = trim((string) ($row['serial'] ?? ''));
+        if ($serial === '') {
+            return false;
+        }
+
+        $key = $this->service->serialKey($serial);
+        $existing = $existingSerials[$key] ?? null;
+
+        if (!$existing && !isset($repeatedSerials[$key])) {
+            return false;
+        }
+
+        $message = $existing
+            ? "el serial '{$serial}' ya está registrado en '{$existing['inventario']}' ({$existing['bien']})."
+            : "el serial '{$serial}' está repetido en el archivo.";
+
+        $fail($index, 'serial', $message, [
+            'type'     => 'duplicate',
+            'group'    => $key,
+            'existing' => $existing,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * La fecha de ingreso de un serial debe llegar como AAAA-MM-DD (el frontend
+     * convierte las fechas de Excel). Cualquier otro valor se rechaza en la fila
+     * en lugar de tumbar toda la carga con un error de base de datos.
+     */
+    private function failIfInvalidEntryDate(\Closure $fail, int $index, array $row): bool
+    {
+        if (strtolower(trim($row['tipo'] ?? 'Serial')) === 'cantidad') {
+            return false;
+        }
+
+        $fecha = trim((string) ($row['fecha_ingreso'] ?? ''));
+        if ($fecha === '') {
+            return false;
+        }
+
+        $date = \DateTime::createFromFormat('!Y-m-d', $fecha);
+        if ($date && $date->format('Y-m-d') === $fecha) {
+            return false;
+        }
+
+        $fail($index, 'fecha_ingreso', "fecha de ingreso '{$fecha}' inválida; usa el formato AAAA-MM-DD.");
+
+        return true;
     }
 
 
