@@ -38,44 +38,7 @@ class InventoryController extends Controller
         $group = Group::findOrFail($groupId);
 
         $inventories = Inventory::where('group_id', $groupId)
-            ->select('inventories.*')
-
-            // === COUNT OF DISTINCT ASSETS ===
-            ->selectRaw("
-                (
-                    SELECT COUNT(DISTINCT a.id)
-                    FROM asset_inventory ai
-                    LEFT JOIN assets a ON ai.asset_id = a.id
-                    WHERE ai.inventory_id = inventories.id
-                ) AS total_asset_types
-            ")
-
-            // === TOTAL AMOUNT = SUM(quantity) + COUNT(serials) ===
-            ->selectRaw("
-                (
-                    SELECT
-                        COALESCE((
-                            SELECT SUM(aq.quantity)
-                            FROM asset_quantities aq
-                            WHERE aq.asset_inventory_id IN (
-                                SELECT ai2.id
-                                FROM asset_inventory ai2
-                                WHERE ai2.inventory_id = inventories.id
-                            )
-                        ), 0)
-                        +
-                        COALESCE((
-                            SELECT COUNT(ae.id)
-                            FROM asset_equipments ae
-                            WHERE ae.asset_inventory_id IN (
-                                SELECT ai3.id
-                                FROM asset_inventory ai3
-                                WHERE ai3.inventory_id = inventories.id
-                            )
-                        ), 0)
-                ) AS total_assets
-            ")
-
+            ->withAssetTotals()
             ->get();
 
         if ($request->ajax()) {

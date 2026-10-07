@@ -36,10 +36,10 @@
                 </a>
             </li>
 
-            {{-- La programacion es operativa por sede: no tiene catalogo en el portal central --}}
-            @if(tenant())
+            {{-- En el portal central muestra, en solo lectura, los mantenimientos realizados de cada sede --}}
+            @if(tenant() || portal_navigation_enabled())
                 <li>
-                    <a id="schedules" href="{{ route('schedules.index') }}" data-nav>
+                    <a id="schedules" href="{{ route('schedules.index', $portalQuery) }}" data-nav>
                         <img src="{{ asset('assets/icons/programacion.svg') }}" alt="">
                         <span>Programación</span>
                     </a>

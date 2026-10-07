@@ -59,6 +59,46 @@ class GroupController extends Controller
     }
 
     /**
+     * GET /api/groups/portal/{tenantSlug}/{groupId}/inventories
+     * Lista los inventarios de un grupo de otra sede sin cambiar la sede activa,
+     * para desplegarlos dentro del dropdown de esa sede en el portal central.
+     */
+    public function portalInventories(Request $request, string $tenantSlug, int $groupId)
+    {
+        abort_if(tenant() || ! $request->user()?->isGlobalAdmin(), 403);
+
+        $tenant = Tenant::query()
+            ->where('slug', $tenantSlug)
+            ->where('is_active', true)
+            ->firstOrFail();
+
+        return app(TenantConnectionManager::class)->runForTenant($tenant, function (Tenant $tenant) use ($groupId) {
+            $group = Group::findOrFail($groupId);
+
+            $inventories = Inventory::where('group_id', $group->id)
+                ->withAssetTotals()
+                ->orderByRaw('name * 1 = 0, name * 1, name')
+                ->get()
+                ->map(static fn (Inventory $inventory): array => [
+                    'id' => $inventory->id,
+                    'name' => $inventory->name,
+                    'total_asset_types' => (int) ($inventory->total_asset_types ?? 0),
+                    'total_assets' => (int) ($inventory->total_assets ?? 0),
+                    'url' => route('portal.switch', [
+                        'slug' => $tenant->slug,
+                        'redirect' => "/group/{$group->id}/inventory/{$inventory->id}",
+                        'inplace' => 1,
+                    ]),
+                ]);
+
+            return response()->json([
+                'group' => ['id' => $group->id, 'name' => $group->name],
+                'inventories' => $inventories->values(),
+            ]);
+        });
+    }
+
+    /**
      * Muestra un listado de todos los grupos.
      * Se incluye el conteo de inventarios asociados a cada grupo para proporcionar información adicional.
      * Se diferencia entre peticiones AJAX para actualizaciones parciales y peticiones normales para carga completa de página.

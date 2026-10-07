@@ -3,15 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ActivityLogger;
+use App\Models\Central\Tenant;
 use App\Models\Inventory;
 use App\Models\InventorySchedule;
 use App\Models\InventoryScheduleEntryImage;
 use App\Services\Schedules\ScheduleEvidenceService;
 use App\Services\Schedules\ScheduleReceiptService;
 use App\Services\Schedules\ScheduleSignatureService;
+use App\Support\Tenancy\TenantConnectionManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -57,9 +60,14 @@ class InventoryScheduleController extends Controller
      */
     public function index(Request $request)
     {
-        // Modulo operativo: siempre vive dentro de una sede, nunca en el portal central.
+        // En el portal central solo se consultan los mantenimientos ya realizados
+        // de cada sede; crear y gestionar programaciones sigue siendo operativo.
         if (! tenant()) {
-            return redirect()->route('portal.index');
+            if (! $request->user()?->isGlobalAdmin()) {
+                return redirect()->route('portal.index');
+            }
+
+            return $this->portalIndex($request);
         }
 
         $search = trim((string) $request->input('search', ''));
@@ -96,6 +104,26 @@ class InventoryScheduleController extends Controller
         }
 
         return view('schedules.index', $data);
+    }
+
+    /**
+     * Catalogo del portal: mantenimientos realizados (programaciones ya
+     * diligenciadas) agrupados por sede, en modo solo lectura.
+     */
+    private function portalIndex(Request $request)
+    {
+        $schedulesBySede = $this->getCompletedSchedulesBySedeForPortal();
+
+        $data = compact('schedulesBySede');
+
+        if ($request->ajax()) {
+            /** @var \Illuminate\View\View $view */
+            $view = view('schedules.portal', $data);
+
+            return $view->renderSections()['content'];
+        }
+
+        return view('schedules.portal', $data);
     }
 
     /**
@@ -199,17 +227,30 @@ class InventoryScheduleController extends Controller
      *
      * Labores documentadas desde el formulario publico, con sus evidencias.
      */
-    public function entries(int $id): JsonResponse
+    public function entries(Request $request, int $id): JsonResponse
+    {
+        return $this->runForRequestedTenant(
+            $request,
+            fn (?Tenant $portalTenant) => $this->entriesResponse($id, $portalTenant)
+        );
+    }
+
+    /**
+     * Desde el portal llega `?tenant=slug`: la programacion se lee en la base
+     * de esa sede y los enlaces de las evidencias conservan la sede.
+     */
+    private function entriesResponse(int $id, ?Tenant $portalTenant): JsonResponse
     {
         $schedule = InventorySchedule::with(['inventories.group', 'entries.images'])->findOrFail($id);
-        $timezone = tenant()?->branding?->timezone_value ?? 'America/Bogota';
+        $timezone = ($portalTenant ?? tenant())?->branding?->timezone_value ?? 'America/Bogota';
+        $imageParams = $portalTenant ? ['tenant' => $portalTenant->slug, 'portal' => 1] : [];
 
         return response()->json([
             'success' => true,
-            'schedule' => $this->formatSchedule($schedule),
-            // El formato se descarga firmado desde el modal de firma.
-            'can_download' => $schedule->isCompleted(),
-            'entries' => $schedule->entries->map(function ($entry) use ($schedule, $timezone) {
+            'schedule' => $this->formatSchedule($schedule, $portalTenant?->slug),
+            // El formato se descarga firmado desde el modal de firma, solo dentro de la sede.
+            'can_download' => $portalTenant === null && $schedule->isCompleted(),
+            'entries' => $schedule->entries->map(function ($entry) use ($schedule, $timezone, $imageParams) {
                 // El folio se deriva del codigo de la programacion: se
                 // enlaza a mano para no consultarla una vez por labor.
                 $entry->setRelation('schedule', $schedule);
@@ -227,7 +268,7 @@ class InventoryScheduleController extends Controller
                     'registered_at' => $entry->registeredAtLabel($timezone),
                     'images' => $entry->images->map(fn ($image) => [
                         'id' => $image->id,
-                        'url' => route('schedules.image', $image->id),
+                        'url' => route('schedules.image', ['imageId' => $image->id] + $imageParams),
                         'description' => $image->description,
                         'size_label' => $image->size_label,
                     ])->values(),
@@ -327,17 +368,19 @@ class InventoryScheduleController extends Controller
      *
      * Sirve una evidencia fotografica al personal de la sede.
      */
-    public function image(int $imageId): BinaryFileResponse
+    public function image(Request $request, int $imageId): BinaryFileResponse
     {
-        $image = InventoryScheduleEntryImage::findOrFail($imageId);
+        return $this->runForRequestedTenant($request, function () use ($imageId) {
+            $image = InventoryScheduleEntryImage::findOrFail($imageId);
 
-        $path = $this->evidence->absolutePath($image);
+            $path = $this->evidence->absolutePath($image);
 
-        abort_if($path === null, 404);
+            abort_if($path === null, 404);
 
-        return response()->file($path, [
-            'Cache-Control' => 'private, max-age=3600',
-        ]);
+            return response()->file($path, [
+                'Cache-Control' => 'private, max-age=3600',
+            ]);
+        });
     }
 
     /**
@@ -474,7 +517,7 @@ class InventoryScheduleController extends Controller
     /**
      * Estructura JSON compartida por las respuestas del modulo.
      */
-    private function formatSchedule(InventorySchedule $schedule): array
+    private function formatSchedule(InventorySchedule $schedule, ?string $tenantSlug = null): array
     {
         $completed = $schedule->isCompleted();
 
@@ -488,7 +531,77 @@ class InventoryScheduleController extends Controller
             'location_labels' => $schedule->location_labels,
             'location_label' => $schedule->location_label,
             // El enlace deja de compartirse cuando el QR ya fue usado.
-            'public_url' => $completed ? null : $schedule->publicUrl(),
+            'public_url' => $completed ? null : $schedule->publicUrl($tenantSlug),
         ];
+    }
+
+    /**
+     * Ejecuta la lectura en la sede indicada con `?tenant=slug` cuando la pide
+     * un super administrador desde el portal; si no, en la sede activa.
+     */
+    private function runForRequestedTenant(Request $request, callable $callback): mixed
+    {
+        if (! $request->filled('tenant') || ! $request->user()?->isGlobalAdmin()) {
+            return $callback(null);
+        }
+
+        $tenant = Tenant::query()
+            ->where('slug', $request->query('tenant'))
+            ->where('is_active', true)
+            ->with('branding')
+            ->firstOrFail();
+
+        return app(TenantConnectionManager::class)->runForTenant($tenant, $callback);
+    }
+
+    /**
+     * Consulta en cada sede activa las programaciones ya diligenciadas.
+     */
+    private function getCompletedSchedulesBySedeForPortal(): Collection
+    {
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->with('branding')
+            ->orderBy('id')
+            ->get();
+
+        $tenantConnections = app(TenantConnectionManager::class);
+
+        return $tenants->map(function (Tenant $tenant) use ($tenantConnections): array {
+            return $tenantConnections->runForTenant($tenant, function (Tenant $tenant): array {
+                try {
+                    // Las relaciones se cargan aqui: fuera del callback la
+                    // conexion tenant ya no apunta a esta sede.
+                    $schedules = InventorySchedule::query()
+                        ->with(['inventories.group', 'entry.images'])
+                        ->whereHas('entries')
+                        ->get()
+                        ->sortByDesc(fn (InventorySchedule $schedule) => $schedule->entry?->finished_at)
+                        ->values();
+                } catch (\Throwable $e) {
+                    // Sede sin las tablas del modulo (migraciones pendientes).
+                    $schedules = collect();
+                }
+
+                $sedeName = $this->resolveSedeName($tenant);
+
+                return [
+                    'tenant_id' => $tenant->id,
+                    'tenant_slug' => $tenant->slug,
+                    'sede_name' => $sedeName,
+                    'dropdown_label' => "Mantenimientos sede {$sedeName}",
+                    'timezone' => $tenant->branding?->timezone_value ?? 'America/Bogota',
+                    'schedules' => $schedules,
+                ];
+            });
+        });
+    }
+
+    private function resolveSedeName(Tenant $tenant): string
+    {
+        $rawName = trim((string) ($tenant->branding?->sede_name ?: $tenant->name ?: $tenant->slug));
+        $normalized = preg_replace('/^sede\s+/iu', '', $rawName);
+
+        return $normalized ?: ucfirst($tenant->slug);
     }
 }

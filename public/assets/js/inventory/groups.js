@@ -448,11 +448,16 @@ function initPortalGroupDropdowns() {
         controller: createSedeDropdownController(dropdown, '.inventory-sede-body'),
     }));
 
+    controllers.forEach(({ dropdown }) => initPortalGroupInventories(dropdown));
+
     const updateDropdownState = () => {
         const hasFilter = searchInput.value.trim().length > 0;
 
         controllers.forEach(({ dropdown, controller }) => {
-            const cards = dropdown.querySelectorAll('.card-item');
+            // Al filtrar se vuelve a la lista de grupos de cada sede.
+            dropdown.__showSedeGroups?.();
+
+            const cards = dropdown.querySelectorAll('[data-group-card]');
             const visibleCards = Array.from(cards).filter((card) => card.style.display !== 'none');
             const visibleCountBadge = dropdown.querySelector('[data-visible-count]');
             const emptyByFilterMessage = dropdown.querySelector('[data-sede-empty]');
@@ -485,6 +490,162 @@ function initPortalGroupDropdowns() {
     updateDropdownState();
 
     return updateDropdownState;
+}
+
+/**
+ * Abre los inventarios de un grupo dentro del dropdown de su sede,
+ * sin cambiar la sede activa ni salir de la vista del portal.
+ */
+function initPortalGroupInventories(dropdown) {
+    if (dropdown.dataset.portalInventoriesBound === '1') {
+        return;
+    }
+
+    const groupsPanel = dropdown.querySelector('[data-sede-groups-panel]');
+    const inventoriesPanel = dropdown.querySelector('[data-sede-inventories-panel]');
+    const groupTitle = dropdown.querySelector('[data-sede-inventories-group]');
+    const content = dropdown.querySelector('[data-sede-inventories-content]');
+    const backButton = dropdown.querySelector('[data-sede-inventories-back]');
+
+    if (!groupsPanel || !inventoriesPanel || !groupTitle || !content) {
+        return;
+    }
+
+    dropdown.dataset.portalInventoriesBound = '1';
+
+    let currentRequest = null;
+
+    const showGroups = () => {
+        if (currentRequest) {
+            currentRequest.abort();
+            currentRequest = null;
+        }
+
+        inventoriesPanel.classList.add('hidden');
+        groupsPanel.classList.remove('hidden');
+        content.innerHTML = '';
+    };
+
+    const renderMessage = (message, iconClass) => {
+        content.innerHTML = `
+            <p class="inventory-sede-empty">
+                <i class="fas ${iconClass}"></i>
+                ${escapeHtml(message)}
+            </p>
+        `;
+    };
+
+    const renderInventories = (inventories) => {
+        if (!inventories.length) {
+            renderMessage('No hay inventarios disponibles en este grupo.', 'fa-folder-open');
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="card-grid inventory-sede-grid">
+                ${inventories.map((inventory) => `
+                    <div class="card card-item">
+                        <div class="card-left">
+                            <i class="fas fa-folder icon-folder"></i>
+                        </div>
+                        <div class="card-center">
+                            <div class="title name-item">${escapeHtml(inventory.name)}</div>
+                            <div class="stats">
+                                <span class="stat-item">
+                                    <i class="fas fa-shapes"></i>
+                                    ${Number(inventory.total_asset_types ?? 0)} tipos
+                                </span>
+                                <span class="stat-item">
+                                    <i class="fas fa-boxes"></i>
+                                    ${Number(inventory.total_assets ?? 0)} bienes
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-right">
+                            <button type="button" class="btn-open" data-inventory-url="${escapeHtml(inventory.url)}">
+                                <i class="fas fa-external-link-alt"></i> Abrir
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    };
+
+    const openGroup = async (button) => {
+        if (currentRequest) {
+            currentRequest.abort();
+        }
+
+        const request = new AbortController();
+        currentRequest = request;
+
+        groupTitle.textContent = button.dataset.groupName || '';
+        groupsPanel.classList.add('hidden');
+        inventoriesPanel.classList.remove('hidden');
+        renderMessage('Cargando inventarios...', 'fa-spinner fa-spin');
+
+        try {
+            const response = await fetch(button.dataset.url, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                signal: request.signal,
+            });
+
+            if (!response.ok) {
+                throw new Error('Error al cargar inventarios');
+            }
+
+            const data = await response.json();
+            renderInventories(Array.isArray(data.inventories) ? data.inventories : []);
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            console.error(error);
+            renderMessage('No se pudieron cargar los inventarios del grupo.', 'fa-triangle-exclamation');
+        } finally {
+            if (currentRequest === request) {
+                currentRequest = null;
+            }
+        }
+    };
+
+    groupsPanel.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-portal-group-open]');
+        if (button) {
+            openGroup(button);
+        }
+    });
+
+    content.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-inventory-url]');
+        if (!button) {
+            return;
+        }
+
+        const url = button.dataset.inventoryUrl;
+        if (typeof loadContent === 'function') {
+            loadContent(url, {
+                updateHistory: false,
+                onSuccess: () => {
+                    if (typeof window.initGoodsInventoryFunctions === 'function') {
+                        window.initGoodsInventoryFunctions();
+                    }
+                },
+            });
+            return;
+        }
+
+        window.location.assign(url);
+    });
+
+    backButton?.addEventListener('click', showGroups);
+
+    dropdown.__showSedeGroups = showGroups;
 }
 
 function createSedeDropdownController(dropdown, bodySelector) {

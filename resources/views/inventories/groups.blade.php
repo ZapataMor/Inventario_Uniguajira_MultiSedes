@@ -193,6 +193,7 @@
                     </summary>
 
                     <div class="inventory-sede-body">
+                        <div data-sede-groups-panel>
                         @if($sedeData['groups']->isEmpty())
                             <p class="inventory-sede-empty">No hay grupos disponibles en esta sede.</p>
                         @else
@@ -219,10 +220,11 @@
 
                                         <div class="card-right">
                                             <button
+                                                type="button"
                                                 class="btn-open"
-                                                onclick="loadContent('{{ route('portal.switch', 
-                                                ['slug' => $sedeData['tenant_slug'], 'redirect' => '/group/' . $group->id, 'inplace' => 1]) }}', 
-                                                { updateHistory: false, onSuccess: () => initInventoryFunctions() })"
+                                                data-portal-group-open
+                                                data-url="{{ route('groups.portal-inventories', ['tenantSlug' => $sedeData['tenant_slug'], 'groupId' => $group->id]) }}"
+                                                data-group-name="{{ $group->name }}"
                                             >
                                                 <i class="fas fa-external-link-alt"></i> Abrir
                                             </button>
@@ -235,6 +237,22 @@
                                 No hay resultados para esta sede con el filtro actual.
                             </p>
                         @endif
+                        </div>
+
+                        {{-- Inventarios del grupo abierto: se llenan por AJAX sin salir del portal --}}
+                        <div class="inventory-sede-inventories hidden" data-sede-inventories-panel>
+                            <div class="inventory-sede-inventories-header">
+                                <span class="inventory-sede-inventories-title">
+                                    <i class="fas fa-layer-group"></i>
+                                    <span data-sede-inventories-group></span>
+                                </span>
+                                <button type="button" class="btn-back" data-sede-inventories-back>
+                                    <i class="fas fa-arrow-left"></i>
+                                    <span>Volver a grupos</span>
+                                </button>
+                            </div>
+                            <div data-sede-inventories-content></div>
+                        </div>
                     </div>
                 </details>
             @endforeach

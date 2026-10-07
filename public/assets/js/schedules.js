@@ -27,6 +27,8 @@
         isOpen: card.dataset.open === '1',
         isCompleted: card.dataset.completed === '1',
         url: card.dataset.url,
+        // Solo en el portal: sede a la que pertenece la tarjeta.
+        tenant: card.dataset.tenant || '',
         payload: (() => {
             try {
                 return JSON.parse(card.dataset.payload || '{}');
@@ -117,6 +119,30 @@
         if (noResults) {
             noResults.classList.toggle('hidden', visible > 0 || cards.length === 0);
         }
+
+        syncSedeDropdowns(term !== '');
+    };
+
+    /**
+     * Portal: cada sede es un desplegable. Con búsqueda activa se abren
+     * las sedes con coincidencias; sin búsqueda quedan todas cerradas.
+     */
+    const syncSedeDropdowns = (hasFilter) => {
+        document.querySelectorAll('[data-schedule-sede-dropdown]').forEach((dropdown) => {
+            const cards = Array.from(dropdown.querySelectorAll('[data-schedule-card]'));
+            const visibleCards = cards.filter((card) => card.style.display !== 'none').length;
+            const count = dropdown.querySelector('[data-visible-count]');
+            const empty = dropdown.querySelector('[data-sede-empty]');
+
+            if (count) count.textContent = String(visibleCards);
+            if (empty) empty.classList.toggle('hidden', visibleCards > 0);
+
+            const controller = typeof createSedeDropdownController === 'function'
+                ? createSedeDropdownController(dropdown, '.inventory-sede-body')
+                : { setOpen: (shouldOpen) => { dropdown.open = shouldOpen; } };
+
+            controller.setOpen(hasFilter && visibleCards > 0, true);
+        });
     };
 
     // ─── Localización: bloque → salones ────────────────────────────
@@ -526,7 +552,12 @@
 
         mostrarModal('#modalProgramacionRegistros');
 
-        fetch(`/api/schedules/${data.id}/entries`, {
+        // Desde el portal la programación se lee en la base de su sede.
+        const query = data.tenant
+            ? `?${new URLSearchParams({ tenant: data.tenant, portal: '1' })}`
+            : '';
+
+        fetch(`/api/schedules/${data.id}/entries${query}`, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
         })
             .then((response) => response.json())
@@ -1039,7 +1070,7 @@
         // el módulo queda operativo aunque se llegue por navegación AJAX.
         bindGlobalListeners();
 
-        if (document.getElementById('schedulesGrid')) {
+        if (document.getElementById('schedulesGrid') || document.getElementById('schedulesPortal')) {
             renderCardQrs();
             applyFilters();
         }

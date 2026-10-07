@@ -214,6 +214,37 @@
     color: #64748b;
 }
 
+/* Inventarios de un grupo desplegados dentro del dropdown de la sede */
+.inventory-sede-inventories-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.inventory-sede-inventories-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.inventory-sede-inventories-title i {
+    color: #059669;
+}
+
+.inventory-sede-inventories-header .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 /* Media query para pantallas pequeñas */
 @media (max-width: 768px) {
     .inventory-header {
