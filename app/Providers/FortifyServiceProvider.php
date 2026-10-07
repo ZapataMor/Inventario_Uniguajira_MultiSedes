@@ -12,6 +12,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -90,11 +91,41 @@ class FortifyServiceProvider extends ServiceProvider
             })
             ->first();
 
-        if (! $user || ! Hash::check($password, (string) $user->password)) {
+        if (! $user || ! $this->passwordMatches($user, $connection, $password)) {
             return null;
         }
 
         return $user;
+    }
+
+    /**
+     * Compara la contrasena sin romper el login cuando el hash guardado no es bcrypt
+     * estandar ($2y$): Hash::check() lanza RuntimeException en ese caso (HASH_VERIFY).
+     * Si el hash es valido en otro formato compatible ($2a$, $2b$...), se acepta y se
+     * migra a bcrypt; si no lo es, se rechaza como credenciales invalidas.
+     */
+    private function passwordMatches(User $user, string $connection, string $password): bool
+    {
+        $hash = (string) $user->password;
+
+        try {
+            return Hash::check($password, $hash);
+        } catch (\RuntimeException $e) {
+            if ($hash !== '' && password_verify($password, $hash)) {
+                User::on($connection)
+                    ->whereKey($user->getKey())
+                    ->update(['password' => Hash::make($password)]);
+
+                return true;
+            }
+
+            Log::warning('Login rechazado: el hash guardado del usuario no es bcrypt valido.', [
+                'user_id' => $user->getKey(),
+                'connection' => $connection,
+            ]);
+
+            return false;
+        }
     }
 
     private function attemptGlobalAdminFromTenants(string $login, string $password): ?User
@@ -107,7 +138,8 @@ class FortifyServiceProvider extends ServiceProvider
             ->get();
 
         foreach ($tenants as $tenant) {
-            $tenantUser = $tenantConnections->runForTenant(
+            $tenantUser = $this->tryOnTenant(
+                $tenantConnections,
                 $tenant,
                 fn () => $this->attemptUserOnConnection('tenant', $login, $password)
             );
@@ -122,6 +154,24 @@ class FortifyServiceProvider extends ServiceProvider
         return null;
     }
 
+    /**
+     * Prueba una sede durante el login del portal: si una sede falla (base caida,
+     * tabla ausente...), se omite en vez de tumbar el login de todos.
+     */
+    private function tryOnTenant(TenantConnectionManager $connections, Tenant $tenant, callable $callback): ?User
+    {
+        try {
+            return $connections->runForTenant($tenant, $callback);
+        } catch (\Throwable $e) {
+            Log::warning('Login portal: sede omitida por error de conexion o esquema.', [
+                'tenant' => $tenant->slug,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
     private function normalizeCentralGlobalAdminFromTenants(User $centralUser, string $password): User
     {
         $tenantConnections = app(TenantConnectionManager::class);
@@ -132,7 +182,8 @@ class FortifyServiceProvider extends ServiceProvider
             ->get();
 
         foreach ($tenants as $tenant) {
-            $tenantUser = $tenantConnections->runForTenant(
+            $tenantUser = $this->tryOnTenant(
+                $tenantConnections,
                 $tenant,
                 fn () => $this->attemptUserOnConnection('tenant', (string) $centralUser->email, $password)
             );
