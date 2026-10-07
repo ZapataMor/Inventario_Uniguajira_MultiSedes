@@ -214,8 +214,8 @@
     color: #64748b;
 }
 
-/* Inventarios de un grupo desplegados dentro del dropdown de la sede */
-.inventory-sede-inventories-header {
+/* Inventarios de un grupo o bienes de un inventario dentro del dropdown de la sede */
+.inventory-sede-panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -226,23 +226,62 @@
     border-bottom: 1px solid #e2e8f0;
 }
 
-.inventory-sede-inventories-title {
+.inventory-sede-panel-title {
     display: inline-flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     font-size: 15px;
     font-weight: 700;
     color: #1e293b;
 }
 
-.inventory-sede-inventories-title i {
+.inventory-sede-panel-title i {
     color: #059669;
 }
 
-.inventory-sede-inventories-header .btn-back {
+.inventory-sede-panel-title .inventory-sede-panel-separator {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.inventory-sede-panel-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.inventory-sede-panel-actions .btn-back,
+.inventory-sede-panel-actions .btn-open {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+.inventory-sede-panel-actions .hidden {
+    display: none;
+}
+
+/* Bienes dentro del dropdown: la grilla de bienes de la sede con columnas mas estrechas */
+.inventory-sede-goods-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.inventory-sede-goods-grid .bien-card.is-serial {
+    cursor: pointer;
+}
+
+.inventory-sede-goods-grid .bien-card:not(.is-serial):hover {
+    transform: none;
+    box-shadow: 0 3px 6px rgb(0 0 0 / 20%);
+}
+
+.inventory-sede-goods-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #047857;
 }
 
 /* Media query para pantallas pequeñas */

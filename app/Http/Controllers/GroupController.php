@@ -6,6 +6,7 @@ use App\Helpers\ActivityLogger;
 use App\Models\Central\Tenant;
 use App\Models\Group;
 use App\Models\Inventory;
+use App\Support\AssetImage;
 use App\Support\Tenancy\TenantConnectionManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -65,12 +66,7 @@ class GroupController extends Controller
      */
     public function portalInventories(Request $request, string $tenantSlug, int $groupId)
     {
-        abort_if(tenant() || ! $request->user()?->isGlobalAdmin(), 403);
-
-        $tenant = Tenant::query()
-            ->where('slug', $tenantSlug)
-            ->where('is_active', true)
-            ->firstOrFail();
+        $tenant = $this->resolvePortalTenant($request, $tenantSlug);
 
         return app(TenantConnectionManager::class)->runForTenant($tenant, function (Tenant $tenant) use ($groupId) {
             $group = Group::findOrFail($groupId);
@@ -84,10 +80,10 @@ class GroupController extends Controller
                     'name' => $inventory->name,
                     'total_asset_types' => (int) ($inventory->total_asset_types ?? 0),
                     'total_assets' => (int) ($inventory->total_assets ?? 0),
-                    'url' => route('portal.switch', [
-                        'slug' => $tenant->slug,
-                        'redirect' => "/group/{$group->id}/inventory/{$inventory->id}",
-                        'inplace' => 1,
+                    'goods_url' => route('groups.portal-inventory-goods', [
+                        'tenantSlug' => $tenant->slug,
+                        'groupId' => $group->id,
+                        'inventoryId' => $inventory->id,
                     ]),
                 ]);
 
@@ -96,6 +92,67 @@ class GroupController extends Controller
                 'inventories' => $inventories->values(),
             ]);
         });
+    }
+
+    /**
+     * GET /api/groups/portal/{tenantSlug}/{groupId}/inventories/{inventoryId}/goods
+     * Lista los bienes de un inventario de otra sede sin cambiar la sede activa,
+     * para desplegarlos dentro del dropdown de esa sede en el portal central.
+     */
+    public function portalInventoryGoods(Request $request, string $tenantSlug, int $groupId, int $inventoryId)
+    {
+        $tenant = $this->resolvePortalTenant($request, $tenantSlug);
+
+        return app(TenantConnectionManager::class)->runForTenant($tenant, function (Tenant $tenant) use ($groupId, $inventoryId) {
+            $inventory = Inventory::with('group:id,name')
+                ->where('group_id', $groupId)
+                ->findOrFail($inventoryId);
+
+            $goods = DB::table('inventory_goods_view')
+                ->where('inventory_id', $inventory->id)
+                ->orderBy('asset')
+                ->get()
+                ->map(static fn (object $asset): array => [
+                    'id' => $asset->asset_id,
+                    'name' => $asset->asset,
+                    'type' => $asset->type,
+                    'quantity' => (int) $asset->quantity,
+                    'image_url' => AssetImage::url($asset->image, $asset->type),
+                    'default_image_url' => AssetImage::defaultUrl($asset->type),
+                    // Los seriales se gestionan dentro de la sede, igual que antes.
+                    'serials_url' => $asset->type === 'Serial'
+                        ? route('portal.switch', [
+                            'slug' => $tenant->slug,
+                            'redirect' => "/group/{$inventory->group_id}/inventory/{$inventory->id}/goods/{$asset->asset_id}/serials",
+                            'inplace' => 1,
+                        ])
+                        : null,
+                ]);
+
+            return response()->json([
+                'group' => ['id' => $inventory->group_id, 'name' => $inventory->group?->name],
+                'inventory' => ['id' => $inventory->id, 'name' => $inventory->name],
+                'sede_url' => route('portal.switch', [
+                    'slug' => $tenant->slug,
+                    'redirect' => "/group/{$inventory->group_id}/inventory/{$inventory->id}",
+                    'inplace' => 1,
+                ]),
+                'goods' => $goods->values(),
+            ]);
+        });
+    }
+
+    /**
+     * Sede activa a consultar desde el portal; solo para super administradores en el portal central.
+     */
+    private function resolvePortalTenant(Request $request, string $tenantSlug): Tenant
+    {
+        abort_if(tenant() || ! $request->user()?->isGlobalAdmin(), 403);
+
+        return Tenant::query()
+            ->where('slug', $tenantSlug)
+            ->where('is_active', true)
+            ->firstOrFail();
     }
 
     /**

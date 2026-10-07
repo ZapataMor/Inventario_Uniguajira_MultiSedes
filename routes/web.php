@@ -200,6 +200,9 @@ Route::prefix('api/groups')->group(function () {
     Route::get('portal/{tenantSlug}/{groupId}/inventories', [GroupController::class, 'portalInventories'])
         ->where(['tenantSlug' => '[A-Za-z0-9_-]+', 'groupId' => '[0-9]+'])
         ->name('groups.portal-inventories');
+    Route::get('portal/{tenantSlug}/{groupId}/inventories/{inventoryId}/goods', [GroupController::class, 'portalInventoryGoods'])
+        ->where(['tenantSlug' => '[A-Za-z0-9_-]+', 'groupId' => '[0-9]+', 'inventoryId' => '[0-9]+'])
+        ->name('groups.portal-inventory-goods');
     Route::post('create', [GroupController::class, 'store'])->name('groups.create');
     Route::post('rename', [GroupController::class, 'update'])->name('groups.rename');
     Route::delete('delete/{id}', [GroupController::class, 'destroy'])->name('groups.delete');

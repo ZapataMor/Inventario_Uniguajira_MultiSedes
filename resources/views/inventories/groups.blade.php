@@ -239,19 +239,22 @@
                         @endif
                         </div>
 
-                        {{-- Inventarios del grupo abierto: se llenan por AJAX sin salir del portal --}}
-                        <div class="inventory-sede-inventories hidden" data-sede-inventories-panel>
-                            <div class="inventory-sede-inventories-header">
-                                <span class="inventory-sede-inventories-title">
-                                    <i class="fas fa-layer-group"></i>
-                                    <span data-sede-inventories-group></span>
-                                </span>
-                                <button type="button" class="btn-back" data-sede-inventories-back>
-                                    <i class="fas fa-arrow-left"></i>
-                                    <span>Volver a grupos</span>
-                                </button>
+                        {{-- Inventarios de un grupo o bienes de un inventario: se llenan por AJAX sin salir del portal --}}
+                        <div class="inventory-sede-panel hidden" data-sede-panel>
+                            <div class="inventory-sede-panel-header">
+                                <span class="inventory-sede-panel-title" data-sede-panel-title></span>
+                                <div class="inventory-sede-panel-actions">
+                                    <button type="button" class="btn-open hidden" data-sede-panel-enter>
+                                        <i class="fas fa-external-link-alt"></i>
+                                        <span>Abrir en la sede</span>
+                                    </button>
+                                    <button type="button" class="btn-back" data-sede-panel-back>
+                                        <i class="fas fa-arrow-left"></i>
+                                        <span data-sede-panel-back-label>Volver a grupos</span>
+                                    </button>
+                                </div>
                             </div>
-                            <div data-sede-inventories-content></div>
+                            <div data-sede-panel-content></div>
                         </div>
                     </div>
                 </details>

@@ -493,7 +493,7 @@ function initPortalGroupDropdowns() {
 }
 
 /**
- * Abre los inventarios de un grupo dentro del dropdown de su sede,
+ * Navega grupos -> inventarios -> bienes dentro del dropdown de cada sede,
  * sin cambiar la sede activa ni salir de la vista del portal.
  */
 function initPortalGroupInventories(dropdown) {
@@ -502,28 +502,72 @@ function initPortalGroupInventories(dropdown) {
     }
 
     const groupsPanel = dropdown.querySelector('[data-sede-groups-panel]');
-    const inventoriesPanel = dropdown.querySelector('[data-sede-inventories-panel]');
-    const groupTitle = dropdown.querySelector('[data-sede-inventories-group]');
-    const content = dropdown.querySelector('[data-sede-inventories-content]');
-    const backButton = dropdown.querySelector('[data-sede-inventories-back]');
+    const panel = dropdown.querySelector('[data-sede-panel]');
+    const title = dropdown.querySelector('[data-sede-panel-title]');
+    const content = dropdown.querySelector('[data-sede-panel-content]');
+    const backButton = dropdown.querySelector('[data-sede-panel-back]');
+    const backLabel = dropdown.querySelector('[data-sede-panel-back-label]');
+    const enterButton = dropdown.querySelector('[data-sede-panel-enter]');
 
-    if (!groupsPanel || !inventoriesPanel || !groupTitle || !content) {
+    if (!groupsPanel || !panel || !title || !content || !backButton) {
         return;
     }
 
     dropdown.dataset.portalInventoriesBound = '1';
 
     let currentRequest = null;
+    // Grupo abierto ({ name, url }): permite volver de los bienes a sus inventarios.
+    let currentGroup = null;
+    let level = 'groups';
 
-    const showGroups = () => {
+    const abortRequest = () => {
         if (currentRequest) {
             currentRequest.abort();
             currentRequest = null;
         }
+    };
 
-        inventoriesPanel.classList.add('hidden');
+    // Entra a la sede (vista de bienes o de seriales) para gestionar desde alli.
+    const enterSede = (url, initializer) => {
+        if (typeof loadContent === 'function') {
+            loadContent(url, {
+                updateHistory: false,
+                onSuccess: () => {
+                    if (typeof window[initializer] === 'function') {
+                        window[initializer]();
+                    }
+                },
+            });
+            return;
+        }
+
+        window.location.assign(url);
+    };
+
+    const showGroups = () => {
+        abortRequest();
+        level = 'groups';
+        currentGroup = null;
+        panel.classList.add('hidden');
         groupsPanel.classList.remove('hidden');
         content.innerHTML = '';
+    };
+
+    const setHeader = (crumbs, backText, sedeUrl = null) => {
+        title.innerHTML = crumbs.map((crumb, index) => `
+            ${index > 0 ? '<i class="fas fa-chevron-right inventory-sede-panel-separator"></i>' : ''}
+            <i class="fas ${crumb.icon}"></i>
+            <span>${escapeHtml(crumb.text)}</span>
+        `).join('');
+
+        if (backLabel) {
+            backLabel.textContent = backText;
+        }
+
+        if (enterButton) {
+            enterButton.dataset.url = sedeUrl ?? '';
+            enterButton.classList.toggle('hidden', !sedeUrl);
+        }
     };
 
     const renderMessage = (message, iconClass) => {
@@ -562,7 +606,13 @@ function initPortalGroupInventories(dropdown) {
                             </div>
                         </div>
                         <div class="card-right">
-                            <button type="button" class="btn-open" data-inventory-url="${escapeHtml(inventory.url)}">
+                            <button
+                                type="button"
+                                class="btn-open"
+                                data-portal-inventory-open
+                                data-url="${escapeHtml(inventory.goods_url)}"
+                                data-inventory-name="${escapeHtml(inventory.name)}"
+                            >
                                 <i class="fas fa-external-link-alt"></i> Abrir
                             </button>
                         </div>
@@ -572,21 +622,63 @@ function initPortalGroupInventories(dropdown) {
         `;
     };
 
-    const openGroup = async (button) => {
-        if (currentRequest) {
-            currentRequest.abort();
+    const renderGood = (good) => {
+        const isSerial = Boolean(good.serials_url);
+        const icon = good.type === 'Cantidad' ? 'bienCantidad.svg' : 'bienSerial.svg';
+        const serialAttributes = isSerial
+            ? `data-serials-url="${escapeHtml(good.serials_url)}" title="Ver seriales en la sede"`
+            : '';
+        const serialHint = isSerial
+            ? '<p class="inventory-sede-goods-hint"><i class="fas fa-barcode"></i> Ver seriales</p>'
+            : '';
+
+        return `
+            <div class="bien-card card-item ${isSerial ? 'is-serial' : ''}" ${serialAttributes}>
+                <img
+                    src="${escapeHtml(good.image_url)}"
+                    class="bien-image"
+                    alt=""
+                    data-fallback="${escapeHtml(good.default_image_url)}"
+                />
+                <div class="bien-info">
+                    <h3 class="name-item">
+                        ${escapeHtml(good.name)}
+                        <img src="/assets/icons/${icon}" class="bien-icon" alt="${escapeHtml(good.type)}" />
+                    </h3>
+                    <p><b>Cantidad:</b> ${Number(good.quantity ?? 0)}</p>
+                    ${serialHint}
+                </div>
+            </div>
+        `;
+    };
+
+    const renderGoods = (goods) => {
+        if (!goods.length) {
+            renderMessage('No hay bienes en este inventario.', 'fa-box-open');
+            return;
         }
+
+        content.innerHTML = `
+            <div class="bienes-grid inventory-sede-goods-grid">
+                ${goods.map(renderGood).join('')}
+            </div>
+        `;
+
+        content.querySelectorAll('img[data-fallback]').forEach((image) => {
+            image.addEventListener('error', () => {
+                image.src = image.dataset.fallback;
+            }, { once: true });
+        });
+    };
+
+    const fetchJson = async (url, onData, errorMessage) => {
+        abortRequest();
 
         const request = new AbortController();
         currentRequest = request;
 
-        groupTitle.textContent = button.dataset.groupName || '';
-        groupsPanel.classList.add('hidden');
-        inventoriesPanel.classList.remove('hidden');
-        renderMessage('Cargando inventarios...', 'fa-spinner fa-spin');
-
         try {
-            const response = await fetch(button.dataset.url, {
+            const response = await fetch(url, {
                 headers: {
                     Accept: 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -595,18 +687,17 @@ function initPortalGroupInventories(dropdown) {
             });
 
             if (!response.ok) {
-                throw new Error('Error al cargar inventarios');
+                throw new Error(errorMessage);
             }
 
-            const data = await response.json();
-            renderInventories(Array.isArray(data.inventories) ? data.inventories : []);
+            onData(await response.json());
         } catch (error) {
             if (error.name === 'AbortError') {
                 return;
             }
 
             console.error(error);
-            renderMessage('No se pudieron cargar los inventarios del grupo.', 'fa-triangle-exclamation');
+            renderMessage(errorMessage, 'fa-triangle-exclamation');
         } finally {
             if (currentRequest === request) {
                 currentRequest = null;
@@ -614,36 +705,71 @@ function initPortalGroupInventories(dropdown) {
         }
     };
 
+    const openGroup = (group) => {
+        level = 'inventories';
+        currentGroup = group;
+
+        setHeader([{ icon: 'fa-layer-group', text: group.name }], 'Volver a grupos');
+        groupsPanel.classList.add('hidden');
+        panel.classList.remove('hidden');
+        renderMessage('Cargando inventarios...', 'fa-spinner fa-spin');
+
+        fetchJson(group.url, (data) => {
+            renderInventories(Array.isArray(data.inventories) ? data.inventories : []);
+        }, 'No se pudieron cargar los inventarios del grupo.');
+    };
+
+    const openInventory = (url, inventoryName) => {
+        level = 'goods';
+
+        const crumbs = [
+            { icon: 'fa-layer-group', text: currentGroup?.name ?? '' },
+            { icon: 'fa-folder', text: inventoryName },
+        ];
+
+        setHeader(crumbs, 'Volver a inventarios');
+        renderMessage('Cargando bienes...', 'fa-spinner fa-spin');
+
+        fetchJson(url, (data) => {
+            setHeader(crumbs, 'Volver a inventarios', data.sede_url);
+            renderGoods(Array.isArray(data.goods) ? data.goods : []);
+        }, 'No se pudieron cargar los bienes del inventario.');
+    };
+
     groupsPanel.addEventListener('click', (event) => {
         const button = event.target.closest('[data-portal-group-open]');
         if (button) {
-            openGroup(button);
+            openGroup({ name: button.dataset.groupName || '', url: button.dataset.url });
         }
     });
 
     content.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-inventory-url]');
-        if (!button) {
+        const inventoryButton = event.target.closest('[data-portal-inventory-open]');
+        if (inventoryButton) {
+            openInventory(inventoryButton.dataset.url, inventoryButton.dataset.inventoryName || '');
             return;
         }
 
-        const url = button.dataset.inventoryUrl;
-        if (typeof loadContent === 'function') {
-            loadContent(url, {
-                updateHistory: false,
-                onSuccess: () => {
-                    if (typeof window.initGoodsInventoryFunctions === 'function') {
-                        window.initGoodsInventoryFunctions();
-                    }
-                },
-            });
-            return;
+        const serialCard = event.target.closest('[data-serials-url]');
+        if (serialCard) {
+            enterSede(serialCard.dataset.serialsUrl, 'initGoodsSerialsInventoryFunctions');
         }
-
-        window.location.assign(url);
     });
 
-    backButton?.addEventListener('click', showGroups);
+    backButton.addEventListener('click', () => {
+        if (level === 'goods' && currentGroup) {
+            openGroup(currentGroup);
+            return;
+        }
+
+        showGroups();
+    });
+
+    enterButton?.addEventListener('click', () => {
+        if (enterButton.dataset.url) {
+            enterSede(enterButton.dataset.url, 'initGoodsInventoryFunctions');
+        }
+    });
 
     dropdown.__showSedeGroups = showGroups;
 }
