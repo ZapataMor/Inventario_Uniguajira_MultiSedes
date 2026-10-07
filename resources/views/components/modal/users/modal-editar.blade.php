@@ -10,6 +10,7 @@
             @csrf
 
             <input type="hidden" id="edit-id" name="id">
+            <input type="hidden" id="edit-target-scope" name="target_scope" value="">
 
             <div class="form-section">
                 <div class="section-header">Datos del Usuario</div>
@@ -38,11 +39,12 @@
                         <select id="edit-role" name="role" class="form-input" required>
                             <option value="">Selecciona un rol</option>
                             <option value="administrador">Administrador</option>
-                            @if(auth()->user()->isSuperAdmin())
-                                <option value="super_administrador">Super Administrador</option>
-                            @endif
+                            <option value="super_administrador" disabled hidden>Super Administrador</option>
                             <option value="consultor">Consultor</option>
                         </select>
+                        <small id="edit-role-help" style="color: #6b7280; font-size: 12px; margin-top: 4px; display: none;">
+                            El rol de un super administrador no se modifica desde aquí.
+                        </small>
                     </div>
                 </div>
             </div>

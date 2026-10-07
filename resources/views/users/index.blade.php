@@ -59,6 +59,7 @@
                                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Rol</th>
                                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Registrado</th>
                                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-28">Ultimo acceso</th>
+                                                <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-20">Acciones</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -101,6 +102,23 @@
                                                             <span class="text-gray-400 italic">Nunca</span>
                                                         @endif
                                                     </td>
+                                                    <td class="px-4 py-3">
+                                                        <div class="flex items-center gap-2 justify-center">
+                                                            <button
+                                                                class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-700 text-white hover:bg-red-800 transition-colors duration-200"
+                                                                title="Editar usuario"
+                                                                data-id="{{ $user->id }}"
+                                                                data-nombre="{{ $user->name }}"
+                                                                data-nombre-usuario="{{ $user->username }}"
+                                                                data-email="{{ $user->email }}"
+                                                                data-role="{{ $user->effectiveRole() }}"
+                                                                data-scope="{{ $scopeData['scope'] === 'portal' ? 'portal' : 'tenant:' . $scopeData['tenant_id'] }}"
+                                                                onclick="btnEditarUser(this)"
+                                                            >
+                                                                <i class="fas fa-pen text-xs"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             @endforeach
                                         </tbody>
@@ -127,7 +145,7 @@
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Rol</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Registrado</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-28">Ultimo acceso</th>
-                            @if(Auth::user()->isAdministrator())
+                            @if(Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin())
                                 <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-20">Acciones</th>
                             @endif
                         </tr>
@@ -182,7 +200,7 @@
                                     </div>
                                 </td>
 
-                                @if(Auth::user()->isAdministrator())
+                                @if(Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin())
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-2 justify-center">
                                             <button
@@ -198,7 +216,7 @@
                                                 <i class="fas fa-pen text-xs"></i>
                                             </button>
 
-                                            @if($user->name !== 'Administrador' && ! $user->isSuperAdmin())
+                                            @if(Auth::user()->isAdministrator() && $user->name !== 'Administrador' && ! $user->isSuperAdmin())
                                                 <a class="btn-eliminar" onclick="eliminarUsuario({{ $user->id }})">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
@@ -209,7 +227,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ Auth::user()->isAdministrator() ? 8 : 7 }}" class="py-16 text-center text-gray-400">
+                                <td colspan="{{ (Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin()) ? 8 : 7 }}" class="py-16 text-center text-gray-400">
                                     <i class="fas fa-users text-5xl block mb-3 opacity-40"></i>
                                     <p class="m-0 text-base font-medium">No hay usuarios registrados</p>
                                 </td>
@@ -225,7 +243,7 @@
         @include('components.modal.users.modal-crear')
     @endif
 
-    @if(Auth::user()->isAdministrator())
+    @if(Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin())
         @include('components.modal.users.modal-editar')
     @endif
 

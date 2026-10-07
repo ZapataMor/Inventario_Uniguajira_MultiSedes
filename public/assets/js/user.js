@@ -189,15 +189,31 @@ function btnEditarUser(element) {
     const nombreUsuario = element.getAttribute('data-nombre-usuario');
     const email = element.getAttribute('data-email');
     const rol = element.getAttribute('data-role');
+    const scope = element.getAttribute('data-scope') || '';
 
     document.getElementById('edit-id').value = id;
+    document.getElementById('edit-target-scope').value = scope;
     document.getElementById('edit-nombre').value = nombre;
     document.getElementById('edit-nombre_usuario').value = nombreUsuario;
     document.getElementById('edit-email').value = email;
 
     const roleSelect = document.getElementById('edit-role');
+    const roleHelp = document.getElementById('edit-role-help');
     if (roleSelect && rol) {
         roleSelect.value = rol;
+
+        // Un super administrador conserva su rol global: el campo se muestra bloqueado y no se envía.
+        const isSuperAdmin = rol === 'super_administrador';
+        roleSelect.disabled = isSuperAdmin;
+        roleSelect.required = !isSuperAdmin;
+        if (roleHelp) {
+            roleHelp.style.display = isSuperAdmin ? 'block' : 'none';
+        }
+    }
+
+    const passwordInput = document.getElementById('edit-password');
+    if (passwordInput) {
+        passwordInput.value = '';
     }
 
     mostrarModal('#modalEditarUsuario');

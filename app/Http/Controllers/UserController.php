@@ -129,85 +129,42 @@ class UserController extends Controller
     /**
      * API: Actualizar usuario
      * POST /api/users/update
+     *
+     * - Sede: administrador o super administrador editan usuarios de la sede activa.
+     * - Portal: el super administrador edita usuarios del portal o de cualquier sede
+     *   enviando `target_scope` (`portal` o `tenant:{id}`).
+     *
+     * Si se cambia la contrasena, el hash se replica en las demas sedes (y en la
+     * base central) donde exista el mismo correo, para que funcione igual en
+     * cualquier subdominio.
      */
     public function update(Request $request)
     {
-        abort_if(! auth()->user()?->isAdministrator(), 403);
+        $this->autorizarGestionUsuarios();
 
         try {
+            if ($this->isPortalManagementContext($request)) {
+                return $this->updateFromPortal($request);
+            }
+
             $validated = $request->validate([
-                'id' => ['required', 'exists:users,id'],
+                'id' => ['required', 'integer'],
                 'name' => ['required', 'string', 'max:255'],
-                'username' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('users', 'username')->ignore($request->id),
-                ],
-                'email' => [
-                    'required',
-                    'email',
-                    'max:255',
-                    Rule::unique('users', 'email')->ignore($request->id),
-                ],
+                'username' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255'],
                 'password' => ['nullable', 'string', 'min:6'],
-                'role' => ['required', Rule::in(self::BASE_ROLES)],
+                'role' => ['nullable', Rule::in(self::BASE_ROLES)],
             ]);
 
-            $user = User::findOrFail($validated['id']);
+            $user = User::find($validated['id']);
 
-            if (auth()->id() === $user->id && $validated['role'] !== $user->role) {
-                return response()->json([
-                    'success' => false,
-                    'type' => 'error',
-                    'message' => 'No puedes cambiar tu propio rol.',
-                ], 422);
+            if (! $user) {
+                return $this->jsonError('Usuario no encontrado.', 404);
             }
 
-            $oldValues = [
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'role' => $user->effectiveRole(),
-            ];
+            $this->assertUniqueIdentity($user, $validated);
 
-            $user->name = $validated['name'];
-            $user->username = $validated['username'];
-            $user->email = $validated['email'];
-            $user->role = $validated['role'];
-
-            if ($this->userTableSupportsGlobalRole()) {
-                $user->global_role = null;
-            }
-
-            if (! empty($validated['password'])) {
-                $user->password = Hash::make($validated['password']);
-            }
-
-            $user->save();
-
-            if (tenant()) {
-                $this->syncTenantMembership(tenant()->id, $user->id, $validated['role']);
-            }
-
-            ActivityLogger::updated(
-                User::class,
-                $user->id,
-                $user->name,
-                $oldValues,
-                [
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'role' => $user->effectiveRole(),
-                ]
-            );
-
-            return response()->json([
-                'success' => true,
-                'type' => 'success',
-                'message' => 'Usuario actualizado correctamente.',
-            ]);
+            return $this->applyUserUpdate($user, $validated, tenant()?->id);
         } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
@@ -216,11 +173,12 @@ class UserController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'type' => 'error',
-                'message' => 'Ocurrio un error al actualizar el usuario.',
-            ], 500);
+            Log::error('Error actualizando usuario', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->jsonError('Ocurrio un error al actualizar el usuario.', 500);
         }
     }
 
@@ -275,6 +233,232 @@ class UserController extends Controller
             'success' => true,
             'message' => 'Usuario eliminado correctamente.',
         ]);
+    }
+
+    /**
+     * Edita desde el portal un usuario del portal (central) o de una sede.
+     */
+    private function updateFromPortal(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => ['required', 'integer'],
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['nullable', 'string', 'min:6'],
+            'role' => ['nullable', Rule::in(self::BASE_ROLES)],
+            'target_scope' => ['required', 'string'],
+        ]);
+
+        $centralConnection = config('tenancy.central_connection', 'central');
+
+        if ($validated['target_scope'] === 'portal') {
+            if (! Schema::connection($centralConnection)->hasTable('users')) {
+                return $this->jsonError('El portal no tiene usuarios propios; edita al usuario desde su sede.', 422);
+            }
+
+            $user = User::on($centralConnection)->find($validated['id']);
+
+            if (! $user) {
+                return $this->jsonError('Usuario no encontrado.', 404);
+            }
+
+            $this->assertUniqueIdentity($user, $validated);
+
+            return $this->applyUserUpdate($user, $validated, null);
+        }
+
+        if (! preg_match('/^tenant:(\d+)$/', $validated['target_scope'], $matches)) {
+            return $this->jsonError('Selecciona una sede valida.', 422);
+        }
+
+        $tenant = Tenant::query()
+            ->where('id', (int) $matches[1])
+            ->where('is_active', true)
+            ->with('branding')
+            ->first();
+
+        if (! $tenant) {
+            return $this->jsonError('La sede seleccionada no esta disponible.', 422);
+        }
+
+        return app(TenantConnectionManager::class)->runForTenant(
+            $tenant,
+            function (Tenant $tenant) use ($validated) {
+                $user = User::on('tenant')->find($validated['id']);
+
+                if (! $user) {
+                    return $this->jsonError('Usuario no encontrado en la sede seleccionada.', 404);
+                }
+
+                $this->assertUniqueIdentity($user, $validated);
+
+                return $this->applyUserUpdate($user, $validated, $tenant->id);
+            }
+        );
+    }
+
+    /**
+     * Aplica los cambios al usuario (en la conexion con la que fue cargado),
+     * registra la auditoria y replica la contrasena si cambio.
+     */
+    private function applyUserUpdate(User $user, array $validated, ?int $tenantId)
+    {
+        $actor = auth()->user();
+        $targetIsSuperAdmin = $user->isSuperAdmin();
+
+        if ($targetIsSuperAdmin && ! $actor->isSuperAdmin()) {
+            return $this->jsonError('Solo un super administrador puede editar a otro super administrador.', 403);
+        }
+
+        $changesRole = ! $targetIsSuperAdmin
+            && ! empty($validated['role'])
+            && $validated['role'] !== $user->role;
+
+        $isSelf = $actor->getKey() === $user->getKey()
+            && $actor->getConnectionName() === $user->getConnectionName();
+
+        if ($changesRole && $isSelf) {
+            return $this->jsonError('No puedes cambiar tu propio rol.', 422);
+        }
+
+        $oldEmail = $user->email;
+        $oldValues = [
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'role' => $user->effectiveRole(),
+        ];
+
+        $user->name = $validated['name'];
+        $user->username = $validated['username'];
+        $user->email = $validated['email'];
+
+        // Los super administradores conservan su rol global; solo se cambia el rol de los demas.
+        if (! $targetIsSuperAdmin && ! empty($validated['role'])) {
+            $user->role = $validated['role'];
+        }
+
+        $passwordHash = null;
+        if (! empty($validated['password'])) {
+            $passwordHash = Hash::make($validated['password']);
+            $user->password = $passwordHash;
+        }
+
+        $user->save();
+
+        if ($tenantId !== null && ! $targetIsSuperAdmin) {
+            $this->syncTenantMembership($tenantId, $user->id, $user->role);
+        }
+
+        ActivityLogger::updated(
+            User::class,
+            $user->id,
+            $user->name,
+            $oldValues,
+            [
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->effectiveRole(),
+            ]
+        );
+
+        $syncedIn = 0;
+        if ($passwordHash !== null) {
+            $syncedIn = $this->propagatePassword(
+                $passwordHash,
+                array_values(array_unique([$oldEmail, $user->email])),
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'type' => 'success',
+            'message' => $syncedIn > 0
+                ? "Usuario actualizado. La contrasena tambien se aplico en {$syncedIn} sede(s) donde existe este correo."
+                : 'Usuario actualizado correctamente.',
+        ]);
+    }
+
+    /**
+     * Valida que usuario y correo no choquen con otro usuario de la MISMA conexion
+     * (la regla `unique` usa la conexion por defecto, que en el portal es la central).
+     */
+    private function assertUniqueIdentity(User $user, array $validated): void
+    {
+        $taken = fn (string $column, string $value): bool => User::on($user->getConnectionName())
+            ->where($column, $value)
+            ->whereKeyNot($user->getKey())
+            ->exists();
+
+        $errors = [];
+
+        if ($taken('username', $validated['username'])) {
+            $errors['username'] = 'El nombre de usuario ya esta en uso.';
+        }
+
+        if ($taken('email', $validated['email'])) {
+            $errors['email'] = 'El correo ya esta en uso.';
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Copia un hash de contrasena a los usuarios con esos correos en cada sede
+     * activa y en la base central. Usa el query builder para no volver a hashear.
+     *
+     * @param  list<string>  $emails
+     * @return int sedes donde se encontro y actualizo al usuario
+     */
+    private function propagatePassword(string $hash, array $emails): int
+    {
+        $touched = 0;
+        $tenantConnections = app(TenantConnectionManager::class);
+
+        $tenants = Tenant::query()->where('is_active', true)->orderBy('id')->get();
+
+        foreach ($tenants as $tenant) {
+            try {
+                $rows = $tenantConnections->runForTenant(
+                    $tenant,
+                    fn () => User::on('tenant')->whereIn('email', $emails)->update(['password' => $hash])
+                );
+
+                $touched += $rows > 0 ? 1 : 0;
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo replicar la contrasena en la sede', [
+                    'tenant' => $tenant->slug,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $centralConnection = config('tenancy.central_connection', 'central');
+
+        try {
+            if (Schema::connection($centralConnection)->hasTable('users')) {
+                User::on($centralConnection)->whereIn('email', $emails)->update(['password' => $hash]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo replicar la contrasena en la base central', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return $touched;
+    }
+
+    private function jsonError(string $message, int $status)
+    {
+        return response()->json([
+            'success' => false,
+            'type' => 'error',
+            'message' => $message,
+        ], $status);
     }
 
     /**
