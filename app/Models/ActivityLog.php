@@ -6,6 +6,7 @@ use App\Concerns\UsesTenantConnection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ActivityLog extends Model
@@ -70,6 +71,43 @@ class ActivityLog extends Model
 
             return new self($attributes);
         }
+    }
+
+    /**
+     * Campos que cambiaron en un "update", listos para mostrar.
+     * Soporta valores anidados (arrays), booleanos y nulos sin romper la vista.
+     *
+     * @return list<array{key: string, old: string, new: string}>
+     */
+    public function changedFields(int $limit = 18): array
+    {
+        $old = is_array($this->old_values) ? $this->old_values : [];
+        $new = is_array($this->new_values) ? $this->new_values : [];
+        $changes = [];
+
+        foreach ($old as $key => $oldValue) {
+            if (! isset($new[$key]) || $oldValue == $new[$key]) {
+                continue;
+            }
+
+            $changes[] = [
+                'key' => (string) $key,
+                'old' => Str::limit(self::displayValue($oldValue), $limit),
+                'new' => Str::limit(self::displayValue($new[$key]), $limit),
+            ];
+        }
+
+        return $changes;
+    }
+
+    private static function displayValue(mixed $value): string
+    {
+        return match (true) {
+            is_array($value) || is_object($value) => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR),
+            is_bool($value) => $value ? 'true' : 'false',
+            is_null($value) => '',
+            default => (string) $value,
+        };
     }
 
     /**

@@ -66,11 +66,11 @@
                                     <table class="tabla w-full min-w-full table-auto record-table">
                                         <thead>
                                             <tr class="bg-gray-50 border-b border-gray-200">
-                                                <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">N�</th>
+                                                <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-12">NO.</th>
                                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-14">Tipo</th>
                                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Usuario</th>
-                                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide min-w-0 w-full">Descripci�n</th>
-                                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-35">M�dulo</th>
+                                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide min-w-0 w-full">Descripción</th>
+                                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-35">Módulo</th>
                                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-36">Fecha / Hora</th>
                                             </tr>
                                         </thead>
@@ -102,14 +102,13 @@
 
                                                     <td class="px-4 py-3">
                                                         <div class="text-sm text-gray-700">{{ $log->description }}</div>
-                                                        @if($log->old_values && $log->action === 'update')
+                                                        @php($changes = $log->action === 'update' ? $log->changedFields() : [])
+                                                        @if($changes)
                                                             <div class="mt-1 flex flex-wrap gap-1">
-                                                                @foreach(array_keys($log->old_values) as $key)
-                                                                    @if(isset($log->new_values[$key]) && $log->old_values[$key] != $log->new_values[$key])
-                                                                        <span class="inline-block bg-gray-100 border border-gray-200 rounded px-1.5 py-px text-xs text-gray-500 font-mono">
-                                                                            {{ $key }}: {{ Str::limit((string)$log->old_values[$key], 18) }} -> {{ Str::limit((string)$log->new_values[$key], 18) }}
-                                                                        </span>
-                                                                    @endif
+                                                                @foreach($changes as $change)
+                                                                    <span class="inline-block bg-gray-100 border border-gray-200 rounded px-1.5 py-px text-xs text-gray-500 font-mono">
+                                                                        {{ $change['key'] }}: {{ $change['old'] }} -> {{ $change['new'] }}
+                                                                    </span>
                                                                 @endforeach
                                                             </div>
                                                         @endif
@@ -121,7 +120,7 @@
                                                                 {{ $log->model_label }}
                                                             </span>
                                                         @else
-                                                            <span class="text-gray-300">�</span>
+                                                            <span class="text-gray-300">—</span>
                                                         @endif
                                                     </td>
 
@@ -134,6 +133,13 @@
                                         </tbody>
                                     </table>
                                 </div>
+
+                                @if(($sedeData['total'] ?? 0) > $sedeData['logs']->count())
+                                    <p class="inventory-sede-empty">
+                                        Mostrando los {{ $sedeData['logs']->count() }} registros más recientes de {{ number_format($sedeData['total']) }}.
+                                        Para ver el historial completo y filtrarlo, entra a la sede.
+                                    </p>
+                                @endif
 
                                 <p class="inventory-sede-filter-empty hidden" data-sede-empty>
                                     No hay resultados para esta sede con el filtro actual.
@@ -184,14 +190,13 @@
 
                                 <td class="px-4 py-3">
                                     <div class="text-sm text-gray-700">{{ $log->description }}</div>
-                                    @if($log->old_values && $log->action === 'update')
+                                    @php($changes = $log->action === 'update' ? $log->changedFields() : [])
+                                    @if($changes)
                                         <div class="mt-1 flex flex-wrap gap-1">
-                                            @foreach(array_keys($log->old_values) as $key)
-                                                @if(isset($log->new_values[$key]) && $log->old_values[$key] != $log->new_values[$key])
-                                                    <span class="inline-block bg-gray-100 border border-gray-200 rounded px-1.5 py-px text-xs text-gray-500 font-mono">
-                                                        {{ $key }}: {{ Str::limit((string)$log->old_values[$key], 18) }} -> {{ Str::limit((string)$log->new_values[$key], 18) }}
-                                                    </span>
-                                                @endif
+                                            @foreach($changes as $change)
+                                                <span class="inline-block bg-gray-100 border border-gray-200 rounded px-1.5 py-px text-xs text-gray-500 font-mono">
+                                                    {{ $change['key'] }}: {{ $change['old'] }} -> {{ $change['new'] }}
+                                                </span>
                                             @endforeach
                                         </div>
                                     @endif
@@ -203,7 +208,7 @@
                                             {{ $log->model_label }}
                                         </span>
                                     @else
-                                        <span class="text-gray-300">�</span>
+                                        <span class="text-gray-300">—</span>
                                     @endif
                                 </td>
 

@@ -11,9 +11,13 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class RecordController extends Controller
 {
+    /** Registros mas recientes que se muestran por sede en el portal. */
+    private const PORTAL_LOGS_PER_SEDE = 200;
+
     public function __construct(private readonly SimplePdfService $pdfService)
     {
         $this->middleware('auth');
@@ -241,12 +245,23 @@ class RecordController extends Controller
 
         return $tenants->map(function (Tenant $tenant) use ($tenantConnections): array {
             return $tenantConnections->runForTenant($tenant, function (Tenant $tenant): array {
+                // El portal solo muestra los mas recientes de cada sede: cargar toda la
+                // tabla de auditoria agota memoria/tiempo y devuelve 500.
                 try {
+                    $total = ActivityLog::on('tenant')->count();
                     $logs = ActivityLog::on('tenant')
                         ->with('user')
                         ->orderBy('created_at', 'desc')
+                        ->orderBy('id', 'desc')
+                        ->limit(self::PORTAL_LOGS_PER_SEDE)
                         ->get();
                 } catch (\Throwable $e) {
+                    Log::warning('Historial portal: no se pudo leer la sede.', [
+                        'tenant' => $tenant->slug,
+                        'message' => $e->getMessage(),
+                    ]);
+
+                    $total = 0;
                     $logs = collect();
                 }
 
@@ -263,6 +278,7 @@ class RecordController extends Controller
                         'inplace' => 1,
                     ]),
                     'logs' => $logs,
+                    'total' => $total,
                 ];
             });
         });
