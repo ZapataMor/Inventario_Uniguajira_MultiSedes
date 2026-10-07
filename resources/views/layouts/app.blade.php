@@ -18,8 +18,17 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    <link rel="stylesheet" href="{{ asset('assets/css/get.css') }}?v={{ $assetVersion('assets/css/get.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/css/components.css') }}?v={{ $assetVersion('assets/css/components.css') }}">
+    {{--
+        Los CSS base se enlazan uno por uno en el orden en que los importaba
+        `assets/css/get.css`, por la misma razon que components/ y responsive/
+        (ver abajo): con el agregador, un cambio en inventory.css no cambiaba
+        el `?v=` de get.css y produccion seguia sirviendo la version vieja.
+        components.css va al final porque antes se cargaba otra vez despues de
+        get.css y esa segunda carga era la que ganaba en la cascada.
+    --}}
+    @foreach(['styles', 'home', 'goods', 'inventory', 'user', 'record', 'reports', 'components'] as $baseStyle)
+        <link rel="stylesheet" href="{{ asset("assets/css/{$baseStyle}.css") }}?v={{ $assetVersion("assets/css/{$baseStyle}.css") }}">
+    @endforeach
     {{--
         Los CSS de components/ y responsive/ se enlazan uno por uno, en el mismo
         orden en que antes los importaba su `get.css`.
