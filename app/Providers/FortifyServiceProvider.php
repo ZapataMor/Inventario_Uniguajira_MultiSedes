@@ -264,7 +264,16 @@ class FortifyServiceProvider extends ServiceProvider
                 continue;
             }
 
-            return $this->syncCentralUserFromTenant($tenantUser);
+            try {
+                return $this->syncCentralUserFromTenant($tenantUser);
+            } catch (\Throwable $e) {
+                Log::error('Login portal: no se pudo registrar el super administrador en la base central.', [
+                    'email' => $tenantUser->email,
+                    'message' => $e->getMessage(),
+                ]);
+
+                return null;
+            }
         }
 
         return null;
@@ -305,7 +314,17 @@ class FortifyServiceProvider extends ServiceProvider
             );
 
             if ($tenantUser?->isGlobalAdmin()) {
-                return $this->syncCentralUserFromTenant($tenantUser);
+                // La sincronizacion es de mantenimiento: si falla, el usuario central ya es valido.
+                try {
+                    return $this->syncCentralUserFromTenant($tenantUser);
+                } catch (\Throwable $e) {
+                    Log::error('Login portal: no se pudo sincronizar el super administrador central.', [
+                        'email' => $centralUser->email,
+                        'message' => $e->getMessage(),
+                    ]);
+
+                    return $centralUser;
+                }
             }
         }
 
@@ -335,6 +354,12 @@ class FortifyServiceProvider extends ServiceProvider
 
         if ($centralUser && (int) $centralUser->getKey() !== $desiredId && $desiredIdIsAvailable) {
             DB::connection($centralConnection)->transaction(function () use ($centralUser, $desiredId, $payload, $centralConnection): void {
+                // Ningun usuario central tiene $desiredId: sus membresias son huerfanas (se
+                // registraron con el id local de una sede) y chocarian con el indice unico.
+                UserTenant::on($centralConnection)
+                    ->where('user_id', $desiredId)
+                    ->delete();
+
                 UserTenant::on($centralConnection)
                     ->where('user_id', $centralUser->getKey())
                     ->update(['user_id' => $desiredId]);
@@ -382,7 +407,9 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $tenant = tenant();
 
-        if (! $tenant || ! in_array($user->role, config('tenancy.tenant_roles', []), true)) {
+        // Los super administradores acceden a todas las sedes sin membresia; registrarla con
+        // su id local dejaria filas huerfanas en user_tenant.
+        if (! $tenant || $user->isGlobalAdmin() || ! in_array($user->role, config('tenancy.tenant_roles', []), true)) {
             return;
         }
 

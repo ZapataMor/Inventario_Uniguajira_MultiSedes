@@ -38,6 +38,21 @@ class EnsureTenantAccess
                 return $next($request);
             }
 
+            // La sesion se inicio en una sede: el id autenticado pertenece a la base de esa
+            // sede, no a la central, asi que no puede reutilizarse en el portal.
+            if ($request->session()->has('auth_tenant_id')) {
+                Auth::guard('web')->logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    abort(401, 'Inicia sesion en el portal para continuar.');
+                }
+
+                return redirect()->route('login')
+                    ->with('status', 'Inicia sesion en el portal para continuar.');
+            }
+
             if (! $this->isGlobalAdmin($user)) {
                 abort(403, 'Solo los super administradores pueden acceder al portal central.');
             }

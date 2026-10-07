@@ -49,3 +49,21 @@ if (! function_exists('tenant_storage_path')) {
         return storage_path('app/' . tenant_asset($path));
     }
 }
+
+if (! function_exists('portal_navigation_enabled')) {
+    /**
+     * Indica si los enlaces deben abrir las vistas consolidadas del portal (?portal=1).
+     *
+     * Solo aplica a super administradores autenticados en el portal. Si la sesion
+     * se inicio en una sede (auth_tenant_id), el usuario autenticado pertenece a la
+     * base de esa sede y no puede resolverse en el contexto central.
+     */
+    function portal_navigation_enabled(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null
+            && $user->isSuperAdmin()
+            && ! session()->has('auth_tenant_id');
+    }
+}

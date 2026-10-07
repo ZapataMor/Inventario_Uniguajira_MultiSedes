@@ -23,7 +23,7 @@
     $avatarSeed = (string) ($currentUser?->email ?: $profileName ?: 'user');
     $avatarIndex = (int) (sprintf('%u', crc32($avatarSeed)) % count($avatarPalette));
     $avatarColorClass = $avatarPalette[$avatarIndex];
-    $portalQuery = $currentUser?->isSuperAdmin() ? ['portal' => 1] : [];
+    $portalQuery = portal_navigation_enabled() ? ['portal' => 1] : [];
 @endphp
 
 <div class="sidebar" id="sidebar">
