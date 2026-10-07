@@ -1,5 +1,7 @@
 @php
     $portalSuperAdminMode = auth()->user()->isSuperAdmin() && ! tenant();
+    // Solo el super administrador principal crea super administradores (alcance Portal).
+    $canCreateGlobalUsers = auth()->user()->canManageGlobalLevels();
     $availableTenants = $availableTenants ?? collect();
 @endphp
 
@@ -23,7 +25,9 @@
                         <div class="form-field-full">
                             <label for="create-target-scope" class="form-label">Crear usuario para:</label>
                             <select id="create-target-scope" name="target_scope" class="form-input" required>
-                                <option value="portal">Portal (solo super administradores)</option>
+                                @if($canCreateGlobalUsers)
+                                    <option value="portal">Portal (super administradores, todas las sedes)</option>
+                                @endif
                                 @foreach($availableTenants as $tenantData)
                                     <option value="tenant:{{ $tenantData['id'] }}">Sede {{ $tenantData['name'] }}</option>
                                 @endforeach
@@ -84,7 +88,10 @@
                         <label for="create-role" class="form-label">Rol:</label>
                         <select id="create-role" name="role" class="form-input" required>
                             @if($portalSuperAdminMode)
-                                <option value="super_administrador">Super Administrador</option>
+                                @if($canCreateGlobalUsers)
+                                    <option value="super_administrador">Super Administrador - Administrador</option>
+                                    <option value="super_consultor">Super Administrador - Consultor</option>
+                                @endif
                                 <option value="administrador">Administrador</option>
                                 <option value="consultor">Consultor</option>
                             @else
@@ -95,7 +102,7 @@
                         </select>
                         @if($portalSuperAdminMode)
                             <small id="create-role-help" class="mt-1 block text-xs text-slate-500">
-                                En portal solo se permite Super Administrador.
+                                En sede solo se permite Administrador o Consultor.
                             </small>
                         @endif
                     </div>

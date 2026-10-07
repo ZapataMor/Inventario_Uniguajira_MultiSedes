@@ -7,6 +7,11 @@
     $isPortalUserCatalog = $isPortalUserCatalog ?? false;
     $usersByScope = $usersByScope ?? collect();
     $availableTenants = $availableTenants ?? collect();
+    $authUser = Auth::user();
+    // Usuarios de sede: administradores de sede y super administradores-administradores.
+    // Super administradores: solo el principal (canManageGlobalLevels).
+    $canEditUsers = $authUser->isAdministrator() || ($isPortalUserCatalog && $authUser->hasGlobalWriteAccess());
+    $canEditUserRow = fn ($user) => $canEditUsers && (! $user->isSuperAdmin() || $authUser->canManageGlobalLevels());
 @endphp
 <div class="content">
 
@@ -21,7 +26,7 @@
             modal="#modalCrearUsuario"
             canCreate="{{ (! $isPortalUserCatalog && Auth::user()->isAdministrator()) ? 'true' : 'false' }}"
         >
-            @if($isPortalUserCatalog && Auth::user()->isSuperAdmin())
+            @if($isPortalUserCatalog && $authUser->hasGlobalWriteAccess())
                 <button class="create-btn" onclick="mostrarModal('#modalCrearUsuario')">
                     Crear usuario por sede
                 </button>
@@ -104,6 +109,7 @@
                                                     </td>
                                                     <td class="px-4 py-3">
                                                         <div class="flex items-center gap-2 justify-center">
+                                                            @if($canEditUserRow($user))
                                                             <button
                                                                 class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-700 text-white hover:bg-red-800 transition-colors duration-200"
                                                                 title="Editar usuario"
@@ -112,11 +118,13 @@
                                                                 data-nombre-usuario="{{ $user->username }}"
                                                                 data-email="{{ $user->email }}"
                                                                 data-role="{{ $user->effectiveRole() }}"
+                                                                data-root="{{ $user->isRootAdmin() ? '1' : '0' }}"
                                                                 data-scope="{{ $scopeData['scope'] === 'portal' ? 'portal' : 'tenant:' . $scopeData['tenant_id'] }}"
                                                                 onclick="btnEditarUser(this)"
                                                             >
                                                                 <i class="fas fa-pen text-xs"></i>
                                                             </button>
+                                                            @endif
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -145,7 +153,7 @@
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Rol</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-24">Registrado</th>
                             <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wide w-28">Ultimo acceso</th>
-                            @if(Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin())
+                            @if($canEditUsers)
                                 <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide w-20">Acciones</th>
                             @endif
                         </tr>
@@ -200,9 +208,10 @@
                                     </div>
                                 </td>
 
-                                @if(Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin())
+                                @if($canEditUsers)
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-2 justify-center">
+                                            @if($canEditUserRow($user))
                                             <button
                                                 class="inline-flex items-center justify-center w-8 h-8 rounded-md bg-red-700 text-white hover:bg-red-800 transition-colors duration-200"
                                                 title="Editar usuario"
@@ -211,12 +220,14 @@
                                                 data-nombre-usuario="{{ $user->username }}"
                                                 data-email="{{ $user->email }}"
                                                 data-role="{{ $effectiveRole }}"
+                                                data-root="{{ $user->isRootAdmin() ? '1' : '0' }}"
                                                 onclick="btnEditarUser(this)"
                                             >
                                                 <i class="fas fa-pen text-xs"></i>
                                             </button>
+                                            @endif
 
-                                            @if(Auth::user()->isAdministrator() && $user->name !== 'Administrador' && ! $user->isSuperAdmin())
+                                            @if($authUser->isAdministrator() && $user->name !== 'Administrador' && ! $user->isSuperAdmin())
                                                 <a class="btn-eliminar" onclick="eliminarUsuario({{ $user->id }})">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
@@ -227,7 +238,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ (Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin()) ? 8 : 7 }}" class="py-16 text-center text-gray-400">
+                                <td colspan="{{ $canEditUsers ? 8 : 7 }}" class="py-16 text-center text-gray-400">
                                     <i class="fas fa-users text-5xl block mb-3 opacity-40"></i>
                                     <p class="m-0 text-base font-medium">No hay usuarios registrados</p>
                                 </td>
@@ -239,11 +250,11 @@
         @endif
     </div>
 
-    @if(Auth::user()->isAdministrator() || ($isPortalUserCatalog && Auth::user()->isSuperAdmin()))
+    @if($canEditUsers)
         @include('components.modal.users.modal-crear')
     @endif
 
-    @if(Auth::user()->isAdministrator() || Auth::user()->isSuperAdmin())
+    @if($canEditUsers)
         @include('components.modal.users.modal-editar')
     @endif
 

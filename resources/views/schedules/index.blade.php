@@ -5,7 +5,7 @@
 @section('content')
 @php
     $currentUser = Auth::user();
-    $canManageSchedules = $currentUser && ($currentUser->isAdministrator() || $currentUser->isSuperAdmin());
+    $canManageSchedules = $currentUser && $currentUser->isAdministrator();
 @endphp
 
 <div class="container content">
