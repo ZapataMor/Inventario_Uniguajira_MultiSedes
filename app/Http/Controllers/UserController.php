@@ -621,15 +621,28 @@ class UserController extends Controller
         // Validar en todas las sedes antes de escribir para no dejar al usuario a medio crear.
         foreach ($tenants as $tenantData) {
             try {
-                $conflict = $tenantConnections->runForTenant(
+                [$missingGlobalRole, $conflict] = $tenantConnections->runForTenant(
                     $tenantData['tenant'],
-                    fn () => User::on('tenant')
-                        ->where('username', $validated['username'])
-                        ->where('email', '!=', $validated['email'])
-                        ->exists()
+                    fn () => [
+                        ! Schema::connection('tenant')->hasColumn('users', 'global_role'),
+                        User::on('tenant')
+                            ->where('username', $validated['username'])
+                            ->where('email', '!=', $validated['email'])
+                            ->exists(),
+                    ]
                 );
             } catch (\Throwable $e) {
-                $conflict = false;
+                // Sede sin conexion: se reporta al guardar y se sincroniza en el primer login.
+                [$missingGlobalRole, $conflict] = [false, false];
+            }
+
+            // Sin global_role la sede no puede guardar super administradores (role es un enum).
+            if ($missingGlobalRole) {
+                return $this->jsonError(
+                    "La sede {$tenantData['name']} no esta actualizada (falta la columna global_role). "
+                    ."Ejecuta en el servidor: php artisan tenant:migrate --tenant={$tenantData['slug']} --force",
+                    422
+                );
             }
 
             if ($conflict) {
@@ -917,22 +930,22 @@ class UserController extends Controller
     }
 
     /**
-     * Payload para super administrador compatible con esquemas con/sin global_role.
+     * Payload para super administrador. Requiere la columna global_role: en las sedes
+     * `role` es un enum administrador/consultor y no admite 'super_administrador'.
      */
     private function buildSuperAdminPayload(array $validated, bool $supportsGlobalRole, string $level): array
     {
-        $payload = [
+        if (! $supportsGlobalRole) {
+            throw new \RuntimeException('La tabla users no tiene la columna global_role; ejecuta tenant:migrate en esa sede.');
+        }
+
+        return [
             'name' => $validated['name'],
             'username' => $validated['username'],
             'password' => Hash::make($validated['password']),
-            'role' => $supportsGlobalRole ? 'consultor' : 'super_administrador',
+            'role' => 'consultor',
+            'global_role' => $level,
         ];
-
-        if ($supportsGlobalRole) {
-            $payload['global_role'] = $level;
-        }
-
-        return $payload;
     }
 
     /**

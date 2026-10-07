@@ -245,8 +245,12 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function syncGlobalAdminIntoTenant(User $source, string $password): ?User
     {
+        // Sin global_role no hay como guardar el nivel: role es un enum administrador/consultor.
+        if (! Schema::connection('tenant')->hasColumn('users', 'global_role')) {
+            throw new \RuntimeException('La sede no tiene la columna users.global_role; ejecuta tenant:migrate en esa sede.');
+        }
+
         $users = DB::connection('tenant')->table('users');
-        $supportsGlobalRole = Schema::connection('tenant')->hasColumn('users', 'global_role');
         $existing = (clone $users)->where('email', $source->email)->first();
 
         $usernameTaken = (clone $users)
@@ -258,13 +262,10 @@ class FortifyServiceProvider extends ServiceProvider
             'name' => $source->name,
             'username' => $usernameTaken ? ($existing->username ?? $source->email) : $source->username,
             'password' => Hash::make($password),
-            'role' => $supportsGlobalRole ? ($existing->role ?? 'consultor') : 'super_administrador',
+            'role' => $existing->role ?? 'consultor',
+            'global_role' => $source->globalLevel(),
             'updated_at' => now(),
         ];
-
-        if ($supportsGlobalRole) {
-            $attributes['global_role'] = $source->globalLevel();
-        }
 
         if ($existing) {
             (clone $users)->where('id', $existing->id)->update($attributes);
