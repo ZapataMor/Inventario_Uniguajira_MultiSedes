@@ -14,16 +14,10 @@
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 xl:gap-8">
         @foreach($tenants as $tenant)
             @php
-                $domain = $tenant->primaryDomain();
-                $scheme = request()->isSecure() ? 'https' : 'http';
-                $port = request()->getPort();
-                $portSuffix = ($port && ! in_array($port, [80, 443])) ? ":{$port}" : '';
-                $sedeUrl = $domain ? "{$scheme}://{$domain}{$portSuffix}/login" : route('portal.switch', $tenant->slug);
                 $bgImage = $tenant->branding?->login_background;
             @endphp
-            <a href="{{ $sedeUrl }}"
-               target="_blank"
-               rel="noopener noreferrer"
+            {{-- Misma pestana: el portal da paso a la sede con una sesion propia de esa sede --}}
+            <a href="{{ route('portal.switch', $tenant->slug) }}"
                class="group relative block h-56 overflow-hidden rounded-2xl border border-slate-200 shadow-sm transition-shadow duration-300 hover:shadow-xl">
                 @if($bgImage)
                     <img src="{{ asset($bgImage) }}"

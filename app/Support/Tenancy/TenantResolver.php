@@ -23,14 +23,22 @@ class TenantResolver
      */
     public function resolve(Request $request): ?Tenant
     {
-        if ($this->isPortalRoute($request) || $request->boolean('portal')) {
+        if ($this->isPortalRoute($request)) {
             $request->session()->forget('tenant_id');
 
             return null;
         }
 
+        // El dominio de una sede manda sobre ?portal=1: en una sede nunca se muestran
+        // las vistas consolidadas de todas las sedes.
         if ($tenant = $this->resolveByFullDomain($request->getHost(), $request, false)) {
             return $tenant;
+        }
+
+        if ($request->boolean('portal')) {
+            $request->session()->forget('tenant_id');
+
+            return null;
         }
 
         if ($request->session()->has('tenant_id')) {

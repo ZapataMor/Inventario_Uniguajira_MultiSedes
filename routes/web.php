@@ -43,6 +43,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/portal/sede/{slug}', [PortalController::class, 'switchToTenant'])->name('portal.switch');
 });
 
+// Entrada a una sede desde el portal: canjea el token de un solo uso y abre la sesion de la sede.
+// Sin 'auth' (en la sede aun no hay sesion) y fuera de /portal para que resuelva la sede por dominio.
+Route::get('/acceso-portal', [PortalController::class, 'enterFromPortal'])->name('sede.portal-access');
+
 /**
  * Orden de las rutas:
  * 1. Home
