@@ -553,61 +553,84 @@ class UserController extends Controller
 
         $created = 0;
         $updated = 0;
+        $failedSedes = [];
         $tenantConnections = app(TenantConnectionManager::class);
+
+        // Validar en todas las sedes antes de escribir para no dejar al usuario a medio crear.
+        foreach ($tenants as $tenantData) {
+            try {
+                $conflict = $tenantConnections->runForTenant(
+                    $tenantData['tenant'],
+                    fn () => User::on('tenant')
+                        ->where('username', $validated['username'])
+                        ->where('email', '!=', $validated['email'])
+                        ->exists()
+                );
+            } catch (\Throwable $e) {
+                $conflict = false;
+            }
+
+            if ($conflict) {
+                return response()->json([
+                    'success' => false,
+                    'type' => 'error',
+                    'message' => "El nombre de usuario ya existe en la sede {$tenantData['name']}.",
+                ], 422);
+            }
+        }
 
         $this->syncCentralSuperAdminIfAvailable($validated);
 
         foreach ($tenants as $tenantData) {
-            $result = $tenantConnections->runForTenant(
-                $tenantData['tenant'],
-                function (Tenant $tenant) use ($tenantData, $validated, &$created, &$updated) {
-                    $supportsGlobalRole = $this->userTableSupportsGlobalRole('tenant');
+            try {
+                $tenantConnections->runForTenant(
+                    $tenantData['tenant'],
+                    function (Tenant $tenant) use ($tenantData, $validated, &$created, &$updated) {
+                        $supportsGlobalRole = $this->userTableSupportsGlobalRole('tenant');
 
-                    $existingByUsername = User::on('tenant')
-                        ->where('username', $validated['username'])
-                        ->first();
+                        $existing = User::on('tenant')
+                            ->where('email', $validated['email'])
+                            ->first();
 
-                    if ($existingByUsername && $existingByUsername->email !== $validated['email']) {
-                        return response()->json([
-                            'success' => false,
-                            'type' => 'error',
-                            'message' => "El nombre de usuario ya existe en la sede {$tenantData['name']}.",
-                        ], 422);
+                        $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole);
+
+                        if ($existing) {
+                            $existing->fill($payload);
+                            $existing->save();
+                            $user = $existing;
+                            $updated++;
+                        } else {
+                            $user = User::on('tenant')->create(array_merge($payload, [
+                                'email' => $validated['email'],
+                            ]));
+                            $created++;
+                        }
+
+                        $this->syncTenantMembership($tenantData['id'], $user->id, 'consultor');
                     }
+                );
+            } catch (\Throwable $e) {
+                // El login en sede sincroniza al super administrador desde la central si falta aqui.
+                Log::error('No se pudo registrar el super administrador en la sede', [
+                    'tenant' => $tenantData['slug'],
+                    'message' => $e->getMessage(),
+                ]);
 
-                    $existing = User::on('tenant')
-                        ->where('email', $validated['email'])
-                        ->first();
-
-                    $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole);
-
-                    if ($existing) {
-                        $existing->fill($payload);
-                        $existing->save();
-                        $user = $existing;
-                        $updated++;
-                    } else {
-                        $user = User::on('tenant')->create(array_merge($payload, [
-                            'email' => $validated['email'],
-                        ]));
-                        $created++;
-                    }
-
-                    $this->syncTenantMembership($tenantData['id'], $user->id, 'consultor');
-
-                    return null;
-                }
-            );
-
-            if ($result !== null) {
-                return $result;
+                $failedSedes[] = $tenantData['name'];
             }
+        }
+
+        $syncedCount = $tenants->count() - count($failedSedes);
+        $message = "Super administrador registrado en portal y sincronizado en {$syncedCount} sede(s).";
+
+        if ($failedSedes !== []) {
+            $message .= ' No se pudo sincronizar en: '.implode(', ', $failedSedes).'; se sincronizara al iniciar sesion en esa sede.';
         }
 
         return response()->json([
             'success' => true,
-            'type' => 'success',
-            'message' => "Super administrador registrado en portal y sincronizado en {$tenants->count()} sede(s).",
+            'type' => $failedSedes === [] ? 'success' : 'warning',
+            'message' => $message,
             'created' => $created,
             'updated' => $updated,
         ]);

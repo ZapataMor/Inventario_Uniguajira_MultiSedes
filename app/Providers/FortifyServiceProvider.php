@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Features;
@@ -59,7 +60,8 @@ class FortifyServiceProvider extends ServiceProvider
         }
 
         if (tenant()) {
-            $user = $this->attemptUserOnConnection('tenant', $login, $password);
+            $user = $this->attemptUserOnConnection('tenant', $login, $password)
+                ?? $this->provisionGlobalAdminIntoTenant($login, $password);
 
             if ($user) {
                 $this->syncTenantMembershipForLocalUser($user);
@@ -126,6 +128,120 @@ class FortifyServiceProvider extends ServiceProvider
 
             return false;
         }
+    }
+
+    /**
+     * Login en sede de un super administrador que no existe (o esta desincronizado)
+     * en la base de la sede: si sus credenciales son validas en la base central o en
+     * otra sede, se crea/actualiza en la sede activa y se devuelve ese usuario local.
+     */
+    private function provisionGlobalAdminIntoTenant(string $login, string $password): ?User
+    {
+        $globalAdmin = $this->findGlobalAdminOutsideTenant($login, $password);
+
+        if (! $globalAdmin) {
+            return null;
+        }
+
+        try {
+            return $this->syncGlobalAdminIntoTenant($globalAdmin, $password);
+        } catch (\Throwable $e) {
+            Log::error('Login sede: no se pudo sincronizar el super administrador en la sede.', [
+                'tenant' => tenant('slug'),
+                'email' => $globalAdmin->email,
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    private function findGlobalAdminOutsideTenant(string $login, string $password): ?User
+    {
+        $centralConnection = config('tenancy.central_connection', 'central');
+
+        try {
+            if (Schema::connection($centralConnection)->hasTable('users')) {
+                $centralUser = $this->attemptUserOnConnection($centralConnection, $login, $password);
+
+                if ($centralUser?->isGlobalAdmin()) {
+                    return $centralUser;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Login sede: no se pudo consultar la base central.', [
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        $currentTenantId = tenant('id');
+        $tenantConnections = app(TenantConnectionManager::class);
+
+        $tenants = Tenant::query()
+            ->where('is_active', true)
+            ->where('id', '!=', $currentTenantId)
+            ->orderBy('id')
+            ->get();
+
+        foreach ($tenants as $tenant) {
+            $tenantUser = $this->tryOnTenant(
+                $tenantConnections,
+                $tenant,
+                fn () => $this->attemptUserOnConnection('tenant', $login, $password)
+            );
+
+            if ($tenantUser?->isGlobalAdmin()) {
+                return $tenantUser;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Crea o actualiza (por correo) al super administrador en la sede activa.
+     * Usa el query builder para no pasar por el cast `hashed` del modelo.
+     */
+    private function syncGlobalAdminIntoTenant(User $source, string $password): ?User
+    {
+        $users = DB::connection('tenant')->table('users');
+        $supportsGlobalRole = Schema::connection('tenant')->hasColumn('users', 'global_role');
+        $existing = (clone $users)->where('email', $source->email)->first();
+
+        $usernameTaken = (clone $users)
+            ->where('username', $source->username)
+            ->when($existing, fn ($query) => $query->where('id', '!=', $existing->id))
+            ->exists();
+
+        $attributes = [
+            'name' => $source->name,
+            'username' => $usernameTaken ? ($existing->username ?? $source->email) : $source->username,
+            'password' => Hash::make($password),
+            'role' => $supportsGlobalRole ? ($existing->role ?? 'consultor') : 'super_administrador',
+            'updated_at' => now(),
+        ];
+
+        if ($supportsGlobalRole) {
+            $attributes['global_role'] = 'super_administrador';
+        }
+
+        if ($existing) {
+            (clone $users)->where('id', $existing->id)->update($attributes);
+            $id = $existing->id;
+        } else {
+            $id = (clone $users)->insertGetId(array_merge($attributes, [
+                'email' => $source->email,
+                'created_at' => now(),
+            ]));
+        }
+
+        Log::info('Login sede: super administrador sincronizado en la sede.', [
+            'tenant' => tenant('slug'),
+            'email' => $source->email,
+            'created' => ! $existing,
+        ]);
+
+        return User::on('tenant')->find($id);
     }
 
     private function attemptGlobalAdminFromTenants(string $login, string $password): ?User
