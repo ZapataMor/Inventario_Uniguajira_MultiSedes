@@ -11,9 +11,19 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 class User extends Authenticatable
 {
-    private const SUPER_ADMIN_EMAILS = [
-        'recursosfisicos@uniguajira.edu.co',
-    ];
+    /**
+     * Super administrador principal: acceso total y unico que gestiona los niveles globales.
+     */
+    public const ROOT_ADMIN_EMAIL = 'recursosfisicos@uniguajira.edu.co';
+
+    /**
+     * Niveles globales (columna global_role): ambos entran a todas las sedes.
+     */
+    public const GLOBAL_ADMIN = 'super_administrador';
+
+    public const GLOBAL_CONSULTOR = 'super_consultor';
+
+    public const GLOBAL_LEVELS = [self::GLOBAL_ADMIN, self::GLOBAL_CONSULTOR];
 
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
@@ -97,18 +107,25 @@ class User extends Authenticatable
     }
 
     /**
-     * Verifica si el usuario es administrador general del sistema.
+     * Verifica si es el super administrador principal (recursosfisicos).
      */
-    public function isGlobalAdmin(): bool
+    public function isRootAdmin(): bool
     {
-        $globalRoles = config('tenancy.global_roles', ['super_administrador']);
-
-        return in_array($this->global_role, $globalRoles)
-            || in_array($this->email, self::SUPER_ADMIN_EMAILS, true);
+        return mb_strtolower(trim((string) $this->email)) === self::ROOT_ADMIN_EMAIL;
     }
 
     /**
-     * Verifica si el usuario es super administrador.
+     * Verifica si el usuario tiene un nivel global (entra a todas las sedes).
+     */
+    public function isGlobalAdmin(): bool
+    {
+        $globalRoles = config('tenancy.global_roles', self::GLOBAL_LEVELS);
+
+        return in_array($this->global_role, $globalRoles, true) || $this->isRootAdmin();
+    }
+
+    /**
+     * Verifica si el usuario es super administrador (de cualquier nivel).
      */
     public function isSuperAdmin(): bool
     {
@@ -116,23 +133,58 @@ class User extends Authenticatable
     }
 
     /**
-     * Verifica si el usuario tiene privilegios administrativos.
+     * Nivel global efectivo o null si es un usuario de sede. Los registros antiguos
+     * con role = super_administrador sin global_role quedan como consultores.
      */
-    public function isAdministrator(): bool
+    public function globalLevel(): ?string
     {
-        return ! $this->isSuperAdmin() && $this->role === 'administrador';
+        if ($this->isRootAdmin()) {
+            return self::GLOBAL_ADMIN;
+        }
+
+        if (in_array($this->global_role, self::GLOBAL_LEVELS, true)) {
+            return $this->global_role;
+        }
+
+        return $this->isSuperAdmin() ? self::GLOBAL_CONSULTOR : null;
     }
 
     /**
-     * Verifica si el usuario es consultor.
+     * Super administrador con permisos de escritura en todas las sedes.
+     */
+    public function hasGlobalWriteAccess(): bool
+    {
+        return $this->globalLevel() === self::GLOBAL_ADMIN;
+    }
+
+    /**
+     * Solo el super administrador principal otorga, cambia o edita niveles globales.
+     */
+    public function canManageGlobalLevels(): bool
+    {
+        return $this->isRootAdmin();
+    }
+
+    /**
+     * Verifica si el usuario puede modificar datos en el contexto actual.
+     * Un super administrador-administrador solo escribe dentro de una sede: el portal
+     * central es una vista consolidada de lectura.
+     */
+    public function isAdministrator(): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return $this->hasGlobalWriteAccess() && tenant() !== null;
+        }
+
+        return $this->role === 'administrador';
+    }
+
+    /**
+     * Verifica si el usuario es de solo lectura en el contexto actual.
      */
     public function isConsultor(): bool
     {
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
-
-        return $this->role === 'consultor';
+        return ! $this->isAdministrator();
     }
 
     /**
@@ -140,7 +192,7 @@ class User extends Authenticatable
      */
     public function effectiveRole(): string
     {
-        return $this->isSuperAdmin() ? 'super_administrador' : $this->role;
+        return $this->globalLevel() ?? (string) $this->role;
     }
 
     /**
@@ -148,8 +200,13 @@ class User extends Authenticatable
      */
     public function displayRole(): string
     {
+        if ($this->isRootAdmin()) {
+            return 'Super Administrador principal';
+        }
+
         return match ($this->effectiveRole()) {
-            'super_administrador' => 'Super Administrador',
+            self::GLOBAL_ADMIN => 'Super Administrador - Administrador',
+            self::GLOBAL_CONSULTOR => 'Super Administrador - Consultor',
             'administrador' => 'Administrador',
             default => 'Consultor',
         };
@@ -161,7 +218,7 @@ class User extends Authenticatable
     public function roleInTenant(?\App\Models\Central\Tenant $tenant = null): ?string
     {
         if ($this->isSuperAdmin()) {
-            return 'super_administrador';
+            return $this->globalLevel();
         }
 
         $tenant = $tenant ?? tenant();

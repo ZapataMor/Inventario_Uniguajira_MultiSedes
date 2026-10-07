@@ -64,6 +64,7 @@ class FortifyServiceProvider extends ServiceProvider
                 ?? $this->provisionGlobalAdminIntoTenant($login, $password);
 
             if ($user) {
+                $this->syncGlobalLevelFromCentral($user);
                 $this->syncTenantMembershipForLocalUser($user);
                 $request->session()->put('tenant_id', tenant('id'));
                 $request->session()->put('auth_tenant_id', tenant('id'));
@@ -82,6 +83,46 @@ class FortifyServiceProvider extends ServiceProvider
         }
 
         return $this->attemptGlobalAdminFromTenants($login, $password);
+    }
+
+    /**
+     * La base central es la fuente de verdad del nivel global: si la sede quedo
+     * desactualizada (p. ej. la sede no respondio cuando se cambio el nivel), se corrige.
+     */
+    private function syncGlobalLevelFromCentral(User $user): void
+    {
+        if (! $user->isSuperAdmin() || $user->isRootAdmin()) {
+            return;
+        }
+
+        $centralConnection = config('tenancy.central_connection', 'central');
+
+        try {
+            if (! Schema::connection($centralConnection)->hasTable('users')
+                || ! Schema::connection('tenant')->hasColumn('users', 'global_role')) {
+                return;
+            }
+
+            $centralLevel = User::on($centralConnection)
+                ->where('email', $user->email)
+                ->value('global_role');
+
+            if (! in_array($centralLevel, User::GLOBAL_LEVELS, true) || $centralLevel === $user->global_role) {
+                return;
+            }
+
+            DB::connection('tenant')->table('users')
+                ->where('id', $user->getKey())
+                ->update(['global_role' => $centralLevel]);
+
+            $user->global_role = $centralLevel;
+            $user->syncOriginalAttribute('global_role');
+        } catch (\Throwable $e) {
+            Log::warning('Login sede: no se pudo sincronizar el nivel global desde la central.', [
+                'email' => $user->email,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function attemptUserOnConnection(string $connection, string $login, string $password): ?User
@@ -222,7 +263,7 @@ class FortifyServiceProvider extends ServiceProvider
         ];
 
         if ($supportsGlobalRole) {
-            $attributes['global_role'] = 'super_administrador';
+            $attributes['global_role'] = $source->globalLevel();
         }
 
         if ($existing) {
@@ -335,17 +376,21 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $centralConnection = config('tenancy.central_connection', 'central');
         $desiredId = (int) $tenantUser->getKey();
+
+        $centralUser = User::on($centralConnection)
+            ->where('email', $tenantUser->email)
+            ->first();
+
         $payload = [
             'name' => $tenantUser->name,
             'username' => $tenantUser->username,
             'password' => $tenantUser->password,
             'role' => $tenantUser->role ?: 'administrador',
-            'global_role' => 'super_administrador',
+            // El nivel lo decide la central; la sede solo lo aporta si la central no lo tiene.
+            'global_role' => $centralUser?->isGlobalAdmin()
+                ? $centralUser->globalLevel()
+                : $tenantUser->globalLevel(),
         ];
-
-        $centralUser = User::on($centralConnection)
-            ->where('email', $tenantUser->email)
-            ->first();
 
         $desiredIdIsAvailable = ! User::on($centralConnection)
             ->whereKey($desiredId)

@@ -6,7 +6,8 @@
         <h2>Editar Usuario</h2>
 
         <form id="formEditarUser" class="form-container" method="POST"
-            action="{{ url('/api/users/update') }}" autocomplete="off">
+            action="{{ url('/api/users/update') }}" autocomplete="off"
+            data-can-manage-global-levels="{{ auth()->user()->canManageGlobalLevels() ? '1' : '0' }}">
             @csrf
 
             <input type="hidden" id="edit-id" name="id">
@@ -38,12 +39,13 @@
                         <label for="edit-role" class="form-label">Rol:</label>
                         <select id="edit-role" name="role" class="form-input" required>
                             <option value="">Selecciona un rol</option>
-                            <option value="administrador">Administrador</option>
-                            <option value="super_administrador" disabled hidden>Super Administrador</option>
-                            <option value="consultor">Consultor</option>
+                            <option value="administrador" data-level="sede">Administrador</option>
+                            <option value="consultor" data-level="sede">Consultor</option>
+                            <option value="super_administrador" data-level="global" disabled hidden>Super Administrador - Administrador</option>
+                            <option value="super_consultor" data-level="global" disabled hidden>Super Administrador - Consultor</option>
                         </select>
                         <small id="edit-role-help" style="color: #6b7280; font-size: 12px; margin-top: 4px; display: none;">
-                            El rol de un super administrador no se modifica desde aquí.
+                            Solo el super administrador principal cambia el nivel de un super administrador.
                         </small>
                     </div>
                 </div>

@@ -108,9 +108,9 @@ class RecordController extends Controller
      */
     public function export(Request $request)
     {
-        // El super administrador no puede descargar historial al operar dentro de una sede.
+        // El super administrador-consultor no puede descargar historial al operar dentro de una sede.
         abort_if(
-            tenant() && $request->user()?->isSuperAdmin(),
+            tenant() && $request->user()?->isSuperAdmin() && ! $request->user()->hasGlobalWriteAccess(),
             403,
             'No tienes permiso para descargar reportes de historial en esta sede.'
         );

@@ -64,7 +64,10 @@ function configurePortalCreateUserScope() {
 
     const buildOptions = (targetScope) => {
         const roleOptions = targetScope === 'portal'
-            ? [{ value: 'super_administrador', label: 'Super Administrador' }]
+            ? [
+                { value: 'super_administrador', label: 'Super Administrador - Administrador' },
+                { value: 'super_consultor', label: 'Super Administrador - Consultor' },
+            ]
             : [
                 { value: 'administrador', label: 'Administrador' },
                 { value: 'consultor', label: 'Consultor' },
@@ -85,7 +88,7 @@ function configurePortalCreateUserScope() {
 
         if (roleHelp) {
             roleHelp.textContent = targetScope === 'portal'
-                ? 'En portal solo se permite Super Administrador.'
+                ? 'Super administrador con acceso a todas las sedes: Administrador modifica, Consultor solo consulta.'
                 : 'En sede solo se permite Administrador o Consultor.';
         }
     };
@@ -200,14 +203,33 @@ function btnEditarUser(element) {
     const roleSelect = document.getElementById('edit-role');
     const roleHelp = document.getElementById('edit-role-help');
     if (roleSelect && rol) {
+        // Un super administrador solo puede pasar entre niveles globales, y solo lo cambia
+        // el principal; un usuario de sede solo entre Administrador y Consultor.
+        const isGlobalLevel = rol === 'super_administrador' || rol === 'super_consultor';
+        const canManageGlobalLevels = roleSelect.form?.dataset.canManageGlobalLevels === '1';
+        const isRootAdmin = element.getAttribute('data-root') === '1';
+
+        Array.from(roleSelect.options).forEach((option) => {
+            if (!option.dataset.level) {
+                return;
+            }
+
+            const visible = (option.dataset.level === 'global') === isGlobalLevel;
+            option.hidden = !visible;
+            option.disabled = !visible;
+        });
+
         roleSelect.value = rol;
 
-        // Un super administrador conserva su rol global: el campo se muestra bloqueado y no se envía.
-        const isSuperAdmin = rol === 'super_administrador';
-        roleSelect.disabled = isSuperAdmin;
-        roleSelect.required = !isSuperAdmin;
+        // Bloqueado no se envia: el backend conserva el nivel actual.
+        const locked = isGlobalLevel && (!canManageGlobalLevels || isRootAdmin);
+        roleSelect.disabled = locked;
+        roleSelect.required = !locked;
         if (roleHelp) {
-            roleHelp.style.display = isSuperAdmin ? 'block' : 'none';
+            roleHelp.textContent = isRootAdmin
+                ? 'El super administrador principal siempre conserva el nivel Administrador.'
+                : 'Solo el super administrador principal cambia el nivel de un super administrador.';
+            roleHelp.style.display = locked ? 'block' : 'none';
         }
     }
 

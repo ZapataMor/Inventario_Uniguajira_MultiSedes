@@ -42,13 +42,13 @@ class InventoryScheduleController extends Controller
 
     /**
      * Crear, editar y eliminar programaciones queda restringido
-     * a administradores de sede y super administradores.
+     * a quien puede escribir en la sede: administradores y super administradores-administradores.
      */
     private function autorizarGestion(): void
     {
         $user = Auth::user();
 
-        abort_if(! $user || (! $user->isAdministrator() && ! $user->isSuperAdmin()), 403);
+        abort_if(! $user || ! $user->isAdministrator(), 403);
     }
 
     /**

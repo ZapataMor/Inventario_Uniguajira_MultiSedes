@@ -76,6 +76,10 @@ class UserController extends Controller
             return $this->storeFromPortal($request);
         }
 
+        if (! $request->user()->isAdministrator()) {
+            return $this->jsonError('No tienes permisos para crear usuarios.', 403);
+        }
+
         try {
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
@@ -147,13 +151,17 @@ class UserController extends Controller
                 return $this->updateFromPortal($request);
             }
 
+            if (! $request->user()->isAdministrator()) {
+                return $this->jsonError('No tienes permisos para editar usuarios.', 403);
+            }
+
             $validated = $request->validate([
                 'id' => ['required', 'integer'],
                 'name' => ['required', 'string', 'max:255'],
                 'username' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255'],
                 'password' => ['nullable', 'string', 'min:6'],
-                'role' => ['nullable', Rule::in(self::BASE_ROLES)],
+                'role' => ['nullable', Rule::in(array_merge(self::BASE_ROLES, User::GLOBAL_LEVELS))],
             ]);
 
             $user = User::find($validated['id']);
@@ -246,9 +254,15 @@ class UserController extends Controller
             'username' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['nullable', Rule::in(self::BASE_ROLES)],
+            'role' => ['nullable', Rule::in(array_merge(self::BASE_ROLES, User::GLOBAL_LEVELS))],
             'target_scope' => ['required', 'string'],
         ]);
+
+        // Los usuarios de sede los edita un super administrador-administrador; los
+        // super administradores, solo el principal (se valida en applyUserUpdate).
+        if ($validated['target_scope'] !== 'portal' && ! $request->user()->hasGlobalWriteAccess()) {
+            return $this->jsonError('Tu nivel de super administrador es de solo consulta.', 403);
+        }
 
         $centralConnection = config('tenancy.central_connection', 'central');
 
@@ -306,14 +320,30 @@ class UserController extends Controller
     {
         $actor = auth()->user();
         $targetIsSuperAdmin = $user->isSuperAdmin();
+        $requestedRole = $validated['role'] ?? null;
+        $requestsGlobalLevel = in_array($requestedRole, User::GLOBAL_LEVELS, true);
 
-        if ($targetIsSuperAdmin && ! $actor->isSuperAdmin()) {
-            return $this->jsonError('Solo un super administrador puede editar a otro super administrador.', 403);
+        if ($targetIsSuperAdmin && ! $actor->canManageGlobalLevels()) {
+            return $this->jsonError('Solo el super administrador principal puede modificar a un super administrador.', 403);
+        }
+
+        if ($requestsGlobalLevel && ! $targetIsSuperAdmin) {
+            return $this->jsonError('Para otorgar un nivel de super administrador, crea el usuario desde el portal con el alcance "Portal".', 422);
         }
 
         $changesRole = ! $targetIsSuperAdmin
-            && ! empty($validated['role'])
-            && $validated['role'] !== $user->role;
+            && ! empty($requestedRole)
+            && $requestedRole !== $user->role;
+
+        // El principal siempre conserva el nivel administrador.
+        $changesGlobalLevel = $targetIsSuperAdmin
+            && $requestsGlobalLevel
+            && ! $user->isRootAdmin()
+            && $requestedRole !== $user->globalLevel();
+
+        if ($changesGlobalLevel && ! $this->userTableSupportsGlobalRole($user->getConnectionName())) {
+            return $this->jsonError('Esta base no admite niveles de super administrador.', 422);
+        }
 
         $isSelf = $actor->getKey() === $user->getKey()
             && $actor->getConnectionName() === $user->getConnectionName();
@@ -334,9 +364,13 @@ class UserController extends Controller
         $user->username = $validated['username'];
         $user->email = $validated['email'];
 
-        // Los super administradores conservan su rol global; solo se cambia el rol de los demas.
-        if (! $targetIsSuperAdmin && ! empty($validated['role'])) {
-            $user->role = $validated['role'];
+        // A los super administradores solo se les cambia el nivel global; a los demas, el rol de sede.
+        if (! $targetIsSuperAdmin && ! empty($requestedRole)) {
+            $user->role = $requestedRole;
+        }
+
+        if ($changesGlobalLevel) {
+            $user->global_role = $requestedRole;
         }
 
         $passwordHash = null;
@@ -364,19 +398,25 @@ class UserController extends Controller
             ]
         );
 
+        $emails = array_values(array_unique([$oldEmail, $user->email]));
+
         $syncedIn = 0;
         if ($passwordHash !== null) {
-            $syncedIn = $this->propagatePassword(
-                $passwordHash,
-                array_values(array_unique([$oldEmail, $user->email])),
-            );
+            $syncedIn = $this->propagateAttributes(['password' => $passwordHash], $emails);
         }
+
+        if ($changesGlobalLevel) {
+            $levelSyncedIn = $this->propagateAttributes(['global_role' => $requestedRole], $emails, onlyGlobalUsers: true);
+            $syncedIn = max($syncedIn, $levelSyncedIn);
+        }
+
+        $replicated = $changesGlobalLevel ? 'El nivel' : 'La contrasena';
 
         return response()->json([
             'success' => true,
             'type' => 'success',
             'message' => $syncedIn > 0
-                ? "Usuario actualizado. La contrasena tambien se aplico en {$syncedIn} sede(s) donde existe este correo."
+                ? "Usuario actualizado. {$replicated} tambien se aplico en {$syncedIn} sede(s) donde existe este correo."
                 : 'Usuario actualizado correctamente.',
         ]);
     }
@@ -408,30 +448,36 @@ class UserController extends Controller
     }
 
     /**
-     * Copia un hash de contrasena a los usuarios con esos correos en cada sede
-     * activa y en la base central. Usa el query builder para no volver a hashear.
+     * Copia atributos (hash de contrasena, nivel global) a los usuarios con esos
+     * correos en cada sede activa y en la base central. Usa el query builder para
+     * no volver a hashear.
      *
+     * @param  array<string, mixed>  $attributes
      * @param  list<string>  $emails
+     * @param  bool  $onlyGlobalUsers  solo filas que ya son super administrador (no promueve usuarios de sede)
      * @return int sedes donde se encontro y actualizo al usuario
      */
-    private function propagatePassword(string $hash, array $emails): int
+    private function propagateAttributes(array $attributes, array $emails, bool $onlyGlobalUsers = false): int
     {
         $touched = 0;
         $tenantConnections = app(TenantConnectionManager::class);
+
+        $update = fn (string $connection): int => User::on($connection)
+            ->whereIn('email', $emails)
+            ->when($onlyGlobalUsers, fn ($query) => $query->whereNotNull('global_role'))
+            ->update($attributes);
 
         $tenants = Tenant::query()->where('is_active', true)->orderBy('id')->get();
 
         foreach ($tenants as $tenant) {
             try {
-                $rows = $tenantConnections->runForTenant(
-                    $tenant,
-                    fn () => User::on('tenant')->whereIn('email', $emails)->update(['password' => $hash])
-                );
+                $rows = $tenantConnections->runForTenant($tenant, fn () => $update('tenant'));
 
                 $touched += $rows > 0 ? 1 : 0;
             } catch (\Throwable $e) {
-                Log::warning('No se pudo replicar la contrasena en la sede', [
+                Log::warning('No se pudo replicar el cambio de usuario en la sede', [
                     'tenant' => $tenant->slug,
+                    'attributes' => array_keys($attributes),
                     'message' => $e->getMessage(),
                 ]);
             }
@@ -441,10 +487,11 @@ class UserController extends Controller
 
         try {
             if (Schema::connection($centralConnection)->hasTable('users')) {
-                User::on($centralConnection)->whereIn('email', $emails)->update(['password' => $hash]);
+                $update($centralConnection);
             }
         } catch (\Throwable $e) {
-            Log::warning('No se pudo replicar la contrasena en la base central', [
+            Log::warning('No se pudo replicar el cambio de usuario en la base central', [
+                'attributes' => array_keys($attributes),
                 'message' => $e->getMessage(),
             ]);
         }
@@ -475,11 +522,26 @@ class UserController extends Controller
                 'email' => ['required', 'email', 'max:255'],
                 'password' => ['required', 'string', 'min:6'],
                 'target_scope' => ['required', 'string'],
-                'role' => ['nullable', Rule::in(array_merge(self::BASE_ROLES, ['super_administrador']))],
+                'role' => ['nullable', Rule::in(array_merge(self::BASE_ROLES, User::GLOBAL_LEVELS))],
             ]);
 
+            $actor = $request->user();
+
             if ($validated['target_scope'] === 'portal') {
-                return $this->storePortalSuperAdmin($validated);
+                if (! $actor->canManageGlobalLevels()) {
+                    return $this->jsonError('Solo el super administrador principal puede crear super administradores.', 403);
+                }
+
+                $level = (string) ($validated['role'] ?? '');
+                if (! in_array($level, User::GLOBAL_LEVELS, true)) {
+                    return $this->jsonError('Selecciona el nivel del super administrador.', 422);
+                }
+
+                return $this->storePortalSuperAdmin($validated, $level);
+            }
+
+            if (! $actor->hasGlobalWriteAccess()) {
+                return $this->jsonError('Tu nivel de super administrador es de solo consulta.', 403);
             }
 
             if (! preg_match('/^tenant:(\d+)$/', $validated['target_scope'], $matches)) {
@@ -539,7 +601,7 @@ class UserController extends Controller
     /**
      * Crea o actualiza un super administrador en todas las sedes activas.
      */
-    private function storePortalSuperAdmin(array $validated)
+    private function storePortalSuperAdmin(array $validated, string $level)
     {
         $tenants = $this->getActiveTenants();
 
@@ -579,34 +641,32 @@ class UserController extends Controller
             }
         }
 
-        $this->syncCentralSuperAdminIfAvailable($validated);
+        $this->syncCentralSuperAdminIfAvailable($validated, $level);
 
         foreach ($tenants as $tenantData) {
             try {
                 $tenantConnections->runForTenant(
                     $tenantData['tenant'],
-                    function (Tenant $tenant) use ($tenantData, $validated, &$created, &$updated) {
+                    // Sin membresia en user_tenant: el nivel global ya da acceso a todas las
+                    // sedes y el id local de la sede dejaria filas huerfanas en la central.
+                    function (Tenant $tenant) use ($validated, $level, &$created, &$updated) {
                         $supportsGlobalRole = $this->userTableSupportsGlobalRole('tenant');
 
                         $existing = User::on('tenant')
                             ->where('email', $validated['email'])
                             ->first();
 
-                        $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole);
+                        $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole, $level);
 
                         if ($existing) {
-                            $existing->fill($payload);
-                            $existing->save();
-                            $user = $existing;
+                            $existing->fill($payload)->save();
                             $updated++;
                         } else {
-                            $user = User::on('tenant')->create(array_merge($payload, [
+                            User::on('tenant')->create(array_merge($payload, [
                                 'email' => $validated['email'],
                             ]));
                             $created++;
                         }
-
-                        $this->syncTenantMembership($tenantData['id'], $user->id, 'consultor');
                     }
                 );
             } catch (\Throwable $e) {
@@ -772,7 +832,7 @@ class UserController extends Controller
     /**
      * Si la base central tiene tabla users, sincroniza ahi el super administrador del portal.
      */
-    private function syncCentralSuperAdminIfAvailable(array $validated): void
+    private function syncCentralSuperAdminIfAvailable(array $validated, string $level): void
     {
         if (! Schema::connection('central')->hasTable('users')) {
             return;
@@ -790,7 +850,7 @@ class UserController extends Controller
             ]);
         }
 
-        $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole);
+        $payload = $this->buildSuperAdminPayload($validated, $supportsGlobalRole, $level);
 
         $existing = User::on('central')
             ->where('email', $validated['email'])
@@ -824,8 +884,9 @@ class UserController extends Controller
 
             if ($this->userTableSupportsGlobalRole('central')) {
                 $query->where(function ($innerQuery) {
-                    $innerQuery->where('global_role', 'super_administrador')
-                        ->orWhere('role', 'super_administrador');
+                    $innerQuery->whereIn('global_role', User::GLOBAL_LEVELS)
+                        ->orWhere('role', 'super_administrador')
+                        ->orWhere('email', User::ROOT_ADMIN_EMAIL);
                 });
             } else {
                 $query->where('role', 'super_administrador');
@@ -858,7 +919,7 @@ class UserController extends Controller
     /**
      * Payload para super administrador compatible con esquemas con/sin global_role.
      */
-    private function buildSuperAdminPayload(array $validated, bool $supportsGlobalRole): array
+    private function buildSuperAdminPayload(array $validated, bool $supportsGlobalRole, string $level): array
     {
         $payload = [
             'name' => $validated['name'],
@@ -868,7 +929,7 @@ class UserController extends Controller
         ];
 
         if ($supportsGlobalRole) {
-            $payload['global_role'] = 'super_administrador';
+            $payload['global_role'] = $level;
         }
 
         return $payload;

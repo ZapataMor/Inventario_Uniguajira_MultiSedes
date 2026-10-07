@@ -151,7 +151,8 @@ return [
     */
 
     'global_roles' => [
-        'super_administrador',
+        'super_administrador', // Super administrador - administrador: todas las sedes, con escritura.
+        'super_consultor',     // Super administrador - consultor: todas las sedes, solo lectura.
     ],
 
     /*
