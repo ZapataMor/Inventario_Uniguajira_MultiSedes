@@ -338,9 +338,11 @@ function updateRemovedAssetsList(assets) {
     }
 
     container.innerHTML = assets.map(asset => {
+        const typeKey = asset.type === 'Cantidad' ? 'cantidad' : 'serial';
+        const defaultImageUrl = `/assets/defaults/goods/${typeKey}.svg`;
         const imageUrl = asset.image
-            ? `/storage/${asset.image}`
-            : '/assets/uploads/img/goods/default.jpg';
+            ? `/asset-images/${asset.image}?type=${typeKey}`
+            : defaultImageUrl;
 
         const iconUrl = asset.type === 'Cantidad'
             ? '/assets/icons/bienCantidad.svg'
@@ -370,7 +372,7 @@ function updateRemovedAssetsList(assets) {
                 <img
                     src="${imageUrl}"
                     class="bien-image"
-                    onerror="this.src='/assets/uploads/img/goods/default.jpg'"
+                    onerror="this.onerror=null; this.src='${defaultImageUrl}'"
                 />
 
                 <div class="bien-info">

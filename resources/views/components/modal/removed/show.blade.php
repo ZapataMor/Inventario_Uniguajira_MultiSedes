@@ -151,10 +151,10 @@
 
     <div style="text-align: center; padding: 20px;">
         <img
-            src="{{ route('assets.image', ['path' => $removedAsset->image]) }}"
+            src="{{ \App\Support\AssetImage::url($removedAsset->image, $removedAsset->type) }}"
             alt="{{ $removedAsset->name }}"
             style="max-width: 100%; max-height: 300px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
-            onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
+            onerror="this.onerror=null; this.src='{{ \App\Support\AssetImage::defaultUrl($removedAsset->type) }}'"
         />
     </div>
 </div>

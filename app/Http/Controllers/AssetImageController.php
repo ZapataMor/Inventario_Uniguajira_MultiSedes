@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AssetImage;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -12,7 +13,7 @@ class AssetImageController extends Controller
         $fullPath = $this->resolveImagePath($path);
 
         if ($fullPath === null || ! is_file($fullPath)) {
-            return response()->file(public_path('assets/defaults/goods/default.jpg'));
+            return response()->file(AssetImage::defaultPath($request->query('type')));
         }
 
         return response()->file($fullPath, [

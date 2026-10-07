@@ -276,16 +276,17 @@
                         data-cantidad="{{ $asset->quantity }}"
                         data-asset-type="{{ $asset->type }}"
                         data-type="good"
+                    @endif
 
-                        @if ($asset->type === 'Cantidad')
-                            onclick="toggleSelectItem(this)"
-                        @else
-                            onclick="loadContent('{{ route('inventory.serials', [
-                                'groupId' => $inventory->group_id,
-                                'inventoryId' => $inventory->id,
-                                'assetId' => $asset->asset_id
-                            ]) }}', { onSuccess: () => initGoodsSerialsInventoryFunctions() })"
-                        @endif
+                    {{-- Cualquier rol puede abrir la lista de seriales; seleccionar bienes de cantidad es solo para administradores --}}
+                    @if ($asset->type !== 'Cantidad')
+                        onclick="loadContent('{{ route('inventory.serials', [
+                            'groupId' => $inventory->group_id,
+                            'inventoryId' => $inventory->id,
+                            'assetId' => $asset->asset_id
+                        ]) }}', { onSuccess: () => initGoodsSerialsInventoryFunctions() })"
+                    @elseif (Auth::user()->isAdministrator())
+                        onclick="toggleSelectItem(this)"
                     @endif
                 >
                     @if(Auth::user()->isAdministrator())
@@ -300,9 +301,9 @@
 
                     {{-- Imagen --}}
                     <img
-                        src="{{ !empty($asset->image) ? route('assets.image', ['path' => $asset->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                        src="{{ \App\Support\AssetImage::url($asset->image, $asset->type) }}"
                         class="bien-image"
-                        onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
+                        onerror="this.onerror=null; this.src='{{ \App\Support\AssetImage::defaultUrl($asset->type) }}'"
                     />
 
                     {{-- Info --}}

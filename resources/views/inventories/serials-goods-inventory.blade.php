@@ -71,6 +71,9 @@
                         onclick="event.stopPropagation(); if (typeof btnVerMantenimientos === 'function') btnVerMantenimientos();">
                     <i class="fas fa-wrench"></i>
                 </button>
+
+                {{-- Acciones que modifican el serial: solo administradores --}}
+                @if(Auth::user()->isAdministrator())
                 <button class="control-btn" type="button" data-serial-single title="Cambiar inventario" onclick="event.stopPropagation(); if (typeof btnCambiarInventarioSerial === 'function') { btnCambiarInventarioSerial(); } else if (typeof window.openSerialMoveFallback === 'function') { window.openSerialMoveFallback(); }">
                     <i class="fas fa-exchange-alt"></i>
                 </button>
@@ -89,6 +92,7 @@
                 <button class="control-btn" type="button" data-serial-single title="Eliminar" onclick="event.stopPropagation(); if (typeof btnEliminarBienSerial === 'function') btnEliminarBienSerial();">
                     <i class="fas fa-trash"></i>
                 </button>
+                @endif
             </div>
         </div>
     @endif
@@ -153,9 +157,9 @@
                     onclick="toggleSelectItem(this)"
                 >
                     <img
-                        src="{{ !empty($serial->image) ? route('assets.image', ['path' => $serial->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                        src="{{ \App\Support\AssetImage::url($serial->image, 'Serial') }}"
                         class="bien-image"
-                        onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
+                        onerror="this.onerror=null; this.src='{{ \App\Support\AssetImage::defaultUrl('Serial') }}'"
                     />
 
                     <div class="bien-info">
@@ -178,11 +182,13 @@
     @endif
 
     {{-- MODALES --}}
-    <x-modal.inventory.good-inventory-edit-serial />
-    <x-modal.inventory.good-inventory-remove-serial />
-    <x-modal.inventory.good-inventory-move-serial />
+    @if(Auth::user()->isAdministrator())
+        <x-modal.inventory.good-inventory-edit-serial />
+        <x-modal.inventory.good-inventory-remove-serial />
+        <x-modal.inventory.good-inventory-move-serial />
+        <x-modal.inventory.good-inventory-maintenance-batch />
+    @endif
     <x-modal.inventory.good-inventory-maintenances />
-    <x-modal.inventory.good-inventory-maintenance-batch />
 
     @once
         <script>

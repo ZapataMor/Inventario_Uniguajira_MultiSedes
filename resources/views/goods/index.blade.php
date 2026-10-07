@@ -72,7 +72,7 @@
                                     @foreach ($sedeData['goods'] as $bien)
                                         <div class="bien-card card-item">
                                             <img
-                                                src="{{ $bien->image ? route('assets.image', ['path' => $bien->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                                                src="{{ \App\Support\AssetImage::url($bien->image, $bien->type) }}"
                                                 class="bien-image"
                                             />
 
@@ -108,7 +108,7 @@
 
                         {{-- Muestra la imagen del bien o una imagen por defecto si no existe --}}
                         <img
-                            src="{{ $bien->image ? route('assets.image', ['path' => $bien->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                            src="{{ \App\Support\AssetImage::url($bien->image, $bien->type) }}"
                             class="bien-image"
                         />
 

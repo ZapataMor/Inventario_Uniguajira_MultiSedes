@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" role="img" aria-label="Bien de tipo serial sin imagen">
+  <rect width="240" height="200" fill="#f8fafc"/>
+  <circle cx="120" cy="100" r="78" fill="#e2e8f0"/>
+  <!-- Etiqueta de serial -->
+  <g stroke="#334155" stroke-width="3" stroke-linejoin="round">
+    <path d="M58 62 h104 l22 38 -22 38 H58 a6 6 0 0 1 -6 -6 V68 a6 6 0 0 1 6 -6 z" fill="#ffffff"/>
+    <circle cx="164" cy="100" r="7" fill="#e2e8f0"/>
+  </g>
+  <!-- Código de barras -->
+  <g fill="#334155">
+    <rect x="66" y="76" width="5" height="38"/>
+    <rect x="75" y="76" width="2" height="38"/>
+    <rect x="81" y="76" width="6" height="38"/>
+    <rect x="91" y="76" width="2" height="38"/>
+    <rect x="97" y="76" width="4" height="38"/>
+    <rect x="105" y="76" width="2" height="38"/>
+    <rect x="111" y="76" width="6" height="38"/>
+    <rect x="121" y="76" width="3" height="38"/>
+    <rect x="128" y="76" width="2" height="38"/>
+    <rect x="134" y="76" width="5" height="38"/>
+    <rect x="143" y="76" width="2" height="38"/>
+  </g>
+  <text x="105" y="129" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" font-weight="700" letter-spacing="1" fill="#475569">S/N 0000</text>
+</svg>

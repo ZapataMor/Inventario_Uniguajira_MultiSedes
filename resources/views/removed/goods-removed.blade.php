@@ -60,9 +60,9 @@
                                         onclick="btnViewRemovedDetails({{ $asset->id }}, '{{ $asset->source }}', '{{ $sedeData['tenant_slug'] }}')">
 
                                         <img
-                                            src="{{ !empty($asset->image) ? route('assets.image', ['path' => $asset->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                                            src="{{ \App\Support\AssetImage::url($asset->image, $asset->type) }}"
                                             class="bien-image"
-                                            onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
+                                            onerror="this.onerror=null; this.src='{{ \App\Support\AssetImage::defaultUrl($asset->type) }}'"
                                         />
 
                                         <div class="bien-info">
@@ -112,9 +112,9 @@
 
                     {{-- Imagen --}}
                     <img
-                        src="{{ !empty($asset->image) ? route('assets.image', ['path' => $asset->image]) : asset('assets/defaults/goods/default.jpg') }}"
+                        src="{{ \App\Support\AssetImage::url($asset->image, $asset->type) }}"
                         class="bien-image"
-                        onerror="this.src='{{ asset('assets/defaults/goods/default.jpg') }}'"
+                        onerror="this.onerror=null; this.src='{{ \App\Support\AssetImage::defaultUrl($asset->type) }}'"
                     />
 
                     {{-- Info --}}
